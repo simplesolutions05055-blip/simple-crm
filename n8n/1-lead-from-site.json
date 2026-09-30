@@ -1,0 +1,66 @@
+{
+ "name": "simple-CRM · ליד מהאתר",
+ "nodes": [
+  {
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "simple-crm-lead",
+    "responseMode": "lastNode",
+    "options": {}
+   },
+   "id": "2b416ddf-bd09-4fc5-abf8-530b3f979f4e",
+   "name": "טופס באתר",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    0,
+    0
+   ],
+   "webhookId": "7e5ec1a0-f441-4609-84ff-116fe861c506"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "https://app.simple-solution.co.il/api/n8n/lead",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "x-api-key",
+       "value": "PASTE_SSCRM_KEY_HERE"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ name: $json.body.name || $json.body.full_name || '', phone: $json.body.phone || $json.body.tel || '', email: $json.body.email || '', biz: $json.body.biz || $json.body.business || '', industry: $json.body.industry || '', source: $json.body.source || 'אתר ישיר', campaign: $json.body.utm_campaign || $json.body.campaign || '', landing_page: $json.body.page || $json.headers.referer || '', message: $json.body.message || '', consent: $json.body.consent === true || $json.body.consent === 'on' || $json.body.consent === 'true' }) }}",
+    "options": {}
+   },
+   "id": "3a4c339a-47c8-489f-83e1-71f1bde72854",
+   "name": "שליחה ל-CRM",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    260,
+    0
+   ]
+  }
+ ],
+ "connections": {
+  "טופס באתר": {
+   "main": [
+    [
+     {
+      "node": "שליחה ל-CRM",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1",
+  "timezone": "Asia/Jerusalem"
+ }
+}

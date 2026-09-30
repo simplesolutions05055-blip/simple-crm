@@ -1,0 +1,120 @@
+{
+ "name": "simple-CRM · סיכום בוקר",
+ "nodes": [
+  {
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "cronExpression",
+       "expression": "30 7 * * 0-5"
+      }
+     ]
+    }
+   },
+   "id": "354e0552-9c6f-43d7-9a27-8132a4bd9ccb",
+   "name": "כל בוקר 07:30",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    0,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "method": "GET",
+    "url": "https://app.simple-solution.co.il/api/n8n/digest",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "x-api-key",
+       "value": "PASTE_SSCRM_KEY_HERE"
+      }
+     ]
+    },
+    "options": {}
+   },
+   "id": "4b9fb03a-c6c9-44da-94d6-7e27c28018d9",
+   "name": "נתונים מה-CRM",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    260,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "jsCode": "const d = $input.first().json;\nconst app = 'https://app.simple-solution.co.il';\nconst nis = (n) => Math.round(n || 0).toLocaleString('he-IL') + ' ₪';\nconst L = [];\nL.push(`לידים חדשים ב-24 שעות: ${d.new_leads.length}`);\nd.new_leads.forEach(l => L.push(`  · ${l.name}${l.biz ? ' · ' + l.biz : ''} (${l.source})`));\nif (d.leads_no_touch) L.push(`לידים חדשים שעוד לא נוצר איתם קשר: ${d.leads_no_touch}`);\nif (d.next_steps_due.length) { L.push('', 'צעדים להיום:'); d.next_steps_due.forEach(s => L.push(`  · ${s.name}: ${s.step || 'צעד הבא'}`)); }\nif (d.tasks_due.length) { L.push('', 'משימות להיום ובאיחור:'); d.tasks_due.forEach(t => L.push(`  · ${t.title} (${t.due})`)); }\nif (d.quotes_waiting.length) { L.push('', 'הצעות שמחכות לתשובה:'); d.quotes_waiting.forEach(q => L.push(`  · ${q.no} · ${q.status} · ${q.views} צפיות`)); }\nif (d.payments_overdue.length) { L.push('', 'תשלומים באיחור:'); d.payments_overdue.forEach(p => L.push(`  · ${p.client}: ${p.what} · ${nis(p.amount)} · ${p.due}`)); }\nL.push('', app);\nreturn [{ json: { subject: 'simple-CRM · סיכום בוקר', text: L.join('\\n') } }];"
+   },
+   "id": "c265312d-e530-43c5-8994-9bdaa8ee23a8",
+   "name": "ניסוח הסיכום",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    520,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "sendTo": "simple.solutions05055@gmail.com",
+    "subject": "={{ $json.subject }}",
+    "emailType": "text",
+    "message": "={{ $json.text }}",
+    "options": {
+     "appendAttribution": false
+    }
+   },
+   "id": "fbd70e0e-a2bf-417e-b2da-ae775db058bc",
+   "name": "מייל אליי",
+   "type": "n8n-nodes-base.gmail",
+   "typeVersion": 2.1,
+   "position": [
+    780,
+    0
+   ]
+  }
+ ],
+ "connections": {
+  "כל בוקר 07:30": {
+   "main": [
+    [
+     {
+      "node": "נתונים מה-CRM",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "נתונים מה-CRM": {
+   "main": [
+    [
+     {
+      "node": "ניסוח הסיכום",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "ניסוח הסיכום": {
+   "main": [
+    [
+     {
+      "node": "מייל אליי",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1",
+  "timezone": "Asia/Jerusalem"
+ }
+}
