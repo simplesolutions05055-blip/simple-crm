@@ -1,0 +1,3 @@
+-- keep pg_net out of the public schema
+drop extension if exists pg_net;
+create extension pg_net schema extensions;
