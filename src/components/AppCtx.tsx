@@ -40,6 +40,14 @@ export default function AppProvider({ children }: { children: React.ReactNode })
   useEffect(() => {
     (async () => {
       const { data: u } = await sb().auth.getUser();
+      // remember this address for the login screen's quick-pick list
+      try {
+        const e = (u.user?.email || "").toLowerCase();
+        if (e) {
+          const list: string[] = JSON.parse(localStorage.getItem("sscrm_emails") || "[]");
+          localStorage.setItem("sscrm_emails", JSON.stringify([e, ...list.filter((x) => x !== e)].slice(0, 5)));
+        }
+      } catch { /* private mode */ }
       const { data: m, error } = await sb().from("crm_members").select("org_id").limit(1);
       if (error || !m?.length) {
         setErr("המשתמש " + (u.user?.email || "") + " לא מורשה למערכת.");
