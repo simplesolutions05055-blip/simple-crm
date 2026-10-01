@@ -1,0 +1,22 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://app.simple-solution.co.il/api/n8n/lead",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [ { "name": "x-api-key", "value": "PASTE_SSCRM_KEY_HERE" } ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Webhook').item.json.body) }}",
+        "options": {}
+      },
+      "name": "שליחה ל-simple-CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 320],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {}
+}
