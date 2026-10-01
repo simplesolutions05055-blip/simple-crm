@@ -16,6 +16,7 @@ export default function Leads() {
   const [showOff, setShowOff] = useState(false);
   const [adding, setAdding] = useState(false);
   const [over, setOver] = useState<string | null>(null);
+  const [arch, setArch] = useState(false);
 
   const load = async () => {
     const { data } = await sb().from("crm_leads").select("*").is("archived_at", null).order("created_at", { ascending: false });
@@ -39,10 +40,15 @@ export default function Leads() {
     await sb().from("crm_activities").insert({ org_id: org, lead_id: id, type: "מערכת", text: "שלב: " + l.stage + " ← " + stage, by: "מערכת" });
   }
 
+  if (arch) return <Archive onBack={() => { setArch(false); load(); }} />;
+
   return (
     <>
       <Top title="לידים" sub={rows ? filtered.length + " לידים פעילים" : ""}
-        right={<button className="btn primary" onClick={() => setAdding(true)}><Icon n="plus" s={16} />ליד חדש</button>} />
+        right={<div className="bar">
+          <button className="btn" onClick={() => setArch(true)}><Icon n="inbox" s={16} />ארכיון</button>
+          <button className="btn primary" onClick={() => setAdding(true)}><Icon n="plus" s={16} />ליד חדש</button>
+        </div>} />
       <div className="content">
         <div className="bar">
           <input className="inp" style={{ maxWidth: 300 }} placeholder="סינון לפי שם, עסק, תחום, מקור" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -81,6 +87,58 @@ export default function Leads() {
         <p className="tiny">גוררים כרטיס בין העמודות כדי לשנות שלב. הנקודות בכרטיס הן ההתאמה לפי 5 הקריטריונים.</p>
       </div>
       {adding ? <NewLead onClose={() => setAdding(false)} onDone={(id) => router.push("/leads/" + id)} /> : null}
+    </>
+  );
+}
+
+function Archive({ onBack }: { onBack: () => void }) {
+  const { org, toast } = useApp();
+  const [rows, setRows] = useState<Row[] | null>(null);
+  const [q, setQ] = useState("");
+  const load = async () => {
+    const { data } = await sb().from("crm_leads").select("*").not("archived_at", "is", null).order("archived_at", { ascending: false });
+    setRows(data || []);
+  };
+  useEffect(() => { load(); }, []);
+  const list = (rows || []).filter((l) => !q.trim() || [l.name, l.biz, l.phone, l.industry, l.source, l.reason].join(" ").includes(q.trim()));
+
+  async function restore(l: Row) {
+    const { error } = await sb().from("crm_leads").update({ archived_at: null }).eq("id", l.id);
+    if (error) return toast(error.message.includes("crm_leads_phone_uq") ? "יש כבר ליד פעיל עם אותו טלפון. פותחים אותו במקום." : error.message, true);
+    await sb().from("crm_activities").insert({ org_id: org, lead_id: l.id, type: "מערכת", text: "הוחזר מהארכיון", by: "מערכת" });
+    toast(l.name + " חזר ללידים הפעילים");
+    load();
+  }
+
+  return (
+    <>
+      <Top title="ארכיון לידים" sub={rows ? list.length + " לידים בארכיון" : ""} crumb={{ href: "/leads", label: "לידים" }}
+        right={<button className="btn" onClick={onBack}><Icon n="target" s={16} />חזרה ללידים הפעילים</button>} />
+      <div className="content">
+        <input className="inp" style={{ maxWidth: 300 }} placeholder="סינון לפי שם, עסק, טלפון, סיבה" value={q} onChange={(e) => setQ(e.target.value)} />
+        <div className="panel" style={{ overflowX: "auto" }}>
+          {!rows ? <p className="tiny">טוען…</p> : !list.length ? <p className="tiny" style={{ margin: 0 }}>אין לידים בארכיון</p> : (
+            <table className="arch-table">
+              <thead><tr><th>שם</th><th>עסק</th><th>טלפון</th><th>שלב אחרון</th><th>נשלח לארכיון</th><th></th></tr></thead>
+              <tbody>
+                {list.map((l) => (
+                  <tr key={l.id}>
+                    <td><Link href={"/leads/" + l.id}><b>{l.name}</b></Link></td>
+                    <td>{l.biz || ""}{l.industry ? <span className="meta"> · {l.industry}</span> : null}</td>
+                    <td className="ltr" style={{ textAlign: "right" }}>{l.phone || ""}</td>
+                    <td><St cls={l.stage === "נפסל" ? "bad" : undefined}>{l.stage}</St>{l.reason ? <span className="meta" style={{ display: "block" }}>{l.reason}</span> : null}</td>
+                    <td className="meta">{fmtDate(l.archived_at)}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      <button className="btn sm" onClick={() => restore(l)}><Icon n="reset" s={14} />החזרה ללידים</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+        <p className="tiny">ליד בארכיון לא מופיע בלוח, בחיפוש ובדופק היומי. כל הפרטים וההיסטוריה שלו נשמרים, ואפשר להחזיר אותו בלחיצה.</p>
+      </div>
     </>
   );
 }

@@ -60,7 +60,7 @@ export default function WaBox({ leadId, clientId, phone, name, onLog }: { leadId
     <Panel icon="wa" title="וואטסאפ" right={<button className="btn icon sm ghost" title="רענון" onClick={load}><Icon n="reset" s={15} /></button>}>
       {!ready ? (
         <>
-          <p className="tiny" style={{ marginTop: 0 }}>השליחה האוטומטית עוד לא מחוברת. <Link href="/settings">מחברים בהגדרות, בלשונית וואטסאפ</Link>.</p>
+          <p className="tiny" style={{ marginTop: 0 }}>השליחה האוטומטית עוד לא מחוברת. <Link href="/settings/connections">מחברים בהגדרות, בחיבורים וקשר</Link>.</p>
           {phone ? <a className="btn sm wa" href={waLink(phone, "היי " + first + ", ")} target="_blank" rel="noreferrer"><Icon n="wa" s={15} />פתיחת שיחה בוואטסאפ</a> : null}
         </>
       ) : !phone ? <Empty>אין מספר טלפון</Empty> : (
@@ -70,7 +70,7 @@ export default function WaBox({ leadId, clientId, phone, name, onLog }: { leadId
             <button className={"btn sm" + (mode === "text" ? " on" : "")} onClick={() => setMode("text")}>הודעה חופשית</button>
           </div>
           {mode === "template" ? (
-            !tpls.length ? <p className="tiny">אין תבניות. מוסיפים אותן בהגדרות, בלשונית וואטסאפ.</p> : (
+            !tpls.length ? <p className="tiny">אין תבניות. מוסיפים אותן בהגדרות, בחיבורים וקשר.</p> : (
               <>
                 <select className="inp sm" value={tpl} onChange={(e) => { setTpl(e.target.value); setParams(defaults(tpls.find((x) => x.name === e.target.value)?.params || 0)); }}>
                   {tpls.map((t) => <option key={t.name} value={t.name}>{t.label || t.name}</option>)}

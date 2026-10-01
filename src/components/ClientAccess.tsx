@@ -1,6 +1,7 @@
 "use client";
 /* client access: partner access per platform asset + a small encrypted vault for site / domain logins */
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { sb } from "@/lib/supabase/browser";
 import Icon from "./Icon";
 import { Panel, Empty, St } from "./Shell";
@@ -80,7 +81,7 @@ export function AccessBox({ clientId, contact, phone, onLog }: { clientId: strin
         </div>
       ) : null}
       {!settings.agency?.meta_bm && !settings.agency?.google_mcc && !settings.agency?.tiktok_bc ? (
-        <p className="tiny" style={{ marginBottom: 0 }}>כדי שההוראות יכללו את המזהים שלך, ממלאים אותם בהגדרות, בלשונית &quot;גישת שותף&quot;.</p>
+        <p className="tiny" style={{ marginBottom: 0 }}>כדי שההוראות יכללו את המזהים שלך, ממלאים אותם <Link href="/settings/business">בהגדרות, בפרטי העסק</Link>.</p>
       ) : null}
     </Panel>
   );

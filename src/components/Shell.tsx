@@ -7,6 +7,13 @@ import { useApp } from "./AppCtx";
 import { sb } from "@/lib/supabase/browser";
 import type { Row } from "@/lib/crm";
 
+const SETTINGS_SUB = [
+  { href: "/settings/business", label: "פרטי העסק" },
+  { href: "/settings/quotes", label: "תבניות הצעת מחיר" },
+  { href: "/settings/connections", label: "חיבורים וקשר" },
+  { href: "/settings/automations", label: "אוטומציות" },
+];
+
 const NAV = [
   { href: "/", label: "לוח בקרה", icon: "home" },
   { href: "/leads", label: "לידים", icon: "target" },
@@ -20,6 +27,15 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const { email, counts } = useApp();
   const on = (h: string) => (h === "/" ? path === "/" : path.startsWith(h));
+  const router = useRouter();
+  // after an email link (e.g. password reset) land on the page that sent it
+  useEffect(() => {
+    try {
+      const next = localStorage.getItem("sscrm_next");
+      if (next && path === "/") { localStorage.removeItem("sscrm_next"); router.replace(next); }
+    } catch { /* */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <div className="app">
       <aside className="side">
@@ -32,11 +48,20 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <div className="navlbl">ניהול</div>
           <nav className="nav">
             {NAV.map((n) => (
-              <Link key={n.href} href={n.href} className={"navbtn" + (on(n.href) ? " on" : "")}>
-                <Icon n={n.icon} />
-                {n.label}
-                {n.count && counts.tasksDue > 0 ? <span className="cnt">{counts.tasksDue}</span> : null}
-              </Link>
+              <div key={n.href} style={{ display: "contents" }}>
+                <Link href={n.href === "/settings" ? "/settings/business" : n.href} className={"navbtn" + (on(n.href) ? " on" : "")}>
+                  <Icon n={n.icon} />
+                  {n.label}
+                  {n.count && counts.tasksDue > 0 ? <span className="cnt">{counts.tasksDue}</span> : null}
+                </Link>
+                {n.href === "/settings" && on("/settings") ? (
+                  <div className="subnav">
+                    {SETTINGS_SUB.map((s) => (
+                      <Link key={s.href} href={s.href} className={path.startsWith(s.href) ? "on" : ""}>{s.label}</Link>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             ))}
           </nav>
         </div>
