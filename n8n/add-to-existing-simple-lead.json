@@ -8,7 +8,7 @@
         "headerParameters": { "parameters": [ { "name": "x-api-key", "value": "PASTE_SSCRM_KEY_HERE" } ] },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($('Webhook').item.json.body) }}",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
         "options": {}
       },
       "name": "שליחה ל-simple-CRM",
