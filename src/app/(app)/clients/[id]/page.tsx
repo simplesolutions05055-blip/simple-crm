@@ -7,6 +7,8 @@ import { Top, Panel, St, Empty } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
 import { EditField, FieldRow, CustomFields, LinksBox, ActivityLog, QuotesBox, TasksBox, type CField } from "@/components/Blocks";
+import { AccessBox, VaultBox } from "@/components/ClientAccess";
+import WaBox from "@/components/WaBox";
 import { CLIENT_STATUS, CLIENT_STATUS_CLS, INDUSTRIES, fmtDate, money, today, waLink, type Row } from "@/lib/crm";
 
 export default function ClientPage() {
@@ -137,6 +139,9 @@ export default function ClientPage() {
             <Panel icon="globe" title="נוכחות דיגיטלית">
               <LinksBox links={c.info?.links || {}} custom={custom.links || []} onLinks={(x) => save({ info: { ...(c.info || {}), links: x } })} onCustom={(l) => save({ custom: { ...custom, links: l } })} />
             </Panel>
+            <WaBox clientId={id} leadId={c.lead_id || undefined} phone={c.phone} name={c.contact} onLog={() => setTick((t) => t + 1)} />
+            <AccessBox clientId={id} contact={c.contact} phone={c.phone} onLog={() => setTick((t) => t + 1)} />
+            <VaultBox clientId={id} onLog={() => setTick((t) => t + 1)} />
             <QuotesBox clientId={id} leadId={c.lead_id || undefined} />
             <TasksBox clientId={id} />
             {c.status === "עזב" ? (

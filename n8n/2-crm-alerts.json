@@ -1,81 +1,82 @@
 {
- "name": "simple-CRM · התראות",
- "nodes": [
-  {
-   "parameters": {
-    "httpMethod": "POST",
-    "path": "simple-crm-events",
-    "options": {}
-   },
-   "id": "1087484e-f8bc-4920-9d69-0fa32c731e98",
-   "name": "אירוע מה-CRM",
-   "type": "n8n-nodes-base.webhook",
-   "typeVersion": 2,
-   "position": [
-    0,
-    0
-   ],
-   "webhookId": "830dbb1b-c407-4e51-9477-1c24c4b51482"
-  },
-  {
-   "parameters": {
-    "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const e = item.json.body || {};\n  const d = e.data || {};\n  const who = [d.name, d.biz].filter(Boolean).join(' · ');\n  const app = 'https://app.simple-solution.co.il';\n  let subject = '', text = '';\n  if (e.event === 'lead_created') { subject = 'ליד חדש: ' + who; text = `${who}\\nטלפון: ${d.phone || '-'}\\nמקור: ${d.source || '-'}${d.campaign ? ' · ' + d.campaign : ''}\\n\\n${app}/leads/${d.id}`; }\n  else if (e.event === 'lead_returned') { subject = 'פנייה חוזרת: ' + who; text = `${who} השאיר/ה פרטים שוב.\\n\\n${app}/leads/${d.id}`; }\n  else if (e.event === 'quote_viewed') { subject = 'הצעה ' + d.no + ' נפתחה'; text = `${who} פתח/ה את הצעה ${d.no}.\\n\\n${app}/quotes/${d.id}`; }\n  else if (e.event === 'quote_signed') { subject = 'הצעה ' + d.no + ' נחתמה!'; text = `${who} חתם/ה על הצעה ${d.no}.\\nלחודש: ${Math.round(d.totals?.monthly || 0).toLocaleString('he-IL')} ₪ · חד פעמי: ${Math.round(d.totals?.oneoff || 0).toLocaleString('he-IL')} ₪ (לפני מע\"מ)\\n\\nהלקוח, השירותים, התשלום ורשימת הקליטה כבר נפתחו.\\n${app}/quotes/${d.id}`; }\n  else if (e.event === 'quote_rejected') { subject = 'הצעה ' + d.no + ' נדחתה'; text = `${who} סימן/ה שההצעה לא מתאימה כרגע.\\n\\n${app}/quotes/${d.id}`; }\n  else continue;\n  out.push({ json: { subject, text } });\n}\nreturn out;"
-   },
-   "id": "6036dbf7-012c-439f-bf96-684d228dec91",
-   "name": "ניסוח ההתראה",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    260,
-    0
-   ]
-  },
-  {
-   "parameters": {
-    "sendTo": "simple.solutions05055@gmail.com",
-    "subject": "={{ $json.subject }}",
-    "emailType": "text",
-    "message": "={{ $json.text }}",
-    "options": {
-     "appendAttribution": false
+  "name": "Simple Solution | התראות CRM",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "crm-events-cbf48a6d40e5b637",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "אירוע מה-CRM",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "crm-events-cbf48a6d40e5b637"
+    },
+    {
+      "parameters": {
+        "jsCode": "// מתרגם אירוע מה-CRM למייל. ליד חדש לא נשלח כאן: לידים מהאתר כבר מקבלים מייל מהתהליך של האתר.\nconst out = [];\nconst app = 'https://app.simple-solution.co.il';\nconst nis = (n) => Math.round(Number(n || 0)).toLocaleString('he-IL') + ' ₪';\nfor (const item of $input.all()) {\n  const e = item.json.body || {};\n  const d = e.data || {};\n  const who = [d.name, d.biz].filter(Boolean).join(' · ') || 'לקוח';\n  let subject = '', text = '';\n  if (e.event === 'lead_returned') {\n    subject = 'פנייה חוזרת: ' + who;\n    text = who + ' השאיר/ה פרטים שוב.\\nטלפון: ' + (d.phone || '-') + '\\n\\n' + app + '/leads/' + d.id;\n  } else if (e.event === 'quote_viewed') {\n    subject = 'הצעה ' + d.no + ' נפתחה';\n    text = who + ' פתח/ה את הצעה ' + d.no + '.\\nזה זמן טוב להתקשר.\\nטלפון: ' + (d.phone || '-') + '\\n\\n' + app + '/quotes/' + d.id;\n  } else if (e.event === 'quote_signed') {\n    subject = 'הצעה ' + d.no + ' נחתמה';\n    text = who + ' חתם/ה על הצעה ' + d.no + '.\\nלחודש: ' + nis(d.totals && d.totals.monthly) + ' · חד פעמי: ' + nis(d.totals && d.totals.oneoff) + ' (לפני מע\"מ)\\n\\nהלקוח, השירותים, התשלום ורשימת הקליטה כבר נפתחו במערכת.\\n' + app + '/quotes/' + d.id;\n  } else if (e.event === 'quote_rejected') {\n    subject = 'הצעה ' + d.no + ' נדחתה';\n    text = who + ' סימן/ה שההצעה לא מתאימה כרגע.\\n\\n' + app + '/quotes/' + d.id;\n  } else continue;\n  out.push({ json: { subject, text } });\n}\nreturn out;"
+      },
+      "name": "ניסוח ההתראה",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "simple.solutions05055@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.text }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "name": "מייל אליי",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        480,
+        0
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "wuQBluQ3JQcMuaUO",
+          "name": "Gmail account 3"
+        }
+      }
     }
-   },
-   "id": "6e01ade2-c775-43a5-8f08-f259740f6fd8",
-   "name": "מייל אליי",
-   "type": "n8n-nodes-base.gmail",
-   "typeVersion": 2.1,
-   "position": [
-    520,
-    0
-   ]
-  }
- ],
- "connections": {
-  "אירוע מה-CRM": {
-   "main": [
-    [
-     {
-      "node": "ניסוח ההתראה",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
+  ],
+  "connections": {
+    "אירוע מה-CRM": {
+      "main": [
+        [
+          {
+            "node": "ניסוח ההתראה",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ניסוח ההתראה": {
+      "main": [
+        [
+          {
+            "node": "מייל אליי",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "ניסוח ההתראה": {
-   "main": [
-    [
-     {
-      "node": "מייל אליי",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  }
- },
- "settings": {
-  "executionOrder": "v1",
-  "timezone": "Asia/Jerusalem"
- }
+  "settings": {}
 }

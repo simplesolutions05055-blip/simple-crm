@@ -65,3 +65,53 @@ export function appUrl() {
   return "https://app.simple-solution.co.il";
 }
 export function fitScore(fit: Row | null | undefined) { return FIT.filter(([k]) => fit && fit[k]).length; }
+
+/* ---------- client access ---------- */
+export const ACCESS_STATUS = ["לא התחיל", "נשלחה בקשה", "ממתין ללקוח", "יש גישה", "בעיה"];
+export const ACCESS_STATUS_CLS: Record<string, string> = { "לא התחיל": "", "נשלחה בקשה": "info", "ממתין ללקוח": "warn", "יש גישה": "ok", "בעיה": "bad" };
+export const ACCESS_PLATFORMS = ["מטא", "גוגל", "טיקטוק", "אתר", "דומיין", "אחר"];
+export const ACCESS_DEFAULTS: [string, string][] = [
+  ["מטא", "עמוד פייסבוק"], ["מטא", "חשבון אינסטגרם"], ["מטא", "חשבון מודעות"], ["מטא", "פיקסל"],
+  ["גוגל", "חשבון Google Ads"], ["גוגל", "פרופיל עסק בגוגל"], ["גוגל", "Analytics ו-Tag Manager"],
+];
+export const ACCESS_MSG_DEFAULT = `היי {שם}, כדי שאוכל להתחיל לעבוד על הקמפיינים צריך לתת לי גישה לחשבונות.
+לא צריך לשלוח סיסמאות. החשבונות נשארים שלך, ואפשר להסיר את הגישה בכל רגע.
+
+{מטא}{גוגל}{טיקטוק}אם משהו לא מסתדר, אפשר לשלוח לי צילום מסך ואסתדר איתך.`;
+const ACCESS_PARTS: Record<string, string> = {
+  meta: `פייסבוק ואינסטגרם:
+1. נכנסים ל-business.facebook.com, ואז הגדרות ושותפים
+2. לוחצים "הוספה" ובוחרים לתת לשותף גישה לנכסים
+3. מזהה העסק שלי: {id}
+4. מסמנים את העמוד, האינסטגרם, חשבון המודעות והפיקסל, עם שליטה מלאה
+
+`,
+  google: `גוגל:
+אשלח לך בקשת קישור מחשבון הניהול שלי ({id}). מאשרים אותה בחשבון Google Ads שלך, תחת אדמין, גישה ואבטחה, חשבונות ניהול.
+
+`,
+  tiktok: `טיקטוק:
+במרכז העסקים נכנסים להגדרות, שותפים, הוספת שותף, ומזינים את המזהה {id}
+
+`,
+};
+export function accessMessage(agency: Row | undefined, contact: string, rows: Row[]) {
+  const a = agency || {};
+  const has = (p: string) => !rows.length || rows.some((r) => r.platform === p);
+  const part = (k: string, id: string, p: string) => (id && has(p) ? ACCESS_PARTS[k].replace("{id}", id) : "");
+  return (a.access_msg || ACCESS_MSG_DEFAULT)
+    .replace("{שם}", (contact || "").split(" ")[0] || "")
+    .replace("{מטא}", part("meta", a.meta_bm || "", "מטא"))
+    .replace("{גוגל}", part("google", a.google_mcc || "", "גוגל"))
+    .replace("{טיקטוק}", part("tiktok", a.tiktok_bc || "", "טיקטוק"))
+    .replace(/\n{3,}/g, "\n\n");
+}
+
+/* ---------- WhatsApp templates from settings.wa.templates text: "name | lang | params | label" per line ---------- */
+export type WaTpl = { name: string; lang: string; params: number; label: string };
+export function waTemplates(wa: Row | undefined): WaTpl[] {
+  return String(wa?.templates || "").split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
+    const [name, lang, params, ...label] = l.split("|").map((x) => x.trim());
+    return { name, lang: lang || "he", params: Number(params) || 0, label: label.join(" | ") || name };
+  }).filter((t) => /^[a-z0-9_]+$/.test(t.name));
+}

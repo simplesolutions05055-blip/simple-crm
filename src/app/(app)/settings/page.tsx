@@ -6,9 +6,9 @@ import Icon from "@/components/Icon";
 import QuoteDoc from "@/components/QuoteDoc";
 import { useApp } from "@/components/AppCtx";
 import { computeQuote, emptyInput, DEFAULT_PRICING, type Pricing, type Template, type Pair, type QuoteInput } from "@/lib/quote-engine";
-import { fmtDate, appUrl, type Row } from "@/lib/crm";
+import { fmtDate, appUrl, accessMessage, ACCESS_MSG_DEFAULT, waTemplates, type Row } from "@/lib/crm";
 
-const TABS = ["מחירון ומוצרים", "תבנית ההצעה", "כללי", "אוטומציות"];
+const TABS = ["מחירון ומוצרים", "תבנית ההצעה", "כללי", "אוטומציות", "וואטסאפ", "גישת שותף"];
 
 export default function Settings() {
   const [tab, setTab] = useState(TABS[0]);
@@ -17,7 +17,7 @@ export default function Settings() {
       <Top title="הגדרות" />
       <div className="content">
         <div className="tabs">{TABS.map((t) => <button key={t} className={"btn sm" + (tab === t ? " on" : "")} onClick={() => setTab(t)}>{t}</button>)}</div>
-        {tab === TABS[0] ? <PricingTab /> : tab === TABS[1] ? <TemplateTab /> : tab === TABS[2] ? <GeneralTab /> : <AutomationTab />}
+        {tab === TABS[0] ? <PricingTab /> : tab === TABS[1] ? <TemplateTab /> : tab === TABS[2] ? <GeneralTab /> : tab === TABS[3] ? <AutomationTab /> : tab === TABS[4] ? <WhatsAppTab /> : <AgencyTab />}
       </div>
     </>
   );
@@ -324,7 +324,7 @@ function AutomationTab() {
     <div className="grid g2">
       <div className="col">
         <Panel icon="send" title="מה-CRM ל-n8n: Webhook">
-          <p className="tiny" style={{ marginTop: 0 }}>כל אירוע נשלח לכתובת הזו כ-POST עם {"{event, at, data}"}. אירועים: lead_created, lead_returned, quote_sent, quote_viewed, quote_signed, quote_rejected.</p>
+          <p className="tiny" style={{ marginTop: 0 }}>כל אירוע נשלח לכתובת הזו כ-POST עם {"{event, at, data}"}. אירועים: lead_created, lead_returned, quote_sent, quote_viewed, quote_signed, quote_rejected, wa_inbound.</p>
           <div className="bar">
             <input className="inp ltr" style={{ flex: 1 }} placeholder="https://simplesolution.app.n8n.cloud/webhook/..." value={hook} onChange={(e) => setHook(e.target.value)} />
             <button className="btn primary" onClick={async () => {
@@ -369,6 +369,133 @@ x-api-key: sscrm_...`}</div>
         {!events.length ? <Empty>עוד אין אירועים</Empty> : events.map((e) => (
           <div className="lrow" key={e.id}><span className="grow"><b className="mono" style={{ fontSize: 12 }}>{e.type}</b><span className="meta">{e.payload?.name || e.payload?.no || ""}</span></span><span className="meta">{fmtDate(e.at)}</span></div>
         ))}
+      </Panel>
+    </div>
+  );
+}
+
+/* ---------------- WhatsApp (official API) ---------------- */
+const WA_TPL_DEFAULT = "lead_welcome | he | 1 | פתיחה לליד חדש\nquote_link | he | 2 | שליחת הצעת מחיר";
+function WhatsAppTab() {
+  const { settings, saveSettings, toast } = useApp();
+  const w = settings.wa || {};
+  const [f, setF] = useState({
+    phone_number_id: w.phone_number_id || "", waba_id: w.waba_id || "", api_version: w.api_version || "v23.0",
+    verify_token: w.verify_token || "", templates: w.templates || WA_TPL_DEFAULT,
+    welcome_template: w.welcome_template || "lead_welcome", welcome_lang: w.welcome_lang || "he",
+    quote_template: w.quote_template || "quote_link", auto_welcome: !!w.auto_welcome,
+  });
+  const [st, setSt] = useState<{ has_token?: boolean; has_app_secret?: boolean }>({});
+  const [token, setToken] = useState("");
+  const [secret, setSecret] = useState("");
+  const [testPhone, setTestPhone] = useState("");
+  const [log, setLog] = useState<Row[]>([]);
+  const loadSt = async () => {
+    const [a, b] = await Promise.all([sb().rpc("crm_wa_status"), sb().from("crm_wa_messages").select("*").order("at", { ascending: false }).limit(12)]);
+    setSt((a.data as Row) || {}); setLog(b.data || []);
+  };
+  useEffect(() => { loadSt(); }, []);
+  const hook = appUrl() + "/api/wa/webhook";
+  const tpls = waTemplates({ templates: f.templates });
+
+  async function saveAll() {
+    const vt = f.verify_token || ("ss_" + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2));
+    const next = { ...f, verify_token: vt, phone_number_id: f.phone_number_id.trim(), waba_id: f.waba_id.trim() };
+    if (!(await saveSettings({ wa: next }))) return;
+    setF(next);
+    for (const [kind, v] of [["token", token], ["app_secret", secret]] as const) {
+      if (!v.trim()) continue;
+      const { error } = await sb().rpc("crm_wa_set_secret", { p_kind: kind, p_value: v.trim() });
+      if (error) return toast("לא נשמר: " + error.message, true);
+    }
+    setToken(""); setSecret(""); loadSt(); toast("נשמר");
+  }
+
+  return (
+    <div className="grid g2">
+      <div className="col">
+        <Panel icon="wa" title="חיבור לממשק הרשמי של מטא">
+          <div className="form">
+            <label className="field"><span>מזהה מספר הטלפון</span><input className="inp ltr" value={f.phone_number_id} onChange={(e) => setF({ ...f, phone_number_id: e.target.value })} /></label>
+            <label className="field"><span>מזהה חשבון הוואטסאפ העסקי</span><input className="inp ltr" value={f.waba_id} onChange={(e) => setF({ ...f, waba_id: e.target.value })} /></label>
+            <label className="field full"><span>טוקן גישה קבוע {st.has_token ? "(שמור. מזינים רק כדי להחליף)" : "(עוד לא נשמר)"}</span>
+              <input className="inp ltr" type="password" autoComplete="off" value={token} onChange={(e) => setToken(e.target.value)} /></label>
+            <label className="field full"><span>סוד האפליקציה {st.has_app_secret ? "(שמור. מזינים רק כדי להחליף)" : "(עוד לא נשמר)"}</span>
+              <input className="inp ltr" type="password" autoComplete="off" value={secret} onChange={(e) => setSecret(e.target.value)} /></label>
+            <label className="field"><span>גרסת הממשק</span><input className="inp ltr" value={f.api_version} onChange={(e) => setF({ ...f, api_version: e.target.value })} /></label>
+            <div className="full"><button className="btn primary" onClick={saveAll}><Icon n="check" s={16} />שמירה</button></div>
+          </div>
+          <p className="tiny">הטוקן והסוד נשמרים מוצפנים ולא מוצגים שוב, גם לא כאן.</p>
+        </Panel>
+        <Panel icon="link" title="כתובת לקבלת הודעות (Webhook)">
+          <p className="tiny" style={{ marginTop: 0 }}>מדביקים את שתי השורות האלה בהגדרות ה-Webhook של האפליקציה במטא, ונרשמים לשדה messages.</p>
+          <div className="code">{hook}</div>
+          <div className="code" style={{ marginTop: 6 }}>{f.verify_token || "יופיע אחרי השמירה הראשונה"}</div>
+        </Panel>
+        <Panel icon="list" title="תבניות">
+          <p className="tiny" style={{ marginTop: 0 }}>שורה לכל תבנית מאושרת: שם | שפה | כמה משתנים | כינוי. השם בדיוק כמו במטא.</p>
+          <textarea className="inp ltr" rows={4} value={f.templates} onChange={(e) => setF({ ...f, templates: e.target.value })} />
+          <div className="form" style={{ marginTop: 10 }}>
+            <label className="field"><span>תבנית פתיחה לליד חדש</span>
+              <select className="inp" value={f.welcome_template} onChange={(e) => setF({ ...f, welcome_template: e.target.value, welcome_lang: tpls.find((t) => t.name === e.target.value)?.lang || "he" })}>
+                <option value="">ללא</option>{tpls.map((t) => <option key={t.name} value={t.name}>{t.label}</option>)}</select></label>
+            <label className="field"><span>תבנית לשליחת הצעת מחיר</span>
+              <select className="inp" value={f.quote_template} onChange={(e) => setF({ ...f, quote_template: e.target.value })}>
+                <option value="">ללא</option>{tpls.map((t) => <option key={t.name} value={t.name}>{t.label}</option>)}</select></label>
+            <label className={"pillck full" + (f.auto_welcome ? " on" : "")} style={{ justifySelf: "start" }}>
+              <input type="checkbox" checked={f.auto_welcome} onChange={(e) => setF({ ...f, auto_welcome: e.target.checked })} />
+              לשלוח אוטומטית את תבנית הפתיחה לכל ליד חדש מהאתר (לא לפניות שסומנו כחשודות)</label>
+            <div className="full"><button className="btn primary" onClick={saveAll}>שמירה</button></div>
+          </div>
+        </Panel>
+      </div>
+      <div className="col">
+        <Panel icon="send" title="בדיקת שליחה">
+          <p className="tiny" style={{ marginTop: 0 }}>שולח את התבנית hello_world (קיימת בכל חשבון חדש) למספר שתזין. מתאים לבדיקה ראשונה.</p>
+          <div className="bar">
+            <input className="inp ltr" style={{ flex: 1 }} placeholder="05X-XXXXXXX" value={testPhone} onChange={(e) => setTestPhone(e.target.value)} />
+            <button className="btn primary" onClick={async () => {
+              const { error } = await sb().rpc("crm_wa_send", { p_phone: testPhone, p_template: "hello_world", p_lang: "en_US", p_params: [], p_text: null, p_lead: null, p_client: null });
+              if (error) return toast("לא נשלח: " + error.message, true);
+              toast("נשלח. התוצאה תופיע למטה תוך דקה."); setTimeout(loadSt, 65000);
+            }}>שליחה</button>
+          </div>
+        </Panel>
+        <Panel icon="pulse" title="הודעות אחרונות" right={<button className="btn icon sm ghost" onClick={loadSt}><Icon n="reset" s={15} /></button>}>
+          {!log.length ? <Empty>עוד אין הודעות</Empty> : log.map((m) => (
+            <div className="lrow" key={m.id}>
+              <span className="grow"><b className="ltr" style={{ fontSize: 13 }}>{m.direction === "in" ? "← " : "→ "}{m.phone}</b><span className="meta">{m.body.slice(0, 80)}{m.error ? " · " + m.error : ""}</span></span>
+              <span className="meta">{m.status}</span>
+            </div>
+          ))}
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- partner access (agency IDs + client instructions) ---------------- */
+function AgencyTab() {
+  const { settings, saveSettings, toast } = useApp();
+  const a = settings.agency || {};
+  const [f, setF] = useState({ meta_bm: a.meta_bm || "", google_mcc: a.google_mcc || "", tiktok_bc: a.tiktok_bc || "", access_msg: a.access_msg || ACCESS_MSG_DEFAULT });
+  return (
+    <div className="grid g2b">
+      <Panel icon="key" title="המזהים שלך כשותף">
+        <div className="form">
+          <label className="field"><span>מזהה מנהל העסקים במטא</span><input className="inp ltr" value={f.meta_bm} onChange={(e) => setF({ ...f, meta_bm: e.target.value })} /></label>
+          <label className="field"><span>מזהה חשבון הניהול בגוגל אדס</span><input className="inp ltr" placeholder="123-456-7890" value={f.google_mcc} onChange={(e) => setF({ ...f, google_mcc: e.target.value })} /></label>
+          <label className="field"><span>מזהה מרכז העסקים בטיקטוק</span><input className="inp ltr" value={f.tiktok_bc} onChange={(e) => setF({ ...f, tiktok_bc: e.target.value })} /></label>
+          <label className="field full"><span>הודעת ההוראות ללקוח. משתנים: {"{שם}"} {"{מטא}"} {"{גוגל}"} {"{טיקטוק}"}</span>
+            <textarea className="inp" rows={8} value={f.access_msg} onChange={(e) => setF({ ...f, access_msg: e.target.value })} /></label>
+          <div className="full bar">
+            <button className="btn primary" onClick={async () => { if (await saveSettings({ agency: f })) toast("נשמר"); }}>שמירה</button>
+            <button className="btn ghost" onClick={() => setF({ ...f, access_msg: ACCESS_MSG_DEFAULT })}>שחזור הנוסח המקורי</button>
+          </div>
+        </div>
+      </Panel>
+      <Panel icon="wa" title="איך ההודעה נראית">
+        <p className="bubble">{accessMessage(f, "ישראל ישראלי", [])}</p>
       </Panel>
     </div>
   );

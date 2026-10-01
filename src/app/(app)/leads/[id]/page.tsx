@@ -7,6 +7,7 @@ import { Top, Panel, Modal, St } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
 import { EditField, EditArea, FieldRow, CustomFields, LinksBox, ActivityLog, QuotesBox, TasksBox, type CField } from "@/components/Blocks";
+import WaBox from "@/components/WaBox";
 import { STAGES, SOURCES, INDUSTRIES, BUDGETS, DISQ, FIT, fmtDate, today, waLink, type Row } from "@/lib/crm";
 
 export default function LeadPage() {
@@ -111,6 +112,7 @@ export default function LeadPage() {
             <Panel icon="globe" title="נוכחות דיגיטלית">
               <LinksBox links={l.links || {}} custom={custom.links || []} onLinks={(x) => save({ links: x })} onCustom={(c) => save({ custom: { ...custom, links: c } })} />
             </Panel>
+            <WaBox leadId={id} phone={l.phone} name={l.name} onLog={() => setLogTick((t) => t + 1)} />
             <QuotesBox leadId={id} clientId={l.client_id || undefined} />
             <TasksBox leadId={id} />
           </div>

@@ -8,7 +8,7 @@ import Icon from "@/components/Icon";
 import QuoteDoc from "@/components/QuoteDoc";
 import { useApp } from "@/components/AppCtx";
 import { computeQuote, normalizeInput, toggleableCards, withPricing, withTemplate, nis, type QuoteInput, type Pricing, type ExtraLine } from "@/lib/quote-engine";
-import { QUOTE_STATUS_CLS, fillTemplate, waLink, appUrl, fmtDateTime, type Row } from "@/lib/crm";
+import { QUOTE_STATUS_CLS, fillTemplate, waLink, waTemplates, appUrl, fmtDateTime, type Row } from "@/lib/crm";
 
 export default function QuoteEditor() {
   const { id } = useParams<{ id: string }>();
@@ -71,20 +71,29 @@ export default function QuoteEditor() {
     timer.current = setTimeout(() => persist(next), 700);
   }
 
-  async function send() {
+  async function send(auto = false) {
     if (!I || !q) return;
+    if (auto && !who?.phone) return toast("אין טלפון לליד או ללקוח", true);
     if (!who?.phone) toast("אין טלפון לליד או ללקוח. הקישור נפתח בוואטסאפ בלי מספר.", true);
     const first = !q.sent_at;
     const ok = await persist(I, first ? { sent_at: new Date().toISOString(), status: "נשלחה" } : q.status === "טיוטה" ? { status: "נשלחה" } : { version: (q.version || 1) + 1 });
     if (!ok) return;
     const url = appUrl() + "/q/" + q.token;
     const text = fillTemplate(settings.wa_template, { "שם": (I.client || who?.name || "").split(" ")[0], "מספר": q.no, "קישור": url });
-    await sb().from("crm_activities").insert({ org_id: org, lead_id: q.lead_id, client_id: q.client_id, type: "וואטסאפ", text: (first ? "נשלחה הצעה " : "נשלחה שוב הצעה ") + q.no, by: "מאור" });
+    if (auto) {
+      const t = waTemplates(settings.wa).find((x) => x.name === settings.wa.quote_template);
+      const { error } = await sb().rpc("crm_wa_send", { p_phone: who!.phone, p_template: settings.wa.quote_template, p_lang: t?.lang || "he",
+        p_params: [(I.client || who?.name || "").split(" ")[0] || "שלום", url].slice(0, t?.params ?? 2), p_text: null, p_lead: q.lead_id, p_client: q.client_id });
+      if (error) return toast("לא נשלח: " + error.message, true);
+      toast("ההצעה נשלחה בוואטסאפ");
+    } else {
+      await sb().from("crm_activities").insert({ org_id: org, lead_id: q.lead_id, client_id: q.client_id, type: "וואטסאפ", text: (first ? "נשלחה הצעה " : "נשלחה שוב הצעה ") + q.no, by: "מאור" });
+    }
     if (first && q.lead_id) {
       const { data: l } = await sb().from("crm_leads").select("stage").eq("id", q.lead_id).single();
       if (l && ["חדש", "נוצר קשר", "כשיר", "פגישה נקבעה"].includes(l.stage)) await sb().from("crm_leads").update({ stage: "הצעה נשלחה" }).eq("id", q.lead_id);
     }
-    window.open(waLink(who?.phone, text), "_blank");
+    if (!auto) window.open(waLink(who?.phone, text), "_blank");
   }
 
   async function duplicate() {
@@ -108,7 +117,8 @@ export default function QuoteEditor() {
         </div>} />
       <div className="content">
         <div className="bar">
-          {!signed ? <button className="btn wa" onClick={send}><Icon n="wa" s={16} />{q.sent_at ? "שליחה שוב בוואטסאפ" : "שליחה בוואטסאפ"}</button> : null}
+          {!signed && settings.wa?.phone_number_id && settings.wa?.quote_template ? <button className="btn wa" onClick={() => send(true)}><Icon n="send" s={16} />{q.sent_at ? "שליחה שוב, אוטומטית" : "שליחה אוטומטית בוואטסאפ"}</button> : null}
+          {!signed ? <button className={"btn" + (settings.wa?.phone_number_id ? "" : " wa")} onClick={() => send()}><Icon n="wa" s={16} />{q.sent_at ? "שליחה שוב בוואטסאפ" : "שליחה בוואטסאפ"}</button> : null}
           {q.sent_at ? <>
             <button className="btn" onClick={() => { navigator.clipboard.writeText(link); toast("הקישור הועתק"); }}><Icon n="copy" s={16} />העתקת קישור</button>
             <a className="btn" href={"/q/" + q.token} target="_blank" rel="noreferrer"><Icon n="eye" s={16} />כמו שהלקוח רואה</a>
