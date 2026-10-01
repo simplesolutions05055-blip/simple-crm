@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
     message: [str(b.message ?? b.msg, 1500), str(b.ref) ? "הגיע מ: " + str(b.ref, 300) : ""].filter(Boolean).join("\n"),
     consent: truthy(b.consent ?? b.news),
     consent_text: str(b.consent_text ?? b.news_text, 500) || null,
+    spam_score: str(b.spam_score ?? b.spam, 10) || null,
   };
 
   const { data, error } = await sbAnon().rpc("crm_ingest_lead", { p_key: key, p_lead: lead });
