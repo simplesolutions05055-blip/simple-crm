@@ -271,10 +271,39 @@ function GeneralTab() {
           }}>שמירה</button></div>
         </div>
       </Panel>
-      <Panel icon="wa" title="איך ההודעה נראית">
-        <p className="bubble">{f.wa_template.replace("{שם}", "ישראל").replace("{מספר}", "2026-001").replace("{קישור}", appUrl() + "/q/…")}</p>
-      </Panel>
+      <div className="col">
+        <Panel icon="wa" title="איך ההודעה נראית">
+          <p className="bubble">{f.wa_template.replace("{שם}", "ישראל").replace("{מספר}", "2026-001").replace("{קישור}", appUrl() + "/q/…")}</p>
+        </Panel>
+        <PasswordPanel />
+      </div>
     </div>
+  );
+}
+
+function PasswordPanel() {
+  const { toast } = useApp();
+  const [p1, setP1] = useState("");
+  const [p2, setP2] = useState("");
+  const [busy, setBusy] = useState(false);
+  return (
+    <Panel icon="lock" title="סיסמה לכניסה">
+      <p className="tiny" style={{ marginTop: 0 }}>עם סיסמה נכנסים מכל מכשיר בלי לחכות למייל. לפחות 8 תווים.</p>
+      <form className="form" onSubmit={async (e) => {
+        e.preventDefault();
+        if (p1.length < 8) return toast("הסיסמה צריכה לפחות 8 תווים", true);
+        if (p1 !== p2) return toast("הסיסמאות לא זהות", true);
+        setBusy(true);
+        const { error } = await sb().auth.updateUser({ password: p1 });
+        setBusy(false);
+        if (error) return toast("לא נשמר: " + error.message, true);
+        setP1(""); setP2(""); toast("הסיסמה נשמרה");
+      }}>
+        <label className="field"><span>סיסמה חדשה</span><input className="inp ltr" type="password" autoComplete="new-password" value={p1} onChange={(e) => setP1(e.target.value)} /></label>
+        <label className="field"><span>שוב, לאימות</span><input className="inp ltr" type="password" autoComplete="new-password" value={p2} onChange={(e) => setP2(e.target.value)} /></label>
+        <div className="full"><button className="btn primary" disabled={busy}>שמירת סיסמה</button></div>
+      </form>
+    </Panel>
   );
 }
 

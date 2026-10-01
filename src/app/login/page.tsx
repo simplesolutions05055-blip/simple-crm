@@ -21,6 +21,8 @@ export default function Login() {
   const [saved, setSaved] = useState<string[]>([]);
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"email" | "sent">("email");
+  const [mode, setMode] = useState<"password" | "link">("password");
+  const [pass, setPass] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
@@ -51,6 +53,21 @@ export default function Login() {
     setSaved(loadEmails());
     setStep("sent");
   }
+  async function withPassword(e: React.FormEvent) {
+    e.preventDefault();
+    const addr = email.trim().toLowerCase();
+    setBusy(true); setErr("");
+    const { error } = await sb().auth.signInWithPassword({ email: addr, password: pass });
+    setBusy(false);
+    if (error) {
+      setErr(/invalid/i.test(error.message)
+        ? "מייל או סיסמה לא נכונים. אם עוד לא הגדרת סיסמה, היכנס פעם אחת עם קישור למייל ואז הגדר סיסמה בהגדרות."
+        : "הכניסה נכשלה: " + error.message);
+      return;
+    }
+    rememberEmail(addr);
+    location.href = "/";
+  }
   async function verify(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true); setErr("");
@@ -62,7 +79,7 @@ export default function Login() {
 
   return (
     <div className="loginwrap">
-      <form className="panel loginbox" onSubmit={step === "email" ? send : verify} autoComplete="on">
+      <form className="panel loginbox" onSubmit={step === "sent" ? verify : mode === "password" ? withPassword : send} autoComplete="on">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.png" alt="Simple Solution" style={{ width: 170, alignSelf: "center" }} />
         <h1 style={{ fontSize: 20, textAlign: "center" }}>כניסה ל-simple-CRM</h1>
@@ -85,7 +102,16 @@ export default function Login() {
                 ))}
               </div>
             ) : null}
-            <button className="btn primary" disabled={busy}>{busy ? "שולח…" : "שליחת קישור כניסה"}</button>
+            {mode === "password" ? (
+              <label className="field"><span>סיסמה</span>
+                <input className="inp ltr" type="password" name="password" autoComplete="current-password" required
+                  value={pass} onChange={(e) => setPass(e.target.value)} autoFocus={!!email} />
+              </label>
+            ) : null}
+            <button className="btn primary" disabled={busy}>{busy ? "רגע…" : mode === "password" ? "כניסה" : "שליחת קישור כניסה"}</button>
+            <button type="button" className="btn ghost" onClick={() => { setErr(""); setMode(mode === "password" ? "link" : "password"); }}>
+              {mode === "password" ? "כניסה עם קישור למייל במקום" : "כניסה עם סיסמה"}
+            </button>
           </>
         ) : (
           <>
