@@ -86,14 +86,66 @@ function QuotesSection() {
 }
 
 /* ---------------- connections ---------------- */
-const CTABS = ["וואטסאפ", "מייל", "סיסמה וכניסה"];
+const CTABS = ["וואטסאפ", "יומן גוגל", "מייל", "סיסמה וכניסה"];
 function ConnectionsSection() {
   const [tab, setTab] = useState(CTABS[0]);
   return (
     <>
       <SubTabs tabs={CTABS} tab={tab} setTab={setTab} />
-      {tab === CTABS[0] ? <WhatsAppTab /> : tab === CTABS[1] ? <EmailTab /> : <LoginTab />}
+      {tab === CTABS[0] ? <WhatsAppTab /> : tab === CTABS[1] ? <GcalTab /> : tab === CTABS[2] ? <EmailTab /> : <LoginTab />}
     </>
+  );
+}
+
+const GCAL_MSG: Record<string, [string, boolean]> = {
+  ok: ["היומן חובר בהצלחה", false],
+  denied: ["החיבור בוטל בחלון של גוגל", true],
+  state: ["החיבור פג תוקף. מנסים שוב", true],
+  token: ["גוגל לא החזיר הרשאה קבועה. מנסים שוב", true],
+  save: ["לא הצלחתי לשמור את החיבור", true],
+  missing: ["חסרים פרטי החיבור של גוגל בשרת. ראה את השלבים למטה", true],
+};
+function GcalTab() {
+  const { settings, toast } = useApp();
+  const g = settings.gcal || {};
+  const [msg, setMsg] = useState<[string, boolean] | null>(null);
+  useEffect(() => { const k = new URLSearchParams(location.search).get("gcal"); if (k && GCAL_MSG[k]) setMsg(GCAL_MSG[k]); }, []);
+  return (
+    <div className="grid g2b">
+      <div className="col">
+        <Panel icon="cal" title="יומן גוגל">
+          {msg ? <p className="tiny lead" style={{ color: msg[1] ? "var(--bad)" : "var(--ok)", fontWeight: 600 }}>{msg[0]}</p> : null}
+          {g.email ? (
+            <>
+              <div className="set-card">
+                <b>מחובר</b>
+                <div className="code">{g.email}</div>
+                <span className="tiny">מחובר מאז {fmtDate(g.connected_at)}. היומן הראשי בחשבון.</span>
+              </div>
+              <div className="bar" style={{ marginTop: 14 }}>
+                <a className="btn" href="/calendar"><Icon n="cal" s={15} />למסך היומן</a>
+                <button className="btn ghost danger" onClick={async () => {
+                  if (!confirm("לנתק את יומן גוגל? משימות שכבר נכנסו ליומן יישארו שם.")) return;
+                  const { error } = await sb().rpc("crm_gcal_disconnect");
+                  if (error) return toast(error.message, true);
+                  location.href = "/settings/connections?tab=" + encodeURIComponent("יומן גוגל");
+                }}>ניתוק</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="tiny lead">אחרי החיבור: הפגישות מהיומן מופיעות במסך היומן, ומשימות שאישרת עם שעה נכנסות ליומן הגוגל שלך.</p>
+              <a className="btn primary" href="/api/gcal/connect"><Icon n="link" s={15} />חיבור יומן גוגל</a>
+            </>
+          )}
+        </Panel>
+      </div>
+      <Panel icon="list" title="מה עובר בין המערכות">
+        <div className="set-card"><b>מגוגל ל-CRM</b><span className="tiny">כל האירועים ביומן הראשי, מוצגים במסך היומן. לא נשמרים ב-CRM.</span></div>
+        <div className="set-card"><b>מה-CRM לגוגל</b><span className="tiny">משימות שאישרת או יצרת עם הסימון &quot;להציג ביומן גוגל&quot;. שינוי שעה או תאריך במשימה מעדכן את האירוע, וסימון &quot;בוצע&quot; מוריד אותו מהיומן.</span></div>
+        <div className="set-card"><b>הרשאה</b><span className="tiny">גישה לאירועים ביומן בלבד. בלי מייל, בלי קבצים.</span></div>
+      </Panel>
+    </div>
   );
 }
 

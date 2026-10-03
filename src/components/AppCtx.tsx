@@ -4,7 +4,7 @@ import { sb } from "@/lib/supabase/browser";
 import { DEFAULT_PRICING, DEFAULT_TEMPLATE, withPricing, withTemplate, type Pricing, type Template } from "@/lib/quote-engine";
 import type { Row } from "@/lib/crm";
 
-export type Settings = { vat: number; valid_days: number; wa_template: string; n8n_webhook: string | null; onboarding: string[]; pricing: Pricing; template: Template; wa: Row; agency: Row };
+export type Settings = { vat: number; valid_days: number; wa_template: string; n8n_webhook: string | null; onboarding: string[]; pricing: Pricing; template: Template; wa: Row; agency: Row; gcal: Row };
 type Ctx = {
   org: string;
   email: string;
@@ -72,6 +72,7 @@ export default function AppProvider({ children }: { children: React.ReactNode })
           onboarding: row.onboarding || [],
           wa: row.wa || {},
           agency: row.agency || {},
+          gcal: row.gcal || {},
           pricing: withPricing(patch.pricing || row.pricing),
           template: withTemplate(patch.quote_template || row.quote_template),
         },

@@ -20,6 +20,7 @@ const NAV = [
   { href: "/clients", label: "לקוחות", icon: "brief" },
   { href: "/quotes", label: "הצעות מחיר", icon: "file" },
   { href: "/tasks", label: "משימות", icon: "tasks", count: true },
+  { href: "/calendar", label: "יומן", icon: "cal" },
   { href: "/settings", label: "הגדרות", icon: "sliders" },
 ];
 
