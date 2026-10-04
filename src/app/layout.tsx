@@ -3,10 +3,11 @@ import "./globals.css";
 import "./quote.css";
 
 export const metadata: Metadata = {
-  title: "simple-CRM",
+  title: "Simple CRM",
   description: "Simple Solution",
   robots: { index: false, follow: false },
   icons: { icon: "/crm-icon.png", apple: "/apple-icon.png" },
+  appleWebApp: { capable: true, title: "Simple CRM", statusBarStyle: "default" },
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#ffffff" };
 
