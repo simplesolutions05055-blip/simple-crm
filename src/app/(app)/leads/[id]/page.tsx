@@ -8,6 +8,7 @@ import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
 import { EditField, EditArea, FieldRow, CustomFields, LinksBox, ActivityLog, QuotesBox, TasksBox, type CField } from "@/components/Blocks";
 import WaBox from "@/components/WaBox";
+import { DocsBox } from "@/components/DocsBox";
 import { STAGES, SOURCES, INDUSTRIES, BUDGETS, DISQ, FIT, fmtDate, today, waLink, type Row } from "@/lib/crm";
 
 export default function LeadPage() {
@@ -114,6 +115,7 @@ export default function LeadPage() {
             </Panel>
             <WaBox leadId={id} phone={l.phone} name={l.name} onLog={() => setLogTick((t) => t + 1)} />
             <QuotesBox leadId={id} clientId={l.client_id || undefined} />
+            <DocsBox leadId={id} clientId={l.client_id || undefined} who={l.biz || l.name} />
             <TasksBox leadId={id} />
           </div>
         </div>

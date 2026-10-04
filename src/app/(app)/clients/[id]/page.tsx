@@ -9,6 +9,7 @@ import { useApp } from "@/components/AppCtx";
 import { EditField, FieldRow, CustomFields, LinksBox, ActivityLog, QuotesBox, TasksBox, type CField } from "@/components/Blocks";
 import { AccessBox, VaultBox } from "@/components/ClientAccess";
 import WaBox from "@/components/WaBox";
+import { DocsBox } from "@/components/DocsBox";
 import { CLIENT_STATUS, CLIENT_STATUS_CLS, INDUSTRIES, fmtDate, money, today, waLink, type Row } from "@/lib/crm";
 
 export default function ClientPage() {
@@ -143,6 +144,7 @@ export default function ClientPage() {
             <AccessBox clientId={id} contact={c.contact} phone={c.phone} onLog={() => setTick((t) => t + 1)} />
             <VaultBox clientId={id} onLog={() => setTick((t) => t + 1)} />
             <QuotesBox clientId={id} leadId={c.lead_id || undefined} />
+            <DocsBox clientId={id} leadId={c.lead_id || undefined} who={c.biz} />
             <TasksBox clientId={id} />
             {c.status === "עזב" ? (
               <Panel icon="alert" title="למה עזב">

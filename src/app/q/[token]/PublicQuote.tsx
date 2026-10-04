@@ -30,6 +30,16 @@ export default function PublicQuote({ token, data }: { token: string; data: Data
   );
 }
 
+/* the canvas is drawn at device pixel ratio; save it at 1x so phones stay well under the size limit */
+function signaturePng(c: HTMLCanvasElement) {
+  const r = c.getBoundingClientRect();
+  const out = document.createElement("canvas");
+  out.width = Math.max(1, Math.round(r.width));
+  out.height = Math.max(1, Math.round(r.height));
+  out.getContext("2d")!.drawImage(c, 0, 0, out.width, out.height);
+  return out.toDataURL("image/png");
+}
+
 function SignForm({ token, T, toName, toBiz, toEmail, onSigned, onRejected }: {
   token: string; T: ReturnType<typeof withTemplate>; toName: string; toBiz: string; toEmail: string;
   onSigned: (s: Data) => void; onRejected: () => void;
@@ -70,11 +80,15 @@ function SignForm({ token, T, toName, toBiz, toEmail, onSigned, onRejected }: {
     e.preventDefault();
     if (!drawn) return setErr("צריך לחתום בתיבה.");
     setBusy(true); setErr("");
-    const png = cv.current!.toDataURL("image/png");
-    const r = await fetch("/api/sign", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, name, biz, idno, email, png }) });
-    const j = await r.json().catch(() => ({}));
+    const png = signaturePng(cv.current!);
+    let r: Response | null = null;
+    try {
+      r = await fetch("/api/sign", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, name, biz, idno, email, png }) });
+    } catch { /* network */ }
+    const j = r ? await r.json().catch(() => ({})) : {};
     setBusy(false);
-    if (!r.ok) return setErr(j.error || "החתימה לא נשמרה. נסו שוב.");
+    // only a real confirmation from the server counts as signed
+    if (!r || !r.ok || !j.ok) return setErr(j.error || "החתימה לא נשמרה. בדקו את החיבור ונסו שוב.");
     onSigned({ name, biz, signed_at: j.signed_at, png, doc_hash: j.doc_hash });
   }
 
