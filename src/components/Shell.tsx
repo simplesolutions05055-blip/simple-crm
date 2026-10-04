@@ -42,8 +42,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <aside className="side">
         <div className="brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="logo-full" src="/logo.png" alt="Simple Solution" />
-          <span className="tag">simple-CRM</span>
+          <img className="logo-full" src="/crm-logo.png" alt="Simple CRM" />
         </div>
         <div>
           <div className="navlbl">ניהול</div>

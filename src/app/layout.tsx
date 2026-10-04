@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   title: "simple-CRM",
   description: "Simple Solution",
   robots: { index: false, follow: false },
-  icons: { icon: "/mark.png" },
+  icons: { icon: "/crm-icon.png", apple: "/apple-icon.png" },
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#ffffff" };
 
