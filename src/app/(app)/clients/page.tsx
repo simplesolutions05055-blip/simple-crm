@@ -5,6 +5,7 @@ import { sb } from "@/lib/supabase/browser";
 import { Top, Panel, Modal, St, Empty } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
+import ExcelIO from "@/components/ExcelIO";
 import { CLIENT_STATUS, CLIENT_STATUS_CLS, INDUSTRIES, fmtDate, money, ago, type Row } from "@/lib/crm";
 
 export default function Clients() {
@@ -13,14 +14,13 @@ export default function Clients() {
   const [status, setStatus] = useState("פעילים");
   const [adding, setAdding] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await sb().from("crm_clients")
-        .select("*,services:crm_client_services(price,billing,status),payments:crm_payments(amount,due,paid_at)")
-        .is("archived_at", null).order("created_at", { ascending: false });
-      setRows(data || []);
-    })();
-  }, []);
+  const load = async () => {
+    const { data } = await sb().from("crm_clients")
+      .select("*,services:crm_client_services(price,billing,status),payments:crm_payments(amount,due,paid_at)")
+      .is("archived_at", null).order("created_at", { ascending: false });
+    setRows(data || []);
+  };
+  useEffect(() => { load(); }, []);
 
   const list = useMemo(() => (rows || []).filter((c) =>
     status === "הכל" ? true : status === "פעילים" ? ["בקליטה", "פעיל", "בסיכון"].includes(c.status) : c.status === status), [rows, status]);
@@ -28,7 +28,7 @@ export default function Clients() {
 
   return (
     <>
-      <Top title="לקוחות" sub={rows ? list.length + " לקוחות" : ""} right={<button className="btn primary" onClick={() => setAdding(true)}><Icon n="plus" s={16} />לקוח חדש</button>} />
+      <Top title="לקוחות" sub={rows ? list.length + " לקוחות" : ""} right={<div className="bar"><ExcelIO kind="clients" onDone={load} /><button className="btn primary" onClick={() => setAdding(true)}><Icon n="plus" s={16} />לקוח חדש</button></div>} />
       <div className="content">
         <div className="tabs">
           {["פעילים", ...CLIENT_STATUS, "הכל"].map((s) => (

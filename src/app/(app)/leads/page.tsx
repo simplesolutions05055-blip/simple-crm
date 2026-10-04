@@ -6,6 +6,7 @@ import { sb } from "@/lib/supabase/browser";
 import { Top, Modal, St } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
+import ExcelIO from "@/components/ExcelIO";
 import { STAGES, OFF_STAGES, SOURCES, INDUSTRIES, BUDGETS, ago, fmtDate, today, money, FIT, type Row } from "@/lib/crm";
 
 export default function Leads() {
@@ -46,6 +47,7 @@ export default function Leads() {
     <>
       <Top title="לידים" sub={rows ? filtered.length + " לידים פעילים" : ""}
         right={<div className="bar">
+          <ExcelIO kind="leads" onDone={load} />
           <button className="btn" onClick={() => setArch(true)}><Icon n="inbox" s={16} />ארכיון</button>
           <button className="btn primary" onClick={() => setAdding(true)}><Icon n="plus" s={16} />ליד חדש</button>
         </div>} />

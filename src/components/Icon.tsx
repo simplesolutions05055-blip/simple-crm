@@ -43,9 +43,11 @@ const P: Record<string, string> = {
  "flag": "<path d=\"M5 21V4M5 4h11l-2 4 2 4H5\"/>",
  "reset": "<path d=\"M3 12a9 9 0 1 0 3-6.7L3 8\"/><path d=\"M3 3v5h5\"/>",
  "star": "<path d=\"m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z\"/>",
- "trash": "<path d=\"M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13\"/>"
+ "trash": "<path d=\"M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13\"/>",
+ "download": "<path d=\"M12 4v11M7 10l5 5 5-5M5 20h14\"/>",
+ "upload": "<path d=\"M12 15V4M7 9l5-5 5 5M5 20h14\"/>",
+ "sheet": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M3 9h18M3 15h18M9 3v18\"/>",
 };
-
 export type IconName = keyof typeof P | string;
 export default function Icon({ n, s = 18, className }: { n: IconName; s?: number; className?: string }) {
   return (
