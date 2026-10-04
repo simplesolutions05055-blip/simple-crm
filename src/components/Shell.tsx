@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Icon from "./Icon";
 import { useApp } from "./AppCtx";
 import { sb } from "@/lib/supabase/browser";
@@ -167,7 +168,9 @@ export function Modal({ title, icon, onClose, children, wide }: { title: string;
     window.addEventListener("keydown", f);
     return () => window.removeEventListener("keydown", f);
   }, [onClose]);
-  return (
+  // portal to <body>: a modal opened from the sticky header would otherwise be trapped inside it
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <div className="modal" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="box" style={wide ? { width: 720 } : undefined}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -176,7 +179,8 @@ export function Modal({ title, icon, onClose, children, wide }: { title: string;
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

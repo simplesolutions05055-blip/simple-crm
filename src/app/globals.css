@@ -384,3 +384,9 @@ input[type=checkbox]{width:18px;height:18px;margin:0;accent-color:var(--navy);fl
 .xl-issues{border:1px solid #E7C48E;background:#FFF8EC;border-radius:10px;padding:10px 12px;font-size:13px}
 .xl-issues ul{margin:6px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px;max-height:200px;overflow:auto}
 @media (max-width:640px){.xl-sum{grid-template-columns:repeat(2,1fr)}}
+.xl-colhead{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.xl-colhead .tiny{flex:1}
+.xl-cols{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;max-height:260px;overflow:auto;padding:2px}
+.xl-col{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);font-size:13px;cursor:pointer;user-select:none}
+.xl-col.on{border-color:#B9A3F0;background:#F5F1FF}
+.xl-col input{accent-color:var(--gold-2);margin:0}

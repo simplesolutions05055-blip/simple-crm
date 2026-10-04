@@ -35,15 +35,15 @@ async function loadAll(kind: Kind, withArchived: boolean) {
   return all;
 }
 
-async function download(kind: Kind, rows: Row[] | null) {
+async function download(kind: Kind, rows: Row[] | null, pick?: Set<string>) {
   const ExcelJS = await excel();
   const N = NAMES[kind];
   const wb = new ExcelJS.Workbook();
   wb.creator = "Simple CRM";
   const ws = wb.addWorksheet(N.sheet, { views: [{ rightToLeft: true, state: "frozen", ySplit: 1 }] });
   const template = !rows;
-  const fields: Field[] = FIELDS[kind].filter((f) => !template || (!f.ro && f.key !== "id"));
-  const extra = rows ? customLabels(kind, rows) : [];
+  const fields: Field[] = FIELDS[kind].filter((f) => (!template || (!f.ro && f.key !== "id")) && (!pick || pick.has(f.key)));
+  const extra = rows && (!pick || pick.has(CUSTOM)) ? customLabels(kind, rows) : [];
   ws.columns = [
     ...fields.map((f) => ({ header: f.label, key: f.key, width: f.width || 16 })),
     ...extra.map((l, i) => ({ header: l, key: "__c" + i, width: 18 })),
@@ -144,6 +144,19 @@ function ExcelModal({ kind, onClose }: { kind: Kind; onClose: (changed: boolean)
   const { org, toast, settings } = useApp();
   const N = NAMES[kind];
   const [withArch, setWithArch] = useState(false);
+  const allCols = [...FIELDS[kind].map((f) => f.key), CUSTOM];
+  const [cols, setCols] = useState<Set<string>>(() => {
+    try { const v = JSON.parse(localStorage.getItem("sscrm_xlcols_" + kind) || "null"); if (Array.isArray(v) && v.length) return new Set(v); } catch { /* */ }
+    return new Set(allCols);
+  });
+  const toggleCol = (k: string, on: boolean) => {
+    const n = new Set(cols); if (on) n.add(k); else n.delete(k); setCols(n);
+    try { localStorage.setItem("sscrm_xlcols_" + kind, JSON.stringify([...n])); } catch { /* */ }
+  };
+  const setAllCols = (on: boolean) => {
+    const n = new Set(on ? allCols : []); setCols(n);
+    try { localStorage.setItem("sscrm_xlcols_" + kind, JSON.stringify([...n])); } catch { /* */ }
+  };
   const [busy, setBusy] = useState("");
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [map, setMap] = useState<string[]>([]);
@@ -155,7 +168,7 @@ function ExcelModal({ kind, onClose }: { kind: Kind; onClose: (changed: boolean)
 
   async function doExport(template: boolean) {
     setBusy(template ? "template" : "export");
-    try { await download(kind, template ? null : await loadAll(kind, withArch)); }
+    try { await download(kind, template ? null : await loadAll(kind, withArch), template ? undefined : cols); }
     catch (e) { toast("ההורדה נכשלה: " + (e as Error).message, true); }
     setBusy("");
   }
@@ -236,10 +249,25 @@ function ExcelModal({ kind, onClose }: { kind: Kind; onClose: (changed: boolean)
         <div className="xl">
           <section className="xl-card">
             <h3><Icon n="download" s={16} />הורדה מהמערכת</h3>
-            <p className="tiny">כל ה{N.many} עם כל הפרטים, כולל שדות נוספים שהוספתם בכרטיסים.</p>
+            <div className="xl-colhead">
+              <span className="tiny">אילו עמודות להוריד ({FIELDS[kind].filter((f) => cols.has(f.key)).length + (cols.has(CUSTOM) ? 1 : 0)} מתוך {allCols.length})</span>
+              <button className="btn sm ghost" onClick={() => setAllCols(true)}>סימון הכל</button>
+              <button className="btn sm ghost" onClick={() => setAllCols(false)}>ניקוי</button>
+            </div>
+            <div className="xl-cols">
+              {FIELDS[kind].map((f) => (
+                <label key={f.key} className={"xl-col" + (cols.has(f.key) ? " on" : "")}>
+                  <input type="checkbox" checked={cols.has(f.key)} onChange={(e) => toggleCol(f.key, e.target.checked)} />{f.label}
+                </label>
+              ))}
+              <label className={"xl-col" + (cols.has(CUSTOM) ? " on" : "")}>
+                <input type="checkbox" checked={cols.has(CUSTOM)} onChange={(e) => toggleCol(CUSTOM, e.target.checked)} />שדות נוספים מהכרטיסים
+              </label>
+            </div>
+            {!cols.has("id") ? <p className="tiny" style={{ color: "var(--warn)" }}>בלי &quot;מזהה מערכת&quot; ייבוא חוזר של הקובץ יזהה רשומות רק לפי טלפון.</p> : null}
             <label className="pillck" style={{ alignSelf: "flex-start" }}><input type="checkbox" checked={withArch} onChange={(e) => setWithArch(e.target.checked)} />כולל ארכיון</label>
             <div className="bar">
-              <button className="btn primary" disabled={!!busy} onClick={() => doExport(false)}><Icon n="download" s={16} />{busy === "export" ? "מכין קובץ…" : "הורדת כל ה" + N.many}</button>
+              <button className="btn primary" disabled={!!busy || !cols.size} onClick={() => doExport(false)}><Icon n="download" s={16} />{busy === "export" ? "מכין קובץ…" : "הורדת כל ה" + N.many}</button>
               <button className="btn" disabled={!!busy} onClick={() => doExport(true)}><Icon n="file" s={16} />{busy === "template" ? "מכין…" : "קובץ ריק לייבוא"}</button>
             </div>
           </section>
