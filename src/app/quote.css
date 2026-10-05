@@ -150,3 +150,16 @@
 .qd .small{font-size:12px;color:var(--muted)}
 .qd .linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;font-family:inherit;font-size:13px;cursor:pointer;align-self:flex-start}
 @media (max-width:680px){.qd .qsign .fg{grid-template-columns:1fr}}
+/* collapsible sections: header row is a button with a chevron */
+.qd .fold{border-bottom:1px solid var(--purple-line)}
+.qd .fold-h{width:100%;background:none;border:0;padding:0;font:inherit;color:inherit;text-align:inherit;cursor:pointer;margin:22px 0 16px}
+.qd .fold-h:focus-visible{outline:2px solid var(--purple);outline-offset:4px;border-radius:8px}
+.qd .fold-h .chev{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--purple-line);color:var(--purple);
+  display:flex;align-items:center;justify-content:center;flex:0 0 auto;transition:transform .2s ease,background .2s}
+.qd .fold-h:hover .chev{background:var(--purple-soft)}
+.qd .fold.open .fold-h .chev{transform:rotate(180deg)}
+.qd .fold-b{display:none;padding-bottom:22px}
+.qd .fold.open .fold-b{display:block}
+@media print{.qd .fold-b{display:block}.qd .fold-h .chev{display:none}.qd .fold{border-bottom:0}}
+.qd .fold-h h3{white-space:normal;min-width:0;text-align:right}
+.qd .fold-h .line{min-width:16px}

@@ -144,7 +144,7 @@ export default function QuoteEditor() {
         <div className="split">
           {!signed ? <Controls I={I} P={P} upd={upd} hasMail={hasMail} vat={vat} T={T} /> : <div />}
           <div className="preview">
-            <QuoteDoc m={model} T={T} signed={sig ? { name: sig.name, biz: sig.biz, signed_at: sig.signed_at, png: sig.signature_png, doc_hash: sig.doc_hash } : null} />
+            <QuoteDoc openAll m={model} T={T} signed={sig ? { name: sig.name, biz: sig.biz, signed_at: sig.signed_at, png: sig.signature_png, doc_hash: sig.doc_hash } : null} />
           </div>
         </div>
       </div>

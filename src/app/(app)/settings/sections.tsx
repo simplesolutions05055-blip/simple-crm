@@ -244,7 +244,7 @@ function Preview({ P, T, vat }: { P: Pricing; T: Template; vat: number }) {
           </label>
         </div>
       </div>
-      <div className="preview"><QuoteDoc m={m} T={T} /></div>
+      <div className="preview"><QuoteDoc openAll m={m} T={T} /></div>
     </div>
   );
 }
