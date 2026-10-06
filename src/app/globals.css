@@ -25,7 +25,7 @@ svg.i{flex-shrink:0;display:block}
 /* sidebar */
 .side{width:248px;flex-shrink:0;background:var(--surface);border-left:1px solid var(--line);padding:22px 14px;display:flex;flex-direction:column;gap:24px;position:sticky;top:0;height:100vh}
 .brand{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:0 8px}
-.logo-full{width:200px;height:auto;display:block}
+.logo-full{width:138px;height:auto;display:block}
 .brand .tag{font-size:11px;color:var(--faint);letter-spacing:.06em;padding-inline-start:2px}
 .side::after{content:"";position:absolute;top:0;right:0;left:0;height:3px;background:var(--grad);opacity:.85}
 .qlogo{background:#fff;border-radius:12px;padding:10px 14px;align-self:flex-start}
@@ -221,7 +221,7 @@ input[type=checkbox]{width:18px;height:18px;margin:0;accent-color:var(--navy);fl
   .navlbl,.me{display:none}
   .nav{flex-direction:row;overflow-x:auto}.nav .navbtn{width:auto;white-space:nowrap}
   .nav .navbtn.on::before{right:10px;left:10px;top:auto;bottom:0;width:auto;height:3px}
-  .logo-full{width:120px}
+  .logo-full{width:92px}
   .top{position:static;padding-inline:16px}.content{padding-inline:16px}
   .search{width:100%}
   .form,.checks{grid-template-columns:minmax(0,1fr)}
