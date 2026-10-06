@@ -221,7 +221,7 @@ input[type=checkbox]{width:18px;height:18px;margin:0;accent-color:var(--navy);fl
   .navlbl,.me{display:none}
   .nav{flex-direction:row;overflow-x:auto}.nav .navbtn{width:auto;white-space:nowrap}
   .nav .navbtn.on::before{right:10px;left:10px;top:auto;bottom:0;width:auto;height:3px}
-  .logo-full{width:140px}
+  .logo-full{width:120px}
   .top{position:static;padding-inline:16px}.content{padding-inline:16px}
   .search{width:100%}
   .form,.checks{grid-template-columns:minmax(0,1fr)}
