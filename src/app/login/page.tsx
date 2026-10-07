@@ -81,7 +81,7 @@ export default function Login() {
     <div className="loginwrap">
       <form className="panel loginbox" onSubmit={step === "sent" ? verify : mode === "password" ? withPassword : send} autoComplete="on">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/crm-logo.png" alt="Simple CRM" style={{ width: 240, alignSelf: "center" }} />
+        <img src="/crm-logo.png" alt="Simple CRM" style={{ width: 128, alignSelf: "center" }} />
         <h1 style={{ fontSize: 20, textAlign: "center" }}>כניסה למערכת</h1>
         {step === "email" ? (
           <>
