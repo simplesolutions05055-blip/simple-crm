@@ -390,3 +390,19 @@ input[type=checkbox]{width:18px;height:18px;margin:0;accent-color:var(--navy);fl
 .xl-col{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);font-size:13px;cursor:pointer;user-select:none}
 .xl-col.on{border-color:#B9A3F0;background:#F5F1FF}
 .xl-col input{accent-color:var(--gold-2);margin:0}
+/* business switch: a second business is one click away, and every page title carries the open one */
+.biz-word{display:flex;align-items:center;gap:10px;min-height:62px}
+.biz-word img{width:46px;height:auto;display:block}
+.biz-word b{display:block;font-size:22px;font-weight:800;letter-spacing:-.01em;line-height:1}
+.biz-word small{display:block;font-size:11px;color:var(--faint);letter-spacing:.14em;margin-top:3px}
+.biz-sw{display:flex;align-items:center;gap:10px;width:100%;margin-top:8px;padding:8px 10px;border-radius:12px;border:1px solid var(--line2);background:var(--sunk);cursor:pointer;text-align:right;color:var(--fg);transition:border-color .15s,box-shadow .15s}
+.biz-sw:hover{border-color:var(--gold-2);box-shadow:0 0 0 3px color-mix(in srgb,var(--gold-2) 16%,transparent)}
+.biz-sw .lg{width:34px;height:34px;border-radius:9px;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--navy)}
+.biz-sw .lg img{max-width:26px;max-height:26px;display:block}
+.biz-sw .t{flex:1;min-width:0;overflow:hidden;line-height:1.25}
+.biz-sw .t span{display:block;font-size:11px;color:var(--muted)}
+.biz-sw .t b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.biz-sw .i{color:var(--faint)}
+.biz-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:2px 10px;border-radius:999px;border:1.5px solid var(--gold-2);color:var(--gold);margin-inline-start:10px;vertical-align:middle;letter-spacing:0}
+.biz-pill i{width:7px;height:7px;border-radius:50%;background:var(--gold-2)}
+.cal-org{display:inline-block;font-size:10px;font-weight:700;padding:0 6px;border-radius:999px;border:1px solid currentColor;margin-inline-start:6px;opacity:.85}

@@ -25,7 +25,7 @@ function ilParts(iso: string) {
 const hhmm = (m: number) => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
 
 export default function Calendar() {
-  const { settings } = useApp();
+  const { settings, org, orgs, switchOrg, toast } = useApp();
   const [day, setDay] = useState(today());
   const [view, setView] = useState<"day" | "week">("day");
   const [g, setG] = useState<{ connected: boolean; reason?: string; events: Row[] } | null>(null);
@@ -40,10 +40,10 @@ export default function Calendar() {
   const load = useCallback(async () => {
     const [ev, t, s] = await Promise.all([
       settings.gcal?.email ? fetch(`/api/gcal/events?from=${from}&to=${to}`).then((r) => r.json()).catch(() => ({ connected: true, reason: "error", events: [] })) : Promise.resolve({ connected: false, events: [] }),
-      sb().from("crm_tasks").select("*,lead:crm_leads(id,name),client:crm_clients(id,biz)").gte("due_date", from).lte("due_date", to),
+      sb().rpc("crm_calendar_tasks", { p_from: from, p_to: to }), // shared calendar: tasks of every business
       sb().from("crm_ai_suggestions").select("id", { count: "exact", head: true }).eq("status", "מוצעת"),
     ]);
-    setG(ev); setTasks(t.data || []); setPending(s.count || 0);
+    setG(ev); setTasks((t.data as Row[]) || []); setPending(s.count || 0);
   }, [from, to, settings.gcal?.email]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => { const h = setInterval(() => setNow(ilParts(new Date().toISOString())), 60000); return () => clearInterval(h); }, []);
@@ -61,10 +61,11 @@ export default function Calendar() {
     }
     for (const t of tasks) {
       const st = t.start_time ? +String(t.start_time).slice(0, 2) * 60 + +String(t.start_time).slice(3, 5) : 0;
-      out.push({ key: "t" + t.id, kind: "t", title: t.title, start: st, end: st + (t.duration_min || 30), allDay: !t.start_time, date: t.due_date, done: t.done, task: t, sub: t.client?.biz || t.lead?.name || "" });
+      const other = orgs.length > 1 && t.org_id !== org ? (t.org_brand?.short || t.org_name) : "";
+      out.push({ key: "t" + t.id, kind: "t", title: (other ? "[" + other + "] " : "") + t.title, start: st, end: st + (t.duration_min || 30), allDay: !t.start_time, date: t.due_date, done: t.done, task: t, sub: t.client?.biz || t.lead?.name || "" });
     }
     return out;
-  }, [g, tasks]);
+  }, [g, tasks, org, orgs.length]);
 
   const dayItems = items.filter((i) => i.date === day);
   const timed = dayItems.filter((i) => !i.allDay).sort((a, b) => a.start - b.start);
@@ -83,7 +84,17 @@ export default function Calendar() {
   }
   if (group.length) flush();
 
-  const openItem = (i: Item) => (i.kind === "t" ? setEdit(i.task!) : i.link ? window.open(i.link, "_blank", "noopener") : null);
+  const openItem = (i: Item) => {
+    if (i.kind === "t" && i.task!.org_id !== org) {
+      // a task of the other business opens there
+      const name = i.task!.org_brand?.short || i.task!.org_name;
+      toast("המשימה שייכת ל-" + name + ". עובר אליו…");
+      switchOrg(i.task!.org_id, "/calendar");
+      return;
+    }
+    if (i.kind === "t") return setEdit(i.task!);
+    if (i.link) window.open(i.link, "_blank", "noopener");
+  };
   const connected = !!settings.gcal?.email && g?.connected !== false && g?.reason !== "reconnect";
 
   return (

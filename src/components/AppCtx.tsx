@@ -5,8 +5,12 @@ import { DEFAULT_PRICING, DEFAULT_TEMPLATE, withPricing, withTemplate, type Pric
 import type { Row } from "@/lib/crm";
 
 export type Settings = { vat: number; valid_days: number; wa_template: string; n8n_webhook: string | null; onboarding: string[]; pricing: Pricing; template: Template; wa: Row; agency: Row; gcal: Row };
+export type Biz = { id: string; name: string; brand: Row; role: string; active: boolean; home: boolean };
 type Ctx = {
   org: string;
+  orgs: Biz[];
+  biz: Biz;
+  switchOrg: (id: string, next?: string) => Promise<void>;
   email: string;
   settings: Settings;
   saveSettings: (patch: Partial<Row>) => Promise<boolean>;
@@ -22,7 +26,7 @@ export function useApp() {
 }
 
 export default function AppProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<{ org: string; email: string; settings: Settings } | null>(null);
+  const [state, setState] = useState<{ org: string; orgs: Biz[]; biz: Biz; email: string; settings: Settings } | null>(null);
   const [err, setErr] = useState("");
   const [t, setT] = useState<{ msg: string; bad?: boolean } | null>(null);
   const [counts, setCounts] = useState({ tasksDue: 0 });
@@ -48,13 +52,26 @@ export default function AppProvider({ children }: { children: React.ReactNode })
           localStorage.setItem("sscrm_emails", JSON.stringify([e, ...list.filter((x) => x !== e)].slice(0, 5)));
         }
       } catch { /* private mode */ }
-      const { data: m, error } = await sb().from("crm_members").select("org_id").limit(1);
-      if (error || !m?.length) {
+      // every business this login belongs to; the database decides which one is open
+      const { data: m, error: e1 } = await sb().rpc("crm_my_orgs");
+      let orgs = ((m || []) as Biz[]).map((o) => ({ ...o, brand: o.brand || {} }));
+      let error = e1;
+      if (e1) {
+        // database not upgraded yet: a single business, as before
+        const r = await sb().from("crm_members").select("org_id,role").limit(1);
+        error = r.error;
+        orgs = (r.data || []).map((x: Row) => ({ id: x.org_id, name: "", brand: { logo: "/crm-logo.png" }, role: x.role, active: true, home: true }));
+      }
+      if (error || !orgs.length) {
         setErr("המשתמש " + (u.user?.email || "") + " לא מורשה למערכת.");
         return;
       }
-      const org = m[0].org_id as string;
-      const { data: s } = await sb().from("crm_settings").select("*").eq("org_id", org).single();
+      const biz = orgs.find((o) => o.active) || orgs[0];
+      const org = biz.id;
+      const [{ data: s }, { data: gcal }] = await Promise.all([
+        sb().from("crm_settings").select("*").eq("org_id", org).single(),
+        sb().rpc("crm_gcal_info"), // one Google Calendar for all businesses
+      ]);
       const row = (s || {}) as Row;
       // first run: write the template's price list and texts into settings
       const patch: Row = {};
@@ -63,6 +80,8 @@ export default function AppProvider({ children }: { children: React.ReactNode })
       if (Object.keys(patch).length) await sb().from("crm_settings").update(patch).eq("org_id", org);
       setState({
         org,
+        orgs,
+        biz,
         email: u.user?.email || "",
         settings: {
           vat: Number(row.vat ?? 18),
@@ -72,12 +91,19 @@ export default function AppProvider({ children }: { children: React.ReactNode })
           onboarding: row.onboarding || [],
           wa: row.wa || {},
           agency: row.agency || {},
-          gcal: row.gcal || {},
+          gcal: (gcal as Row) || row.gcal || {},
           pricing: withPricing(patch.pricing || row.pricing),
           template: withTemplate(patch.quote_template || row.quote_template),
         },
       });
       refreshCounts();
+      try {
+        if (sessionStorage.getItem("sscrm_switched") === org) {
+          sessionStorage.removeItem("sscrm_switched");
+          setT({ msg: "עברת ל-" + (biz.brand.short || biz.name) });
+          setTimeout(() => setT(null), 2200);
+        }
+      } catch { /* */ }
     })();
   }, [refreshCounts]);
 
@@ -91,6 +117,14 @@ export default function AppProvider({ children }: { children: React.ReactNode })
     return true;
   }, [state, toast]);
 
+  const switchOrg = useCallback(async (id: string, next = "/") => {
+    if (!state || id === state.org) return;
+    const { error } = await sb().rpc("crm_set_active_org", { p_org: id });
+    if (error) { toast("המעבר נכשל: " + error.message, true); return; }
+    try { sessionStorage.setItem("sscrm_switched", id); } catch { /* */ }
+    location.href = next; // full reload: no list from the previous business stays on screen
+  }, [state, toast]);
+
   if (err) {
     return (
       <div style={{ padding: 40, textAlign: "center" }}>
@@ -101,7 +135,7 @@ export default function AppProvider({ children }: { children: React.ReactNode })
   }
   if (!state) return <div className="loading">טוען…</div>;
   return (
-    <C.Provider value={{ ...state, saveSettings, toast, counts, refreshCounts }}>
+    <C.Provider value={{ ...state, switchOrg, saveSettings, toast, counts, refreshCounts }}>
       {children}
       {t ? <div className={"toast" + (t.bad ? " bad" : "")}>{t.msg}</div> : null}
     </C.Provider>

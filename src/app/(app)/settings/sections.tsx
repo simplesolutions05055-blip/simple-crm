@@ -514,7 +514,7 @@ function PasswordPanel() {
 
 /* ---------------- automations ---------------- */
 function AutomationTab() {
-  const { settings, saveSettings, toast } = useApp();
+  const { settings, saveSettings, toast, biz, orgs } = useApp();
   const [keys, setKeys] = useState<Row[]>([]);
   const [fresh, setFresh] = useState("");
   const [hook, setHook] = useState(settings.n8n_webhook || "");
@@ -545,6 +545,7 @@ function AutomationTab() {
           if (error) return toast(error.message, true);
           setFresh(data as string); load();
         }}><Icon n="plus" s={15} />מפתח חדש</button>}>
+          {orgs.length > 1 ? <p className="tiny" style={{ marginTop: 0 }}>המפתחות כאן שייכים ל-<b>{biz.brand.short || biz.name}</b> בלבד. ליד שנשלח עם מפתח של {biz.brand.short || biz.name} נכנס רק לכאן.</p> : null}
           {fresh ? (
             <div className="keybox">
               <b>המפתח מוצג פעם אחת בלבד. מעתיקים עכשיו ל-n8n.</b>

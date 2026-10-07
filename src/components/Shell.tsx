@@ -27,7 +27,9 @@ const NAV = [
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
-  const { email, counts } = useApp();
+  const { email, counts, orgs, biz, switchOrg } = useApp();
+  const others = orgs.filter((o) => o.id !== biz.id);
+  const b = biz.brand;
   const on = (h: string) => (h === "/" ? path === "/" : path.startsWith(h));
   const router = useRouter();
   // after an email link (e.g. password reset) land on the page that sent it
@@ -39,11 +41,29 @@ export function Shell({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
-    <div className="app">
+    <div className="app" style={brandVars(b)}>
       <aside className="side">
         <div className="brand">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="logo-full" src="/crm-logo.png" alt="Simple CRM" />
+          {b.logo ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img className="logo-full" src={b.logo} alt={biz.name} />
+          ) : (
+            <div className="biz-word">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {b.mark ? <img src={b.mark} alt="" /> : null}
+              <div><b>{b.short || biz.name}</b><small>CRM</small></div>
+            </div>
+          )}
+          {others.map((o) => (
+            <button key={o.id} className="biz-sw" onClick={() => switchOrg(o.id)} title={"מעבר ל-" + (o.brand.short || o.name)}>
+              <span className="lg">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {o.brand.mark ? <img src={o.brand.mark} alt="" /> : <b>{(o.brand.short || o.name).slice(0, 1)}</b>}
+              </span>
+              <span className="t"><span>מעבר ל-</span><b>{o.brand.short || o.name}</b></span>
+              <Icon n="swap" s={17} />
+            </button>
+          ))}
         </div>
         <div>
           <div className="navlbl">ניהול</div>
@@ -86,6 +106,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 }
 
 export function Top({ title, sub, crumb, right }: { title: string; sub?: React.ReactNode; crumb?: { href: string; label: string }; right?: React.ReactNode }) {
+  const { orgs, biz } = useApp();
   return (
     <header className="top">
       <div className="grow">
@@ -95,7 +116,7 @@ export function Top({ title, sub, crumb, right }: { title: string; sub?: React.R
             <Icon n="chev" s={14} />
           </div>
         ) : null}
-        <h1>{title}</h1>
+        <h1>{title}{orgs.length > 1 ? <span className="biz-pill"><i />{biz.brand.short || biz.name}</span> : null}</h1>
         {sub ? <div className="sub">{sub}</div> : null}
       </div>
       {right}
@@ -104,7 +125,19 @@ export function Top({ title, sub, crumb, right }: { title: string; sub?: React.R
   );
 }
 
+/* a business's colors repaint the shell: accent, primary buttons and the thin gradient band */
+function brandVars(b: Row): React.CSSProperties {
+  const v: Record<string, string> = {};
+  if (b.accent) v["--gold"] = b.accent;
+  if (b.accent_hi) v["--gold-2"] = b.accent_hi;
+  if (b.navy) v["--navy"] = b.navy;
+  if (b.navy_hi) v["--navy-hi"] = b.navy_hi;
+  if (b.grad) v["--grad"] = b.grad;
+  return v as React.CSSProperties;
+}
+
 function Search() {
+  const { biz } = useApp();
   const [q, setQ] = useState("");
   const [res, setRes] = useState<{ href: string; t: string; s: string; icon: string }[]>([]);
   const router = useRouter();
@@ -133,7 +166,7 @@ function Search() {
   return (
     <div className="search" ref={box}>
       <Icon n="search" s={16} />
-      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="חיפוש ליד או לקוח" />
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={"חיפוש ב-" + (biz.brand.short || biz.name)} />
       {res.length ? (
         <div className="results">
           {res.map((r) => (
