@@ -11,6 +11,7 @@ import type { Row } from "@/lib/crm";
 const SETTINGS_SUB = [
   { href: "/settings/business", label: "פרטי העסק" },
   { href: "/settings/quotes", label: "תבניות הצעת מחיר" },
+  { href: "/settings/intake", label: "תבניות אפיון" },
   { href: "/settings/connections", label: "חיבורים וקשר" },
   { href: "/settings/automations", label: "אוטומציות" },
 ];

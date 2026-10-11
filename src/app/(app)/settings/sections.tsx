@@ -6,6 +6,7 @@ import { Top, Panel, Empty } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import AiQuoteDoc from "@/components/AiQuoteDoc";
 import { useApp } from "@/components/AppCtx";
+import IntakeTemplates from "./IntakeTemplates";
 import QuoteDoc from "@/components/QuoteDoc";
 import { computeQuote, emptyInput, DEFAULT_PRICING, isoToday, type Pricing, type Template, type Pair, type QuoteInput } from "@/lib/quote-engine";
 import { aiView, emptyAi, withAi, DEFAULT_AI, type AiPricing, type AiAddon } from "@/lib/ai-campaign";
@@ -15,6 +16,7 @@ import { fmtDate, appUrl, accessMessage, ACCESS_MSG_DEFAULT, waTemplates, type R
 export const SETTINGS_NAV = [
   { slug: "business", label: "פרטי העסק", icon: "brief", sub: "הפרטים שמופיעים בהצעות, מע\"מ, תוקף, והמזהים שלך כשותף" },
   { slug: "quotes", label: "תבניות הצעת מחיר", icon: "file", sub: "המחירון, הטקסטים בהצעה, והודעת השליחה ללקוח" },
+  { slug: "intake", label: "תבניות אפיון", icon: "note", sub: "השאלונים שנשלחים ללקוח בקישור, וההודעה שנשלחת איתם" },
   { slug: "connections", label: "חיבורים וקשר", icon: "link", sub: "הוואטסאפ שממנו נשלחות הודעות, המייל שממנו נשלחים מיילים, והסיסמה שלך" },
   { slug: "automations", label: "אוטומציות", icon: "send", sub: "החיבור ל-n8n: מפתחות, כתובות ואירועים" },
 ] as const;
@@ -37,7 +39,7 @@ export function SettingsSection({ slug }: { slug: string }) {
         <div className="tabs only-m">
           {SETTINGS_NAV.map((s) => <Link key={s.slug} href={"/settings/" + s.slug} className={"btn sm" + (s.slug === meta.slug ? " on" : "")}>{s.label}</Link>)}
         </div>
-        {meta.slug === "business" ? <BusinessSection /> : meta.slug === "quotes" ? <QuotesSection /> : meta.slug === "connections" ? <ConnectionsSection /> : <AutomationTab />}
+        {meta.slug === "business" ? <BusinessSection /> : meta.slug === "quotes" ? <QuotesSection /> : meta.slug === "intake" ? <IntakeTemplates /> : meta.slug === "connections" ? <ConnectionsSection /> : <AutomationTab />}
       </div>
     </>
   );
@@ -642,7 +644,7 @@ function WhatsAppTab() {
     display_phone: w.display_phone || "", phone_number_id: w.phone_number_id || "", waba_id: w.waba_id || "", api_version: w.api_version || "v23.0",
     verify_token: w.verify_token || "", templates: w.templates || WA_TPL_DEFAULT,
     welcome_template: w.welcome_template || "lead_welcome", welcome_lang: w.welcome_lang || "he",
-    quote_template: w.quote_template || "quote_link", auto_welcome: !!w.auto_welcome,
+    quote_template: w.quote_template || "quote_link", intake_template: w.intake_template || "", auto_welcome: !!w.auto_welcome,
   });
   const [st, setSt] = useState<{ has_token?: boolean; has_app_secret?: boolean }>({});
   const [token, setToken] = useState("");
@@ -709,6 +711,9 @@ function WhatsAppTab() {
             <label className="field"><span>תבנית לשליחת הצעת מחיר</span>
               <select className="inp" value={f.quote_template} onChange={(e) => setF({ ...f, quote_template: e.target.value })}>
                 <option value="">ללא</option>{tpls.map((t) => <option key={t.name} value={t.name}>{t.label}</option>)}</select></label>
+            <label className="field"><span>תבנית לשליחת שאלון אפיון</span>
+              <select className="inp" value={f.intake_template} onChange={(e) => setF({ ...f, intake_template: e.target.value })}>
+                <option value="">ללא (נפתחת הודעה בוואטסאפ שלי)</option>{tpls.map((t) => <option key={t.name} value={t.name}>{t.label}</option>)}</select></label>
             <label className={"pillck full" + (f.auto_welcome ? " on" : "")} style={{ justifySelf: "start" }}>
               <input type="checkbox" checked={f.auto_welcome} onChange={(e) => setF({ ...f, auto_welcome: e.target.checked })} />
               לשלוח אוטומטית את תבנית הפתיחה לכל ליד חדש מהאתר (לא לפניות שסומנו כחשודות)</label>

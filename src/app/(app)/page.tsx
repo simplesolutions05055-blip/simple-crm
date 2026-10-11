@@ -55,6 +55,7 @@ export default function Dashboard() {
         </div>
 
         <StopAlerts rows={d.stop} showClient onDone={load} />
+        <IntakeAlerts />
 
         <Panel icon="trend" title="צינור הלידים" right={<Link className="btn sm" href="/leads">ללוח הלידים</Link>}>
           <div className="pipe">
@@ -129,5 +130,31 @@ function Kpi({ icon, v, l, c, href }: { icon: string; v: React.ReactNode; l: str
       <span className="v">{v}</span>
       <span className="lbl2">{l}</span>
     </Link>
+  );
+}
+
+/* intake forms clients filled by link in the last 7 days */
+function IntakeAlerts() {
+  const [rows, setRows] = useState<Row[]>([]);
+  useEffect(() => {
+    const since = new Date(Date.now() - 7 * 864e5).toISOString();
+    sb().from("crm_documents").select("id,title,submitted_at,lead_id,client_id,lead:crm_leads(name,biz),client:crm_clients(biz,contact)")
+      .not("submitted_at", "is", null).gte("submitted_at", since).order("submitted_at", { ascending: false }).limit(6)
+      .then(({ data }: { data: Row[] | null }) => setRows(data || []));
+  }, []);
+  if (!rows.length) return null;
+  return (
+    <Panel icon="note" title="אפיונים שלקוחות מילאו">
+      {rows.map((d) => {
+        const who = d.client?.biz || d.client?.contact || d.lead?.name || d.lead?.biz || "";
+        const href = d.client_id ? "/clients/" + d.client_id : "/leads/" + d.lead_id;
+        return (
+          <Link key={d.id} href={href} className="lrow link" style={{ textDecoration: "none", color: "inherit" }}>
+            <span className="grow"><b>{who ? who + " · " : ""}{d.title}</b><span className="meta">מולא {fmtDate(d.submitted_at)} · {ago(d.submitted_at)}</span></span>
+            <St cls="ok">מולא</St>
+          </Link>
+        );
+      })}
+    </Panel>
   );
 }

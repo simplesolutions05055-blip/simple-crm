@@ -1,9 +1,13 @@
 /* intake forms (אפיונים) - generated from the office templates of 04/10/2026.
    field types: t short text, n number, a long text, r one choice, c several choices */
-export type FormField = { id: string; t: "t" | "n" | "a" | "r" | "c"; q: string; o?: string[] };
+/* d = a requirement the client marks as done, f = file upload (the answer is the list of uploaded files) */
+export type FormField = { id: string; t: "t" | "n" | "a" | "r" | "c" | "d" | "f"; q: string; o?: string[]; h?: string };
 export type FormSection = { title: string; internal: boolean; fields: FormField[] };
 export type IntakeForm = { kind: string; title: string; intro: string; sections: FormSection[] };
-export type Answers = Record<string, string | string[]>;
+export type UploadedFile = { name: string; path: string; size?: number };
+export type Answers = Record<string, string | string[] | UploadedFile[]>;
+export const answerText = (v: Answers[string] | undefined): string =>
+  !v ? "" : Array.isArray(v) ? v.map((x) => (typeof x === "string" ? x : x.name)).join(" · ") : String(v).trim();
 
 export const INTAKE_FORMS: IntakeForm[] = [
  {
@@ -1345,8 +1349,7 @@ export function formText(f: IntakeForm, a: Answers, who: string) {
   for (const s of f.sections) {
     out.push("## " + s.title);
     for (const x of s.fields) {
-      const v = a[x.id];
-      const val = Array.isArray(v) ? v.join(" · ") : (v || "").trim();
+      const val = x.t === "d" ? (a[x.id] ? "בוצע" : "") : answerText(a[x.id]);
       out.push("- " + x.q + ": " + (val || "לא מולא"));
     }
     out.push("");
@@ -1356,6 +1359,6 @@ export function formText(f: IntakeForm, a: Answers, who: string) {
 
 export function filledCount(f: IntakeForm, a: Answers) {
   let n = 0, all = 0;
-  for (const s of f.sections) for (const x of s.fields) { all++; const v = a[x.id]; if (Array.isArray(v) ? v.length : (v || "").trim()) n++; }
+  for (const s of f.sections) for (const x of s.fields) { all++; if (answerText(a[x.id])) n++; }
   return { n, all };
 }

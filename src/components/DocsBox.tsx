@@ -5,24 +5,42 @@ import { sb } from "@/lib/supabase/browser";
 import { Panel, Modal, St, Empty } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
-import { fmtDate, type Row } from "@/lib/crm";
+import { fmtDate, appUrl, waLink, fillTemplate, waTemplates, type Row } from "@/lib/crm";
+import IntakeFields from "@/components/IntakeFields";
 import { INTAKE_FORMS, formByKind, formText, filledCount, type Answers, type IntakeForm } from "@/lib/intake-forms";
+import { clientForms, clientFormByKind, newToken, intakeStatus, autoBrief, INTAKE_MSG_DEFAULT } from "@/lib/client-forms";
 
 const MAX_FILE = 25 * 1024 * 1024;
 function fileSize(n: number) {
   return n >= 1048576 ? (n / 1048576).toFixed(1) + "MB" : Math.max(1, Math.round(n / 1024)) + "KB";
 }
 
+function downloadBrief(d: Row, form: IntakeForm, who: string) {
+  const md = autoBrief(form, (d.data?.answers as Answers) || {}, who);
+  const url = URL.createObjectURL(new Blob([md], { type: "text/markdown;charset=utf-8" }));
+  const el = document.createElement("a");
+  el.href = url;
+  el.download = "brief-automations" + (who ? "-" + who.replace(/[^\p{L}\p{N}]+/gu, "-") : "") + ".md";
+  document.body.appendChild(el); el.click(); el.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+async function openStored(f: { path: string; name: string }) {
+  const { data } = await sb().storage.from("crm-docs").createSignedUrl(f.path, 300);
+  if (data) window.open(data.signedUrl, "_blank", "noopener");
+}
+
 /* documents of a lead or a client: intake forms and signed quotes.
    A lead's documents stay visible on the client card after the lead becomes a client. */
 export function DocsBox({ leadId, clientId, who }: { leadId?: string; clientId?: string; who: string }) {
-  const { org, toast } = useApp();
+  const { org, toast, settings } = useApp();
   const [rows, setRows] = useState<Row[]>([]);
   const [pick, setPick] = useState(false);
+  const [sendPick, setSendPick] = useState(false);
   const [open, setOpen] = useState<{ doc: Row | null; form: IntakeForm } | null>(null);
 
   const load = async () => {
-    let q = sb().from("crm_documents").select("id,kind,title,data,quote_id,path,size,mime,created_at,updated_at").order("created_at", { ascending: false });
+    let q = sb().from("crm_documents").select("id,kind,title,data,quote_id,path,size,mime,created_at,updated_at,token,sent_at,opened_at,submitted_at,views").order("created_at", { ascending: false });
     if (leadId && clientId) q = q.or(`lead_id.eq.${leadId},client_id.eq.${clientId}`);
     else if (leadId) q = q.eq("lead_id", leadId);
     else q = q.eq("client_id", clientId!);
@@ -77,7 +95,7 @@ export function DocsBox({ leadId, clientId, who }: { leadId?: string; clientId?:
 
   async function save(doc: Row | null, form: IntakeForm, answers: Answers) {
     const { n, all } = filledCount(form, answers);
-    const body = { data: { answers, filled: n, total: all }, updated_at: new Date().toISOString() };
+    const body = { data: { ...(doc?.data || {}), answers, filled: n, total: all }, updated_at: new Date().toISOString() };
     const res = doc
       ? await sb().from("crm_documents").update(body).eq("id", doc.id).select("id").single()
       : await sb().from("crm_documents").insert({ ...body, org_id: org, lead_id: leadId || null, client_id: clientId || null, kind: "intake:" + form.kind, title: form.title }).select("id").single();
@@ -89,11 +107,59 @@ export function DocsBox({ leadId, clientId, who }: { leadId?: string; clientId?:
     return true;
   }
 
+  // the person the link goes to
+  async function recipient() {
+    const r = leadId
+      ? await sb().from("crm_leads").select("name,biz,phone").eq("id", leadId).single()
+      : await sb().from("crm_clients").select("contact,biz,phone").eq("id", clientId!).single();
+    const d = (r.data || {}) as Row;
+    return { phone: (d.phone as string) || "", first: String(d.name || d.contact || "").trim().split(" ")[0] || "" };
+  }
+  const linkOf = (d: Row) => appUrl() + "/f/" + d.token;
+  async function deliver(d: Row, again: boolean) {
+    const { phone, first } = await recipient();
+    const url = linkOf(d);
+    const tplName = settings.wa?.intake_template as string | undefined;
+    if (tplName && phone) {
+      const t = waTemplates(settings.wa).find((x) => x.name === tplName);
+      const { error } = await sb().rpc("crm_wa_send", { p_phone: phone, p_template: tplName, p_lang: t?.lang || "he",
+        p_params: [first || "שלום", url].slice(0, t?.params ?? 2), p_text: null, p_lead: leadId || null, p_client: clientId || null });
+      if (error) return toast("לא נשלח: " + error.message, true);
+      toast("השאלון נשלח בוואטסאפ");
+    } else {
+      await sb().from("crm_activities").insert({ org_id: org, lead_id: leadId || null, client_id: clientId || null, type: "וואטסאפ", text: (again ? "נשלח שוב: " : "נשלח ללקוח: ") + d.title, by: "מאור" });
+      if (!phone) toast("אין טלפון. הקישור נפתח בוואטסאפ בלי מספר.", true);
+      const text = fillTemplate((settings.wa?.intake_text as string) || INTAKE_MSG_DEFAULT, { "שם": first, "קישור": url }).replace(/^היי ,\s*/, "היי, ");
+      window.open(waLink(phone, text), "_blank");
+    }
+  }
+  async function sendIntake(form: IntakeForm) {
+    setSendPick(false);
+    const token = newToken();
+    const { n, all } = filledCount(form, {});
+    const { data, error } = await sb().from("crm_documents").insert({
+      org_id: org, lead_id: leadId || null, client_id: clientId || null, kind: "intake:" + form.kind, title: form.title,
+      token, sent_at: new Date().toISOString(), data: { form, answers: {}, filled: n, total: all },
+    }).select("id,title,token").single();
+    if (error) return toast("לא נוצר: " + error.message, true);
+    await deliver(data, false);
+    load();
+  }
+  async function copyLink(d: Row) {
+    try { await navigator.clipboard.writeText(linkOf(d)); toast("הקישור הועתק"); } catch { toast(linkOf(d)); }
+  }
+  function formOf(d: Row): IntakeForm | undefined {
+    const k = d.kind?.startsWith("intake:") ? d.kind.slice(7) : "";
+    if (!k) return undefined;
+    return (d.data?.form?.sections ? (d.data.form as IntakeForm) : undefined) || clientFormByKind(k, settings.intake_templates) || formByKind(k);
+  }
+
   return (
     <Panel icon="note" title="מסמכים ואפיונים" right={<div className="bar">
       <input ref={fileRef} type="file" multiple hidden onChange={(e) => upload(e.target.files)} />
       <button className="btn sm" disabled={!!upl} onClick={() => fileRef.current?.click()}><Icon n="upload" s={15} />{upl || "העלאת קובץ"}</button>
-      <button className="btn sm primary" onClick={() => setPick(true)}><Icon n="plus" s={15} />אפיון חדש</button>
+      <button className="btn sm" onClick={() => setPick(true)}><Icon n="plus" s={15} />אפיון חדש</button>
+      <button className="btn sm primary" onClick={() => setSendPick(true)}><Icon n="send" s={15} />שליחת אפיון ללקוח</button>
     </div>}>
       {!rows.length ? <Empty>אין מסמכים</Empty> : rows.map((d) => {
         if (d.kind === "file" && d.path) return (
@@ -106,12 +172,29 @@ export function DocsBox({ leadId, clientId, who }: { leadId?: string; clientId?:
             <St cls="">קובץ</St>
           </div>
         );
-        const form = d.kind?.startsWith("intake:") ? formByKind(d.kind.slice(7)) : undefined;
+        const form = formOf(d);
         if (d.kind === "quote_signed" && d.quote_id) return (
           <Link key={d.id} href={"/quotes/" + d.quote_id} className="lrow link" style={{ textDecoration: "none", color: "inherit" }}>
             <span className="grow"><b>{d.title}</b><span className="meta">נחתמה {fmtDate(d.created_at)}</span></span>
             <St cls="ok">חתומה</St>
           </Link>
+        );
+        const ls = intakeStatus(d);
+        if (ls) return (
+          <div key={d.id} className="lrow">
+            <button className="grow linkish" onClick={() => form && setOpen({ doc: d, form })} title="פתיחה">
+              <b>{d.title}</b>
+              <span className="meta">נשלח {fmtDate(d.sent_at || d.created_at)}
+                {d.submitted_at ? " · מולא " + fmtDate(d.submitted_at) : d.opened_at ? " · נפתח" + (d.views > 1 ? " " + d.views + " פעמים" : "") : ""}
+                {d.data?.total ? " · " + (d.data.filled || 0) + " מתוך " + d.data.total : ""}</span>
+            </button>
+            {d.kind === "intake:c_auto" && d.data?.filled ? <button className="btn icon sm ghost" title="הורדה כקובץ ל-Claude Code" onClick={() => downloadBrief(d, form!, who)}><Icon n="download" s={15} /></button> : null}
+            {!d.submitted_at ? <>
+              <button className="btn icon sm ghost" title="העתקת הקישור" onClick={() => copyLink(d)}><Icon n="copy" s={15} /></button>
+              <button className="btn icon sm ghost" title="שליחה שוב בוואטסאפ" onClick={() => deliver(d, true)}><Icon n="wa" s={15} /></button>
+            </> : null}
+            <St cls={ls.cls}>{ls.label}</St>
+          </div>
         );
         return (
           <button key={d.id} className="lrow link" style={{ width: "100%", background: "none", border: 0, textAlign: "inherit", font: "inherit" }}
@@ -126,9 +209,22 @@ export function DocsBox({ leadId, clientId, who }: { leadId?: string; clientId?:
         <Modal title="איזה אפיון לפתוח?" icon="note" onClose={() => setPick(false)}>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {INTAKE_FORMS.map((f) => (
-              <button key={f.kind} className="btn" style={{ justifyContent: "flex-start", height: "auto", padding: "12px 14px", textAlign: "start" }}
+              <button key={f.kind} className="btn" style={{ justifyContent: "flex-start", height: "auto", padding: "12px 14px", textAlign: "start", whiteSpace: "normal" }}
                 onClick={() => { setPick(false); setOpen({ doc: null, form: f }); }}>
                 <span><b style={{ display: "block" }}>{f.title}</b><span className="tiny">{f.intro}</span></span>
+              </button>
+            ))}
+          </div>
+        </Modal>
+      ) : null}
+
+      {sendPick ? (
+        <Modal title="איזה אפיון לשלוח ללקוח?" icon="send" onClose={() => setSendPick(false)}>
+          <p className="tiny" style={{ margin: "0 0 4px" }}>נפתחת הודעת וואטסאפ עם קישור. הלקוח ממלא בטלפון, והתשובות נכנסות לכאן.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {clientForms(settings.intake_templates).map((f) => (
+              <button key={f.kind} className="btn" style={{ justifyContent: "flex-start", height: "auto", padding: "12px 14px", textAlign: "start", whiteSpace: "normal" }} onClick={() => sendIntake(f)}>
+                <span><b style={{ display: "block" }}>{f.title}</b><span className="tiny">{f.sections.reduce((n, x) => n + x.fields.length, 0)} שאלות · {f.sections.map((x) => x.title).join(" · ")}</span></span>
               </button>
             ))}
           </div>
@@ -145,7 +241,7 @@ function FormModal({ doc, form, who, onSave, onClose }: { doc: Row | null; form:
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
-  const set = (id: string, v: string | string[]) => { setA((x) => ({ ...x, [id]: v })); setDirty(true); };
+  const set = (id: string, v: Answers[string]) => { setA((x) => ({ ...x, [id]: v })); setDirty(true); };
   const close = () => { if (dirty && !confirm("יש שינויים שלא נשמרו. לסגור בלי לשמור?")) return; onClose(); };
   const { n, all } = filledCount(form, a);
 
@@ -155,40 +251,14 @@ function FormModal({ doc, form, who, onSave, onClose }: { doc: Row | null; form:
       {form.sections.map((s) => (
         <div key={s.title} style={s.internal ? { border: "2px dashed var(--gold-2)", borderRadius: 12, padding: 12 } : undefined}>
           <h3 style={{ fontSize: 15, margin: "4px 0 10px" }}>{s.title}{s.internal ? <span className="tiny"> · לא נשלח ללקוח</span> : null}</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {s.fields.map((f) => {
-              const v = a[f.id];
-              if (f.t === "r" || f.t === "c") {
-                const sel = Array.isArray(v) ? v : v ? [v] : [];
-                return (
-                  <div key={f.id}><span className="tiny" style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>{f.q}</span>
-                    <div className="pills">{f.o!.map((o) => {
-                      const on = sel.includes(o);
-                      return (
-                        <label key={o} className={"pillck" + (on ? " on" : "")}>
-                          <input type={f.t === "r" ? "radio" : "checkbox"} name={form.kind + f.id} checked={on}
-                            onChange={() => set(f.id, f.t === "r" ? o : on ? sel.filter((x) => x !== o) : [...sel, o])} />{o}
-                        </label>
-                      );
-                    })}</div>
-                  </div>
-                );
-              }
-              return (
-                <label key={f.id} style={{ display: "block" }}><span className="tiny" style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>{f.q}</span>
-                  {f.t === "a"
-                    ? <textarea className="inp" rows={3} value={(v as string) || ""} onChange={(e) => set(f.id, e.target.value)} />
-                    : <input className="inp" type={f.t === "n" ? "number" : "text"} value={(v as string) || ""} onChange={(e) => set(f.id, e.target.value)} />}
-                </label>
-              );
-            })}
-          </div>
+          <IntakeFields fields={s.fields} a={a} set={set} name={form.kind} onOpenFile={openStored} />
         </div>
       ))}
       <div className="bar" style={{ position: "sticky", bottom: -24, background: "var(--surface)", padding: "12px 0 0", justifyContent: "flex-end" }}>
         <button className="btn sm ghost" onClick={async () => {
           try { await navigator.clipboard.writeText(formText(form, a, who)); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* clipboard blocked */ }
         }}><Icon n="copy" s={15} />{copied ? "הועתק" : "העתקה למשרד"}</button>
+        {doc?.kind === "intake:c_auto" ? <button className="btn sm ghost" onClick={() => downloadBrief({ ...doc, data: { ...(doc.data || {}), answers: a } }, form, who)}><Icon n="download" s={15} />הורדה כקובץ ל-Claude Code</button> : null}
         <button className="btn sm ghost" onClick={close}>סגירה</button>
         <button className="btn sm primary" disabled={busy} onClick={async () => { setBusy(true); const ok = await onSave(a); setBusy(false); if (ok) setDirty(false); }}>
           <Icon n="check" s={15} />{busy ? "שומר…" : "שמירה"}
