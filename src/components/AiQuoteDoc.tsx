@@ -1,30 +1,21 @@
 "use client";
 import type { Template } from "@/lib/quote-engine";
 import type { AiModel } from "@/lib/ai-campaign";
-import type { SignedInfo } from "@/components/QuoteDoc";
-
-function Sec({ badge, title }: { badge: string; title: string }) {
-  return (
-    <div className="sec">
-      <span className="badge">{badge}</span>
-      <h3>{title}</h3>
-      <span className="line" />
-    </div>
-  );
-}
+import { Fold, FoldOpen, type SignedInfo } from "@/components/QuoteDoc";
 
 const dmy = (iso: string) => {
   const [y, m, d] = (iso || "").split("-");
   return d && m && y ? `${d}/${m}/${y}` : "";
 };
 
-export default function AiQuoteDoc({ m, T, to, biz, date, until, signed, children, pay }: {
+export default function AiQuoteDoc({ m, T, to, biz, date, until, signed, children, pay, openAll }: {
   m: AiModel; T: Template; to: string; biz: string; date: string; until: string;
-  signed?: SignedInfo; children?: React.ReactNode; pay?: React.ReactNode;
+  signed?: SignedInfo; children?: React.ReactNode; pay?: React.ReactNode; openAll?: boolean;
 }) {
   const inc = m.inc.filter((c) => !c.no);
   const exc = m.inc.filter((c) => c.no);
   return (
+    <FoldOpen.Provider value={!!openAll}>
     <div className="qd aq">
       <div className="page">
         <div className="aq-top">
@@ -69,7 +60,7 @@ export default function AiQuoteDoc({ m, T, to, biz, date, until, signed, childre
             </div>
           </div>
 
-          <Sec badge="✓" title="מה כלול" />
+          <Fold badge="✓" title="מה כלול">
           <div className="cards">
             {inc.map((c, i) => (
               <div className="card" key={i}><span className="mark">✓</span><span className="txt"><b>{c.t}</b><span>{c.s}</span></span></div>
@@ -80,22 +71,25 @@ export default function AiQuoteDoc({ m, T, to, biz, date, until, signed, childre
               <div className="card" key={i}><span className="mark no">✕</span><span className="txt"><b>{c.t}</b><span>{c.s}</span></span></div>
             ))}
           </div>
+          </Fold>
 
-          <Sec badge="₪" title="סיכום לתשלום" />
+          <Fold badge="₪" title="סיכום לתשלום">
           <div className="summary">
             {m.summary.map((r, i) => (
               <div key={i} className={"row " + r.cls}><span>{r.a}</span><span>{r.b}</span></div>
             ))}
           </div>
           {m.summaryNote ? <p className="note">{m.summaryNote}</p> : null}
+          </Fold>
 
-          <Sec badge="⏱" title="לוחות זמנים" />
+          <Fold badge="⏱" title="לוחות זמנים">
           <div className="tl">
             {m.timelines.map((r, i) => <div className="r" key={i}><b>{r.t}</b><span>{r.s}</span></div>)}
           </div>
           <p className="note">{m.timelinesNote}</p>
+          </Fold>
 
-          <Sec badge="+" title="תוספות אפשריות, בתוספת תשלום" />
+          <Fold badge="+" title="תוספות אפשריות, בתוספת תשלום">
           <table className="aq-add">
             <thead><tr><th>התוספת</th><th>לפני מע&quot;מ</th><th>כולל מע&quot;מ</th></tr></thead>
             <tbody>
@@ -109,9 +103,11 @@ export default function AiQuoteDoc({ m, T, to, biz, date, until, signed, childre
             </tbody>
           </table>
           <p className="note">{m.addonsNote}</p>
+          </Fold>
 
-          <Sec badge="i" title="תנאים והגבלות" />
-          <div className="terms">{m.terms.map((x, i) => <div key={i}>{x}</div>)}</div>
+          <Fold badge="i" title="תנאים והגבלות">
+            <div className="terms">{m.terms.map((x, i) => <div key={i}>{x}</div>)}</div>
+          </Fold>
 
           {signed ? (
             <>
@@ -146,5 +142,6 @@ export default function AiQuoteDoc({ m, T, to, biz, date, until, signed, childre
         </div>
       </div>
     </div>
+    </FoldOpen.Provider>
   );
 }

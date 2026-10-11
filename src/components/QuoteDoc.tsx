@@ -2,9 +2,11 @@
 import { createContext, useContext, useState } from "react";
 import type { Model, Template, Card } from "@/lib/quote-engine";
 
-/* sections the reader opens on demand; the internal previews start them open */
-const FoldOpen = createContext(false);
-function Fold({ badge, title, children }: { badge: string; title: string; children: React.ReactNode }) {
+/* House rule for every quote document in the CRM: only the header, the notice and the price card
+   are always visible; every other section is a collapsed card the reader opens on a tap, so the
+   client is not met with a wall of detail. New quote types must build their sections with Fold. */
+export const FoldOpen = createContext(false);
+export function Fold({ badge, title, children }: { badge: string; title: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(useContext(FoldOpen));
   return (
     <div className={"fold" + (open ? " open" : "")}>

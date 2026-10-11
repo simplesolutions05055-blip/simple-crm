@@ -6,7 +6,8 @@ import { Top, Panel, Empty } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import AiQuoteDoc from "@/components/AiQuoteDoc";
 import { useApp } from "@/components/AppCtx";
-import { isoToday, type Pricing, type Template } from "@/lib/quote-engine";
+import QuoteDoc from "@/components/QuoteDoc";
+import { computeQuote, emptyInput, DEFAULT_PRICING, isoToday, type Pricing, type Template, type Pair, type QuoteInput } from "@/lib/quote-engine";
 import { aiView, emptyAi, withAi, DEFAULT_AI, type AiPricing, type AiAddon } from "@/lib/ai-campaign";
 import { fmtDate, appUrl, accessMessage, ACCESS_MSG_DEFAULT, waTemplates, type Row } from "@/lib/crm";
 
@@ -75,13 +76,13 @@ function BusinessSection() {
 }
 
 /* ---------------- quote templates ---------------- */
-const QTABS = ["מחירון קמפיין AI", "טקסטים בהצעה", "שליחה ללקוח וקליטה"];
+const QTABS = ["קמפיין AI", "הרכבה אישית", "טקסטים בהצעה", "שליחה ללקוח וקליטה"];
 function QuotesSection() {
   const [tab, setTab] = useState(QTABS[0]);
   return (
     <>
       <SubTabs tabs={QTABS} tab={tab} setTab={setTab} />
-      {tab === QTABS[0] ? <PricingTab /> : tab === QTABS[1] ? <TemplateTab /> : <GeneralTab />}
+      {tab === QTABS[0] ? <AiPricingTab /> : tab === QTABS[1] ? <CustomPricingTab /> : tab === QTABS[2] ? <TemplateTab /> : <GeneralTab />}
     </>
   );
 }
@@ -225,7 +226,7 @@ function LoginTab() {
 }
 
 /* ---------------- live preview ---------------- */
-function Preview({ P, T, vat }: { P: Pricing; T: Template; vat: number }) {
+function AiPreview({ P, T, vat }: { P: Pricing; T: Template; vat: number }) {
   const [promo, setPromo] = useState(true);
   const [add, setAdd] = useState("");
   const A = withAi(P.ai);
@@ -252,7 +253,7 @@ function S({ v, on, ph }: { v: string; on: (s: string) => void; ph?: string }) {
   return <input className="inp sm" value={v} placeholder={ph} onChange={(e) => on(e.target.value)} />;
 }
 
-function PricingTab() {
+function AiPricingTab() {
   const { settings, saveSettings, toast } = useApp();
   const [A, setA] = useState<AiPricing>(withAi(settings.pricing.ai));
   const dirty = JSON.stringify(A) !== JSON.stringify(withAi(settings.pricing.ai));
@@ -294,7 +295,147 @@ function PricingTab() {
         </Panel>
       </div>
       <div className="ctlp" style={{ position: "sticky", top: 92, maxHeight: "calc(100vh - 110px)", overflowY: "auto" }}>
-        <Preview P={P} T={settings.template} vat={settings.vat} />
+        <AiPreview P={P} T={settings.template} vat={settings.vat} />
+      </div>
+    </div>
+  );
+}
+
+const pairsToText = (p: Pair[]) => p.map((x) => x.t + " | " + x.s).join("\n");
+const textToPairs = (t: string) => t.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => { const [a, ...b] = l.split("|"); return { t: a.trim(), s: b.join("|").trim() }; });
+
+function PairsArea({ value, onChange, rows = 5 }: { value: Pair[]; onChange: (p: Pair[]) => void; rows?: number }) {
+  const [t, setT] = useState(pairsToText(value));
+  useEffect(() => setT(pairsToText(value)), [value]);
+  return <textarea className="inp" rows={rows} value={t} onChange={(e) => setT(e.target.value)} onBlur={() => onChange(textToPairs(t))} style={{ fontSize: 13 }} />;
+}
+
+function CustomPreview({ P, T, vat }: { P: Pricing; T: Template; vat: number }) {
+  const [I, setI] = useState<QuoteInput>(emptyInput({ client: "ישראל ישראלי", biz: "העסק לדוגמה", brief: "תצוגה מקדימה של התבנית עם ההגדרות שעל המסך.", budget: "3000", track: "custom", items: P.items.slice(0, 2).map((x) => x.id) }));
+  const m = useMemo(() => computeQuote(P, I, vat, T), [P, I, vat, T]);
+  return (
+    <div className="col">
+      <div className="panel" style={{ padding: 14 }}>
+        <div className="f3">
+          <label className="field"><span>אתר</span>
+            <select className="inp sm" value={I.web} onChange={(e) => setI({ ...I, web: e.target.value })}><option value="">אין</option>{P.web.map((w) => <option key={w.id} value={w.id}>{w.label}</option>)}</select>
+          </label>
+          <label className="field"><span>תוספת</span>
+            <select className="inp sm" value={I.addons[0] || ""} onChange={(e) => setI({ ...I, addons: e.target.value ? [e.target.value] : [] })}><option value="">אין</option>{P.addons.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
+          </label>
+        </div>
+      </div>
+      <div className="preview"><QuoteDoc m={m} T={T} /></div>
+    </div>
+  );
+}
+
+
+function CustomPricingTab() {
+  const { settings, saveSettings, toast } = useApp();
+  const [P, setP] = useState<Pricing>(settings.pricing);
+  const dirty = JSON.stringify(P) !== JSON.stringify(settings.pricing);
+  const set = <K extends keyof Pricing>(k: K, v: Pricing[K]) => setP((x) => ({ ...x, [k]: v }));
+  const setArr = <K extends "tracks" | "features" | "items" | "addons" | "web">(k: K, i: number, patch: Partial<Pricing[K][number]>) =>
+    setP((x) => ({ ...x, [k]: (x[k] as Row[]).map((r, n) => (n === i ? { ...r, ...patch } : r)) }));
+
+  return (
+    <div className="split" style={{ gridTemplateColumns: "minmax(0,1.2fr) minmax(0,1fr)" }}>
+      <div className="col">
+        <div className="panel bar" style={{ position: "sticky", top: 92, zIndex: 5 }}>
+          <button className="btn primary" disabled={!dirty} onClick={async () => { if (await saveSettings({ pricing: P })) toast("המחירון נשמר. הצעות חדשות ישתמשו בו."); }}><Icon n="check" s={16} />שמירת המחירון</button>
+          {dirty ? <button className="btn ghost" onClick={() => setP(settings.pricing)}>ביטול שינויים</button> : <span className="tiny">אין שינויים שלא נשמרו</span>}
+          <button className="btn ghost" style={{ marginInlineStart: "auto" }} onClick={() => confirm("לטעון מחדש את המחירון מהתבנית המקורית? שינויים שלא נשמרו יימחקו.") && setP({ ...DEFAULT_PRICING, ai: P.ai })}>שחזור למחירון התבנית</button>
+          <span className="tiny" style={{ width: "100%" }}>הצעה שכבר נחתמה נשארת עם המחירים שבהם נחתמה. הצעה פתוחה מתעדכנת בשמירה הבאה שלה.</span>
+        </div>
+
+        <Panel icon="sliders" title="שירותים להרכבה אישית">
+          {P.items.map((it, i) => (
+            <div className="set-card" key={it.id}>
+              <S v={it.label} on={(v) => setArr("items", i, { label: v })} />
+              <div className="f2">
+                <label className="field"><span>לחודש</span><N v={it.price} on={(v) => setArr("items", i, { price: v })} w={140} /></label>
+                <label className="field"><span>הקמה</span><N v={it.setup} on={(v) => setArr("items", i, { setup: v })} w={140} /></label>
+              </div>
+              <S v={it.d} on={(v) => setArr("items", i, { d: v })} ph="תיאור" />
+              <S v={it.x} on={(v) => setArr("items", i, { x: v })} ph="לא כלול (לא חובה)" />
+            </div>
+          ))}
+          <div className="set-card">
+            <b>מענה אוטומטי ודיוור יחד (שורה אחת כששניהם נבחרים)</b>
+            <div className="f2">
+              <label className="field"><span>לחודש</span><N v={P.bundle.price} on={(v) => set("bundle", { ...P.bundle, price: v })} w={140} /></label>
+              <label className="field"><span>הקמה</span><N v={P.bundle.setup} on={(v) => set("bundle", { ...P.bundle, setup: v })} w={140} /></label>
+            </div>
+            <label className="field"><span>הקמת דיוור שניתנת ללא עלות כששניהם יחד</span><N v={P.freeMailSetup} on={(v) => set("freeMailSetup", v)} w={140} /></label>
+          </div>
+        </Panel>
+
+        <Panel icon="globe" title="אתרים ודפי נחיתה">
+          {P.web.map((w, i) => (
+            <div className="set-card" key={w.id}>
+              <div className="hdr"><S v={w.label} on={(v) => setArr("web", i, { label: v })} /><N v={w.price} on={(v) => setArr("web", i, { price: v })} w={110} /></div>
+              <div className="bar">
+                {w.monthly.map((m, j) => (
+                  <label key={j} className="field" style={{ width: 150 }}><span>{m.label}, לחודש</span>
+                    <N v={m.price} on={(v) => setArr("web", i, { monthly: w.monthly.map((x, k) => (k === j ? { ...x, price: v } : x)) })} w={140} /></label>
+                ))}
+              </div>
+              <label className="field"><span>מה כלול, שורה לכל פריט: כותרת | תיאור</span><PairsArea value={w.specs} onChange={(specs) => setArr("web", i, { specs })} rows={6} /></label>
+              <S v={w.x} on={(v) => setArr("web", i, { x: v })} ph="לא כלול (לא חובה)" />
+            </div>
+          ))}
+          <div className="f2">
+            <label className="field"><span>דומיין, לשנה</span><N v={P.domain} on={(v) => set("domain", v)} w={140} /></label>
+            <label className="field"><span>סשן תיקונים נוסף, לשעה</span><N v={P.hour} on={(v) => set("hour", v)} w={140} /></label>
+          </div>
+        </Panel>
+
+        <Panel icon="plus" title="תוספות חד פעמיות">
+          {P.addons.map((a, i) => (
+            <div className="set-card" key={a.id}>
+              <div className="hdr"><S v={a.label} on={(v) => setArr("addons", i, { label: v })} /><N v={a.price} on={(v) => setArr("addons", i, { price: v })} w={110} /></div>
+              <S v={a.what} on={(v) => setArr("addons", i, { what: v })} ph="במשפט: מה זה" />
+              <label className="field"><span>מה כלול: כותרת | תיאור</span><PairsArea value={a.specs} onChange={(specs) => setArr("addons", i, { specs })} /></label>
+            </div>
+          ))}
+        </Panel>
+
+        <Panel icon="wa" title="דיוור וואטסאפ">
+          <div className="f2">
+            <label className="field"><span>הודעות במתנה, חודש ראשון</span><N v={P.msg.free} on={(v) => set("msg", { ...P.msg, free: v })} w={140} /></label>
+            <label className="field"><span>מספר דיוור, לחודש</span><N v={P.msg.phone} on={(v) => set("msg", { ...P.msg, phone: v })} w={140} /></label>
+          </div>
+          {P.msg.packs.map((p, i) => (
+            <div className="bar" key={p.id} style={{ marginTop: 8 }}>
+              <span className="tiny">חבילה</span><N v={p.n} on={(v) => set("msg", { ...P.msg, packs: P.msg.packs.map((x, k) => (k === i ? { ...x, n: v } : x)) })} />
+              <span className="tiny">הודעות ב-</span><N v={p.price} on={(v) => set("msg", { ...P.msg, packs: P.msg.packs.map((x, k) => (k === i ? { ...x, price: v } : x)) })} /><span className="tiny">₪</span>
+            </div>
+          ))}
+        </Panel>
+
+        <Panel icon="clock" title="לוחות זמנים">
+          {P.timelines.map((r, i) => (
+            <div className="f2" key={r.id} style={{ marginBottom: 6 }}>
+              <S v={r.t} on={(v) => set("timelines", P.timelines.map((x, k) => (k === i ? { ...x, t: v } : x)))} />
+              <S v={r.s} on={(v) => set("timelines", P.timelines.map((x, k) => (k === i ? { ...x, s: v } : x)))} />
+            </div>
+          ))}
+          <label className="field"><span>אתר: כותרת | זמן</span><PairsArea value={P.webTimelines.site} onChange={(v) => set("webTimelines", { ...P.webTimelines, site: v })} rows={3} /></label>
+          <label className="field"><span>דף נחיתה: כותרת | זמן</span><PairsArea value={P.webTimelines.lp} onChange={(v) => set("webTimelines", { ...P.webTimelines, lp: v })} rows={2} /></label>
+          <label className="field"><span>שניהם: כותרת | זמן</span><PairsArea value={P.webTimelines.both} onChange={(v) => set("webTimelines", { ...P.webTimelines, both: v })} rows={1} /></label>
+        </Panel>
+
+        <Panel icon="star" title="מתנת הצטרפות כשאין עלות הקמה">
+          <div className="f2">
+            <S v={P.gifts.simple.title} on={(v) => set("gifts", { ...P.gifts, simple: { ...P.gifts.simple, title: v } })} />
+            <N v={P.gifts.simple.was} on={(v) => set("gifts", { ...P.gifts, simple: { ...P.gifts.simple, was: v } })} w={140} />
+          </div>
+          <S v={P.gifts.simple.sub} on={(v) => set("gifts", { ...P.gifts, simple: { ...P.gifts.simple, sub: v } })} />
+        </Panel>
+      </div>
+      <div className="ctlp" style={{ position: "sticky", top: 92, maxHeight: "calc(100vh - 110px)", overflowY: "auto" }}>
+        <CustomPreview P={P} T={settings.template} vat={settings.vat} />
       </div>
     </div>
   );
@@ -302,13 +443,16 @@ function PricingTab() {
 
 /* ---------------- template texts ---------------- */
 const TGROUPS: [string, string, [keyof Template, string, boolean?][]][] = [
-  ["tag", "ראש ותחתית ההצעה", [["tag", "תגית בראש ההצעה"], ["cta", "כפתור בתחתית"]]],
+  ["tag", "ראש ותחתית ההצעה", [["tag", "תגית בראש ההצעה"], ["cta", "כפתור בתחתית"], ["vatNote", "הערת מע\"מ"]]],
+  ["sliders", "הרכבה אישית", [["customNote", "הערה בהרכבה אישית", true]]],
+  ["star", "מתנה ולוחות זמנים", [["giftNote", "הערה למתנת ההצטרפות", true], ["timelinesNote", "הערה ללוחות הזמנים", true]]],
   ["pen", "חתימה", [["signTitle", "כותרת החתימה"], ["agree", "משפט האישור", true], ["signNote", "הערה מתחת לחתימה", true], ["thanks", "הודעה אחרי חתימה", true]]],
 ];
 function TemplateTab() {
   const { settings, saveSettings, toast } = useApp();
   const [T, setT] = useState<Template>(settings.template);
   const [terms, setTerms] = useState((settings.template.extraTerms || []).join("\n"));
+  const [pv, setPv] = useState<"ai" | "custom">("ai");
   const dirty = JSON.stringify(T) !== JSON.stringify(settings.template);
   return (
     <div className="split" style={{ gridTemplateColumns: "minmax(0,1.2fr) minmax(0,1fr)" }}>
@@ -339,7 +483,11 @@ function TemplateTab() {
         </Panel>
       </div>
       <div className="ctlp" style={{ position: "sticky", top: 92, maxHeight: "calc(100vh - 110px)", overflowY: "auto" }}>
-        <Preview P={settings.pricing} T={T} vat={settings.vat} />
+        <div className="tabs" style={{ marginBottom: 10 }}>
+          <button className={"btn sm" + (pv === "ai" ? " on" : "")} onClick={() => setPv("ai")}>קמפיין AI</button>
+          <button className={"btn sm" + (pv === "custom" ? " on" : "")} onClick={() => setPv("custom")}>הרכבה אישית</button>
+        </div>
+        {pv === "ai" ? <AiPreview P={settings.pricing} T={T} vat={settings.vat} /> : <CustomPreview P={settings.pricing} T={T} vat={settings.vat} />}
       </div>
     </div>
   );
