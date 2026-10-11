@@ -21,7 +21,7 @@ export default function Finance() {
 
   const load = async () => {
     const [p, s, e, c, u] = await Promise.all([
-      sb().from("crm_payments").select("id,amount,due,paid_at,what,client_id"),
+      sb().from("crm_payments").select("id,amount,paid_amount,due,paid_at,what,client_id"),
       sb().from("crm_client_services").select("*,client:crm_clients(id,biz,status,left_at,archived_at),supplier:crm_suppliers(id,name)"),
       sb().from("crm_expenses").select("*").order("start_date", { ascending: false }),
       sb().from("crm_clients").select("id,biz,status,left_at,churn_reason,archived_at"),

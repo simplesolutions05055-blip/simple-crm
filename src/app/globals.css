@@ -458,3 +458,24 @@ b.bad{color:var(--bad)}
 .ic-rep{width:28px;height:28px;border-radius:8px;border:1px solid var(--line2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;color:var(--soft)}
 @media (max-width:700px){.fbars,.flabels{gap:2px}.fcol .b{width:40%}.flabels span{font-size:9.5px}.flabels span:nth-child(even):not(.sel){visibility:hidden}.churn small{font-size:9px}.churn div:nth-child(even) small{visibility:hidden}}
 .stat .sub.tiny{display:block;font-size:11.5px;color:var(--faint)}
+/* client payments */
+.psum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.psum div{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--sunk);min-width:0}
+.psum small{display:block;color:var(--muted);font-size:12px}.psum b{font-size:17px;white-space:nowrap}
+.psec{margin:16px 0 4px;font-size:13px;color:var(--soft)}
+.prow2{display:grid;grid-template-columns:minmax(0,1fr) 84px 104px 88px auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px}
+.prow2 .pw{display:flex;flex-direction:column;min-width:0}.prow2 .pw b{font-weight:600}
+.prow2 .pa{font-weight:700;white-space:nowrap}
+.prow2 .pp .inp{width:100%}.prow2 .pm select{width:100%}
+.ptog{display:inline-flex;border:1px solid var(--line2);border-radius:999px;overflow:hidden;font-size:12px;flex-shrink:0}
+.ptog button{background:var(--surface);border:0;padding:5px 10px;cursor:pointer;color:var(--muted);font:inherit;font-size:12px}
+.ptog button.y{background:var(--ok);color:#fff}.ptog button.n{background:var(--bad);color:#fff}
+.addpay{display:grid;grid-template-columns:minmax(0,1fr) 120px 140px 120px;gap:8px;margin-top:10px}
+.addpay .bar{grid-column:1/-1}
+@media (max-width:700px){
+.psum{gap:6px}.psum div{padding:8px}.psum b{font-size:14px}.psum small{font-size:11px}
+.prow2{grid-template-columns:minmax(0,1fr) auto;row-gap:6px}
+.prow2 .pa{grid-column:2;grid-row:1}
+.prow2 .pp,.prow2 .pm{grid-row:2}
+.prow2 .ptog{grid-column:1/-1;justify-self:start}
+.addpay{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}

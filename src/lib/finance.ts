@@ -68,8 +68,8 @@ export function buildFlow(now: string, vat: number, payments: Row[], services: R
   const net = (n: number) => n / (1 + (vat || 0) / 100);
   let balance = 0;
   return window12(now).map((m) => {
-    const paid = payments.filter((p) => p.paid_at && ym(p.paid_at) === m.key).reduce((a, p) => a + net(Number(p.amount)), 0);
-    const open = payments.filter((p) => !p.paid_at && ym(p.due) === m.key).reduce((a, p) => a + net(Number(p.amount)), 0);
+    const paid = payments.filter((p) => p.paid_at && ym(p.paid_at) === m.key).reduce((a, p) => a + net(Number(p.paid_amount ?? p.amount)), 0);
+    const open = payments.filter((p) => ym(p.due) === m.key).reduce((a, p) => a + net(Math.max(0, Number(p.amount) - (p.paid_at ? Number(p.paid_amount ?? p.amount) : 0))), 0);
     const income = m.future ? retainerForecast(services, m.key) + open : paid;
     const suppliers = services.reduce((a, s) => a + supplierCostIn(s, m.key), 0);
     const manual = expenses.reduce((a, e) => a + expenseIn(e, m.key), 0);
