@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import QuoteDoc from "@/components/QuoteDoc";
+import AiQuoteDoc from "@/components/AiQuoteDoc";
+import { aiView, isAi } from "@/lib/ai-campaign";
 import { computeQuote, normalizeInput, withPricing, withTemplate } from "@/lib/quote-engine";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -10,22 +12,44 @@ export default function PublicQuote({ token, data }: { token: string; data: Data
   const P = withPricing(data.pricing);
   const T = withTemplate(data.template);
   const I = normalizeInput(data.input);
-  const m = useMemo(() => computeQuote(P, I, Number(data.vat) || 0, T), [data]); // eslint-disable-line react-hooks/exhaustive-deps
+  const ai = isAi(data.input);
+  const m = useMemo(() => (ai ? null : computeQuote(P, I, Number(data.vat) || 0, T)), [data]); // eslint-disable-line react-hooks/exhaustive-deps
+  const av = useMemo(() => (ai ? aiView(data.input, data.pricing, Number(data.vat) || 0, T) : null), [data]); // eslint-disable-line react-hooks/exhaustive-deps
   const [signed, setSigned] = useState(data.signed as Data | null);
   const [status, setStatus] = useState<string>(data.status);
   const open = !signed && (status === "נשלחה" || status === "נצפתה");
 
   return (
     <div className="qpub">
-      {signed ? <div className="state"><b>✓ ההצעה נחתמה.</b><span>{T.thanks}</span><button className="btn sm" onClick={() => window.print()}>שמירה כ-PDF</button></div>
+      {signed ? <div className="state"><b>✓ ההצעה נחתמה.</b><span>{T.thanks}</span>
+          {av ? <a className="btn sm pay" href={av.I.payUrl} target="_blank" rel="noopener noreferrer">מעבר לתשלום</a> : null}
+          <button className="btn sm" onClick={() => window.print()}>שמירה כ-PDF</button></div>
         : status === "פגה" ? <div className="state">תוקף ההצעה הסתיים. אפשר לפנות ל{T.owner} ב-{T.phone} לקבלת הצעה מעודכנת.</div>
         : status === "נדחתה" ? <div className="state">ההצעה סומנה כלא רלוונטית. אם משהו השתנה, אפשר לפנות ל{T.owner} ב-{T.phone}.</div>
         : null}
-      <QuoteDoc m={m} T={T} signed={signed ? { name: signed.name, biz: signed.biz, signed_at: signed.signed_at, png: signed.png, doc_hash: signed.doc_hash } : null}>
+      {av ? (
+        <AiQuoteDoc m={av.m} T={T} to={av.to} biz={av.biz} date={av.date} until={av.until} signed={signed ? { name: signed.name, biz: signed.biz, signed_at: signed.signed_at, png: signed.png, doc_hash: signed.doc_hash } : null}
+          pay={<PayBox url={av.I.payUrl} amount={av.m.summary[av.m.summary.length - 1]?.b} />}>
         {open ? <SignForm token={token} T={T} toName={data.to_name || ""} toBiz={data.to_biz || ""} toEmail={data.to_email || ""}
           onSigned={(s) => { setSigned(s); setStatus("נחתמה"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
           onRejected={() => setStatus("נדחתה")} /> : undefined}
-      </QuoteDoc>
+        </AiQuoteDoc>
+      ) : m ? (
+        <QuoteDoc m={m} T={T} signed={signed ? { name: signed.name, biz: signed.biz, signed_at: signed.signed_at, png: signed.png, doc_hash: signed.doc_hash } : null}>
+        {open ? <SignForm token={token} T={T} toName={data.to_name || ""} toBiz={data.to_biz || ""} toEmail={data.to_email || ""}
+          onSigned={(s) => { setSigned(s); setStatus("נחתמה"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+          onRejected={() => setStatus("נדחתה")} /> : undefined}
+        </QuoteDoc>
+      ) : null}
+    </div>
+  );
+}
+
+function PayBox({ url, amount }: { url: string; amount?: string }) {
+  return (
+    <div className="aq-pay">
+      <div><b>השלב הבא: תשלום</b><span>{amount ? "לתשלום עכשיו: " + amount + ". " : ""}התשלום בכרטיס אשראי.</span></div>
+      <a href={url} target="_blank" rel="noopener noreferrer">מעבר לתשלום</a>
     </div>
   );
 }

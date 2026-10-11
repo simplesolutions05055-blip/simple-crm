@@ -297,6 +297,7 @@ input[type=checkbox]{width:18px;height:18px;margin:0;accent-color:var(--navy);fl
 .qpub{min-height:100vh;background:#eceaf4;padding:20px 16px 40px}
 .qpub .state{max-width:860px;margin:0 auto 14px;background:#fff;border-radius:14px;padding:14px 18px;font-size:14px;box-shadow:0 6px 24px rgba(26,17,71,.08);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 @media print{.qpub{padding:0;background:#fff}.qpub .state{display:none}}
+.qpub .state .btn.pay{background:#e8c25a;border-color:#e8c25a;color:#3a2a06;font-weight:800;text-decoration:none}
 
 /* settings sub-menu in the sidebar */
 .subnav{display:flex;flex-direction:column;gap:1px;margin:2px 22px 8px 0;padding-right:12px;border-right:1px solid var(--line)}

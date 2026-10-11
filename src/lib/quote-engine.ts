@@ -25,6 +25,7 @@ export type Pricing = {
   msg: { free: number; phone: number; packs: { id: string; n: number; price: number }[] };
   webTimelines: { site: Pair[]; lp: Pair[]; both: Pair[] };
   timelines: { id: string; t: string; s: string }[];
+  ai?: import("./ai-campaign").AiPricing;
 };
 export type Template = typeof TEMPLATE_DEFAULT;
 
@@ -51,6 +52,8 @@ export type QuoteInput = {
   overrides: Record<string, number>;
   hidden: string[];
   extra: ExtraLine[];
+  product?: "ai" | "packages"; // missing = the original packages quote
+  ai?: Partial<import("./ai-campaign").AiInput>;
 };
 
 export const DEFAULT_PRICING = PRICING_DEFAULT as unknown as Pricing;

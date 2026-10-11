@@ -1,5 +1,6 @@
 /* Excel import / export: field specs and the pure logic (no DB, no DOM) */
 import { STAGES, OFF_STAGES, SOURCES, INDUSTRIES, BUDGETS, CLIENT_STATUS, FIT, LINKS, type Row } from "./crm";
+import { REGIONS } from "./regions";
 
 export type Kind = "leads" | "clients";
 export type FKind = "text" | "phone" | "email" | "date" | "datetime" | "number" | "bool" | "enum" | "money";
@@ -25,6 +26,9 @@ export const FIELDS: Record<Kind, Field[]> = {
     { key: "phone", label: "טלפון", kind: "phone", aliases: PHONE_AL, width: 14 },
     { key: "email", label: "מייל", kind: "email", aliases: MAIL_AL, width: 24 },
     { key: "industry", label: "תחום", kind: "enum", options: INDUSTRIES, aliases: ["industry", "ענף", "תחום עיסוק"], width: 16 },
+    { key: "city", label: "עיר", kind: "text", aliases: ["city", "יישוב", "ישוב", "עיר מגורים"], width: 14 },
+    { key: "region", label: "אזור", kind: "enum", options: REGIONS, strict: true, aliases: ["region", "אזור בארץ"], width: 14 },
+    { key: "address", label: "כתובת", kind: "text", aliases: ["address", "רחוב", "כתובת מלאה"], width: 22 },
     { key: "source", label: "מקור", kind: "enum", options: SOURCES, aliases: ["source", "מקור ליד", "מאיפה הגיע"], width: 12 },
     { key: "campaign", label: "קמפיין", kind: "text", aliases: ["campaign", "שם קמפיין"], width: 16 },
     { key: "landing_page", label: "עמוד שממנו הגיע", kind: "text", aliases: ["landing_page", "עמוד מקור"], width: 20 },

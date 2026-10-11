@@ -33,7 +33,7 @@ export default function Quotes() {
           {!rows ? <div className="loading" style={{ minHeight: 120 }}>טוען…</div> : !list.length ? <Empty>אין הצעות בתצוגה הזו</Empty> : (
             <div className="scroll">
               <table className="tbl">
-                <thead><tr><th>מספר</th><th>עבור</th><th>מה</th><th>לחודש</th><th>חד פעמי</th><th>סטטוס</th><th>צפיות</th><th>תאריך</th></tr></thead>
+                <thead><tr><th>מספר</th><th>עבור</th><th>מה</th><th>לחודש</th><th>חד פעמי / בחתימה</th><th>סטטוס</th><th>צפיות</th><th>תאריך</th></tr></thead>
                 <tbody>
                   {list.map((q) => (
                     <tr key={q.id} className="click" onClick={() => router.push("/quotes/" + q.id)}>

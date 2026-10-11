@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { REGIONS, CITIES, regionOf, placeLabel } from "@/lib/regions";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { sb } from "@/lib/supabase/browser";
@@ -18,6 +19,7 @@ export default function Leads() {
   const [adding, setAdding] = useState(false);
   const [over, setOver] = useState<string | null>(null);
   const [arch, setArch] = useState(false);
+  const [region, setRegion] = useState("");
 
   const load = async () => {
     const { data } = await sb().from("crm_leads").select("*").is("archived_at", null).order("created_at", { ascending: false });
@@ -27,8 +29,9 @@ export default function Leads() {
 
   const filtered = useMemo(() => {
     const t = q.trim();
-    return (rows || []).filter((l) => !t || [l.name, l.biz, l.phone, l.industry, l.source].join(" ").includes(t));
-  }, [rows, q]);
+    return (rows || []).filter((l) => (!t || [l.name, l.biz, l.phone, l.industry, l.source, l.city, l.region].join(" ").includes(t))
+      && (!region || (region === "-" ? !l.region : l.region === region)));
+  }, [rows, q, region]);
   const cols = showOff ? [...STAGES, ...OFF_STAGES] : [...STAGES];
 
   async function move(id: string, stage: string) {
@@ -53,7 +56,10 @@ export default function Leads() {
         </div>} />
       <div className="content">
         <div className="bar">
-          <input className="inp" style={{ maxWidth: 300 }} placeholder="סינון לפי שם, עסק, תחום, מקור" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input className="inp" style={{ maxWidth: 300 }} placeholder="סינון לפי שם, עסק, תחום, מקור, עיר" value={q} onChange={(e) => setQ(e.target.value)} />
+          <select className="inp" style={{ maxWidth: 200 }} value={region} onChange={(e) => setRegion(e.target.value)} aria-label="אזור">
+            <option value="">כל האזורים</option>{REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}<option value="-">בלי אזור</option>
+          </select>
           <label className="pillck"><input type="checkbox" checked={showOff} onChange={(e) => setShowOff(e.target.checked)} />להציג גם &quot;לא עכשיו&quot; ו&quot;נפסל&quot;</label>
         </div>
         <div className="kanban" style={{ gridTemplateColumns: `repeat(${cols.length},minmax(220px,1fr))` }}>
@@ -72,6 +78,7 @@ export default function Leads() {
                       className={"kcard" + (late || untouched ? " alert" : "")} style={{ textDecoration: "none" }}>
                       <div className="kf"><b>{l.name}</b><span className="dots" title="התאמה">{FIT.map(([k]) => <i key={k} className={l.fit?.[k] ? "on" : ""} />)}</span></div>
                       {l.biz ? <span className="sub">{l.biz}{l.industry ? " · " + l.industry : ""}</span> : null}
+                      {l.city || l.region ? <span className="meta"><Icon n="pin" s={13} />{placeLabel(l.city, l.region)}</span> : null}
                       <div className="kf">
                         <span className="meta">{l.source}</span>
                         {l.value ? <span className="meta">{money(l.value)}</span> : null}
@@ -147,14 +154,14 @@ function Archive({ onBack }: { onBack: () => void }) {
 
 function NewLead({ onClose, onDone }: { onClose: () => void; onDone: (id: string) => void }) {
   const { org, toast } = useApp();
-  const [f, setF] = useState<Row>({ name: "", biz: "", phone: "", email: "", industry: "", source: "אתר ישיר", budget: "לא אמר", pain: "" });
+  const [f, setF] = useState<Row>({ name: "", biz: "", phone: "", email: "", industry: "", source: "אתר ישיר", budget: "לא אמר", pain: "", city: "", region: "", address: "" });
   const [busy, setBusy] = useState(false);
   const set = (k: string, v: string) => setF((x) => ({ ...x, [k]: v }));
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     const phone = f.phone.replace(/[^0-9+]/g, "") || null;
-    const { data, error } = await sb().from("crm_leads").insert({ ...f, phone, email: f.email || null, org_id: org }).select("id").single();
+    const { data, error } = await sb().from("crm_leads").insert({ ...f, phone, email: f.email || null, city: f.city.trim() || null, region: f.region || null, address: f.address.trim() || null, org_id: org }).select("id").single();
     setBusy(false);
     if (error) return toast(error.message.includes("crm_leads_phone_uq") ? "כבר יש ליד פעיל עם הטלפון הזה" : error.message, true);
     await sb().from("crm_activities").insert({ org_id: org, lead_id: data.id, type: "מערכת", text: "ליד נוצר ידנית", by: "מערכת" });
@@ -168,6 +175,11 @@ function NewLead({ onClose, onDone }: { onClose: () => void; onDone: (id: string
         <label className="field"><span>טלפון</span><input className="inp ltr" value={f.phone} onChange={(e) => set("phone", e.target.value)} /></label>
         <label className="field"><span>מייל</span><input className="inp ltr" type="email" value={f.email} onChange={(e) => set("email", e.target.value)} /></label>
         <label className="field"><span>תחום</span><input className="inp" list="industries" value={f.industry} onChange={(e) => set("industry", e.target.value)} placeholder="בחירה או הקלדה חופשית" /></label>
+        <label className="field"><span>עיר</span><input className="inp" list="cities" value={f.city} placeholder="לא חובה"
+          onChange={(e) => { const c = e.target.value; setF((x) => ({ ...x, city: c, region: regionOf(c) || x.region })); }} /></label>
+        <label className="field"><span>אזור</span><select className="inp" value={f.region} onChange={(e) => set("region", e.target.value)}><option value="">לא ידוע</option>{REGIONS.map((r) => <option key={r}>{r}</option>)}</select></label>
+        <label className="field full"><span>כתובת</span><input className="inp" value={f.address} placeholder="רחוב ומספר (לא חובה)" onChange={(e) => set("address", e.target.value)} /></label>
+        <datalist id="cities">{CITIES.map((c) => <option key={c} value={c} />)}</datalist>
         <label className="field"><span>מקור</span><select className="inp" value={f.source} onChange={(e) => set("source", e.target.value)}>{SOURCES.map((s) => <option key={s}>{s}</option>)}</select></label>
         <label className="field"><span>תקציב</span><select className="inp" value={f.budget} onChange={(e) => set("budget", e.target.value)}>{BUDGETS.map((s) => <option key={s}>{s}</option>)}</select></label>
         <label className="field full"><span>מה הכאב, במילים שלו</span><textarea className="inp" value={f.pain} onChange={(e) => set("pain", e.target.value)} /></label>

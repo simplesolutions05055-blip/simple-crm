@@ -4,9 +4,10 @@ import Link from "next/link";
 import { sb } from "@/lib/supabase/browser";
 import { Top, Panel, Empty } from "@/components/Shell";
 import Icon from "@/components/Icon";
-import QuoteDoc from "@/components/QuoteDoc";
+import AiQuoteDoc from "@/components/AiQuoteDoc";
 import { useApp } from "@/components/AppCtx";
-import { computeQuote, emptyInput, DEFAULT_PRICING, type Pricing, type Template, type Pair, type QuoteInput } from "@/lib/quote-engine";
+import { isoToday, type Pricing, type Template } from "@/lib/quote-engine";
+import { aiView, emptyAi, withAi, DEFAULT_AI, type AiPricing, type AiAddon } from "@/lib/ai-campaign";
 import { fmtDate, appUrl, accessMessage, ACCESS_MSG_DEFAULT, waTemplates, type Row } from "@/lib/crm";
 
 /* settings sub-pages: the sidebar shows them under "הגדרות" */
@@ -74,7 +75,7 @@ function BusinessSection() {
 }
 
 /* ---------------- quote templates ---------------- */
-const QTABS = ["מחירון ומוצרים", "טקסטים בהצעה", "שליחה ללקוח וקליטה"];
+const QTABS = ["מחירון קמפיין AI", "טקסטים בהצעה", "שליחה ללקוח וקליטה"];
 function QuotesSection() {
   const [tab, setTab] = useState(QTABS[0]);
   return (
@@ -225,39 +226,25 @@ function LoginTab() {
 
 /* ---------------- live preview ---------------- */
 function Preview({ P, T, vat }: { P: Pricing; T: Template; vat: number }) {
-  const [I, setI] = useState<QuoteInput>(emptyInput({ client: "ישראל ישראלי", biz: "העסק לדוגמה", brief: "תצוגה מקדימה של התבנית עם ההגדרות שעל המסך.", budget: "3000" }));
-  const m = useMemo(() => computeQuote(P, I, vat, T), [P, I, vat, T]);
+  const [promo, setPromo] = useState(true);
+  const [add, setAdd] = useState("");
+  const A = withAi(P.ai);
+  const v = useMemo(() => aiView({ client: "ישראל ישראלי", biz: "העסק לדוגמה", date: isoToday(), validDays: 14,
+    ai: { ...emptyAi(A), promo, addons: add ? [add] : [] } }, P, vat, T), [P, T, vat, promo, add]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="col">
-      <div className="panel" style={{ padding: 14 }}>
-        <div className="f3">
-          <label className="field"><span>מסלול לדוגמה</span>
-            <select className="inp sm" value={I.track} onChange={(e) => setI({ ...I, track: e.target.value, items: e.target.value === "custom" ? P.items.slice(0, 2).map((x) => x.id) : [] })}>
-              {P.tracks.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}<option value="custom">הרכבה אישית</option>
-            </select>
-          </label>
-          <label className="field"><span>אתר</span>
-            <select className="inp sm" value={I.web} onChange={(e) => setI({ ...I, web: e.target.value })}><option value="">אין</option>{P.web.map((w) => <option key={w.id} value={w.id}>{w.label}</option>)}</select>
-          </label>
-          <label className="field"><span>תוספת</span>
-            <select className="inp sm" value={I.addons[0] || ""} onChange={(e) => setI({ ...I, addons: e.target.value ? [e.target.value] : [] })}><option value="">אין</option>{P.addons.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}</select>
-          </label>
-        </div>
+      <div className="panel bar" style={{ padding: 14 }}>
+        <label className={"pillck" + (promo ? " on" : "")}><input type="checkbox" checked={promo} onChange={(e) => setPromo(e.target.checked)} />מבצע חודש ראשון</label>
+        <select className="inp sm" style={{ maxWidth: 220 }} value={add} onChange={(e) => setAdd(e.target.value)}>
+          <option value="">בלי תוספת</option>{A.addons.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+        </select>
       </div>
-      <div className="preview"><QuoteDoc m={m} T={T} /></div>
+      <div className="preview"><AiQuoteDoc m={v.m} T={T} to={v.to} biz={v.biz} date={v.date} until={v.until} /></div>
     </div>
   );
 }
 
-/* ---------------- pricing ---------------- */
-const pairsToText = (p: Pair[]) => p.map((x) => x.t + " | " + x.s).join("\n");
-const textToPairs = (t: string) => t.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => { const [a, ...b] = l.split("|"); return { t: a.trim(), s: b.join("|").trim() }; });
-
-function PairsArea({ value, onChange, rows = 5 }: { value: Pair[]; onChange: (p: Pair[]) => void; rows?: number }) {
-  const [t, setT] = useState(pairsToText(value));
-  useEffect(() => setT(pairsToText(value)), [value]);
-  return <textarea className="inp" rows={rows} value={t} onChange={(e) => setT(e.target.value)} onBlur={() => onChange(textToPairs(t))} style={{ fontSize: 13 }} />;
-}
+/* ---------------- pricing: the AI campaign product ---------------- */
 function N({ v, on, w = 100 }: { v: number; on: (n: number) => void; w?: number }) {
   return <input className="inp sm" type="number" style={{ width: w }} value={v} onChange={(e) => on(Number(e.target.value) || 0)} />;
 }
@@ -267,140 +254,43 @@ function S({ v, on, ph }: { v: string; on: (s: string) => void; ph?: string }) {
 
 function PricingTab() {
   const { settings, saveSettings, toast } = useApp();
-  const [P, setP] = useState<Pricing>(settings.pricing);
-  const dirty = JSON.stringify(P) !== JSON.stringify(settings.pricing);
-  const set = <K extends keyof Pricing>(k: K, v: Pricing[K]) => setP((x) => ({ ...x, [k]: v }));
-  const setArr = <K extends "tracks" | "features" | "items" | "addons" | "web">(k: K, i: number, patch: Partial<Pricing[K][number]>) =>
-    setP((x) => ({ ...x, [k]: (x[k] as Row[]).map((r, n) => (n === i ? { ...r, ...patch } : r)) }));
+  const [A, setA] = useState<AiPricing>(withAi(settings.pricing.ai));
+  const dirty = JSON.stringify(A) !== JSON.stringify(withAi(settings.pricing.ai));
+  const setAdd = (i: number, p: Partial<AiAddon>) => setA((x) => ({ ...x, addons: x.addons.map((r, n) => (n === i ? { ...r, ...p } : r)) }));
+  const P = useMemo(() => ({ ...settings.pricing, ai: A }), [settings.pricing, A]);
+  const okUrl = /^https:\/\//.test(A.payUrl);
 
   return (
-    <div className="split" style={{ gridTemplateColumns: "minmax(0,1.2fr) minmax(0,1fr)" }}>
+    <div className="split" style={{ gridTemplateColumns: "minmax(0,1.1fr) minmax(0,1fr)" }}>
       <div className="col">
         <div className="panel bar" style={{ position: "sticky", top: 92, zIndex: 5 }}>
-          <button className="btn primary" disabled={!dirty} onClick={async () => { if (await saveSettings({ pricing: P })) toast("המחירון נשמר. הצעות חדשות ישתמשו בו."); }}><Icon n="check" s={16} />שמירת המחירון</button>
-          {dirty ? <button className="btn ghost" onClick={() => setP(settings.pricing)}>ביטול שינויים</button> : <span className="tiny">אין שינויים שלא נשמרו</span>}
-          <button className="btn ghost" style={{ marginInlineStart: "auto" }} onClick={() => confirm("לטעון מחדש את המחירון מהתבנית המקורית? שינויים שלא נשמרו יימחקו.") && setP(DEFAULT_PRICING)}>שחזור למחירון התבנית</button>
-          <span className="tiny" style={{ width: "100%" }}>הצעה שכבר נחתמה נשארת עם המחירים שבהם נחתמה. הצעה פתוחה מתעדכנת בשמירה הבאה שלה.</span>
+          <button className="btn primary" disabled={!dirty || !okUrl} onClick={async () => { if (await saveSettings({ pricing: { ...settings.pricing, ai: A } })) toast("המחירון נשמר. הצעות חדשות ישתמשו בו."); }}><Icon n="check" s={16} />שמירת המחירון</button>
+          {dirty ? <button className="btn ghost" onClick={() => setA(withAi(settings.pricing.ai))}>ביטול שינויים</button> : <span className="tiny">אין שינויים שלא נשמרו</span>}
+          <button className="btn ghost" style={{ marginInlineStart: "auto" }} onClick={() => setA(DEFAULT_AI)}>שחזור לברירת המחדל</button>
+          <span className="tiny" style={{ width: "100%" }}>הצעה שכבר נחתמה נשארת עם המחירים שבהם נחתמה. בכל הצעה אפשר לשנות את המחיר החודשי רק לה.</span>
         </div>
 
-        <Panel icon="pkg" title="מסלולים">
-          {P.tracks.map((t, i) => (
-            <div className="set-card" key={t.id}>
-              <div className="hdr"><S v={t.name} on={(v) => setArr("tracks", i, { name: v })} /></div>
-              <div className="f2">
-                <label className="field"><span>לחודש, לפני מע&quot;מ</span><N v={t.price} on={(v) => setArr("tracks", i, { price: v })} w={140} /></label>
-                <label className="field"><span>עלות הקמה</span><N v={t.setup} on={(v) => setArr("tracks", i, { setup: v })} w={140} /></label>
-              </div>
-              <label className="field"><span>תיאור קצר</span><S v={t.desc} on={(v) => setArr("tracks", i, { desc: v })} /></label>
-            </div>
-          ))}
-        </Panel>
-
-        <Panel icon="list" title="מה כלול בכל מסלול">
-          <span className="tiny">מסמנים באיזה מסלול כל פריט כלול. &quot;לא כלול&quot; מופיע בתחתית הכרטיס; __BUDGET__ מוחלף בתקציב המומלץ.</span>
-          {P.features.map((f, i) => (
-            <div className="set-card" key={i}>
-              <div className="hdr">
-                <S v={f.t} on={(v) => setArr("features", i, { t: v })} />
-                <button className="btn icon sm ghost" onClick={() => confirm("למחוק את הפריט?") && set("features", P.features.filter((_, n) => n !== i))}><Icon n="trash" s={15} /></button>
-              </div>
-              <S v={f.d} on={(v) => setArr("features", i, { d: v })} ph="תיאור" />
-              <S v={f.x} on={(v) => setArr("features", i, { x: v })} ph="לא כלול (לא חובה)" />
-              <div className="pills">
-                {P.tracks.map((t) => (
-                  <label key={t.id} className={"pillck" + (f.on[t.id] ? " on" : "")}>
-                    <input type="checkbox" checked={!!f.on[t.id]} onChange={(e) => setArr("features", i, { on: { ...f.on, [t.id]: e.target.checked } })} />{t.name}
-                  </label>
-                ))}
-              </div>
-            </div>
-          ))}
-          <button className="add" onClick={() => set("features", [...P.features, { t: "פריט חדש", d: "", x: "", on: {} }])}><Icon n="plus" s={15} />פריט חדש</button>
-        </Panel>
-
-        <Panel icon="sliders" title="שירותים להרכבה אישית">
-          {P.items.map((it, i) => (
-            <div className="set-card" key={it.id}>
-              <S v={it.label} on={(v) => setArr("items", i, { label: v })} />
-              <div className="f2">
-                <label className="field"><span>לחודש</span><N v={it.price} on={(v) => setArr("items", i, { price: v })} w={140} /></label>
-                <label className="field"><span>הקמה</span><N v={it.setup} on={(v) => setArr("items", i, { setup: v })} w={140} /></label>
-              </div>
-              <S v={it.d} on={(v) => setArr("items", i, { d: v })} ph="תיאור" />
-              <S v={it.x} on={(v) => setArr("items", i, { x: v })} ph="לא כלול (לא חובה)" />
-            </div>
-          ))}
-          <div className="set-card">
-            <b>מענה אוטומטי ודיוור יחד (שורה אחת כששניהם נבחרים)</b>
-            <div className="f2">
-              <label className="field"><span>לחודש</span><N v={P.bundle.price} on={(v) => set("bundle", { ...P.bundle, price: v })} w={140} /></label>
-              <label className="field"><span>הקמה</span><N v={P.bundle.setup} on={(v) => set("bundle", { ...P.bundle, setup: v })} w={140} /></label>
-            </div>
-            <label className="field"><span>הקמת דיוור שניתנת ללא עלות כששניהם יחד</span><N v={P.freeMailSetup} on={(v) => set("freeMailSetup", v)} w={140} /></label>
-          </div>
-        </Panel>
-
-        <Panel icon="globe" title="אתרים ודפי נחיתה">
-          {P.web.map((w, i) => (
-            <div className="set-card" key={w.id}>
-              <div className="hdr"><S v={w.label} on={(v) => setArr("web", i, { label: v })} /><N v={w.price} on={(v) => setArr("web", i, { price: v })} w={110} /></div>
-              <div className="bar">
-                {w.monthly.map((m, j) => (
-                  <label key={j} className="field" style={{ width: 150 }}><span>{m.label}, לחודש</span>
-                    <N v={m.price} on={(v) => setArr("web", i, { monthly: w.monthly.map((x, k) => (k === j ? { ...x, price: v } : x)) })} w={140} /></label>
-                ))}
-              </div>
-              <label className="field"><span>מה כלול, שורה לכל פריט: כותרת | תיאור</span><PairsArea value={w.specs} onChange={(specs) => setArr("web", i, { specs })} rows={6} /></label>
-              <S v={w.x} on={(v) => setArr("web", i, { x: v })} ph="לא כלול (לא חובה)" />
-            </div>
-          ))}
+        <Panel icon="pkg" title="קמפיין AI">
           <div className="f2">
-            <label className="field"><span>דומיין, לשנה</span><N v={P.domain} on={(v) => set("domain", v)} w={140} /></label>
-            <label className="field"><span>סשן תיקונים נוסף, לשעה</span><N v={P.hour} on={(v) => set("hour", v)} w={140} /></label>
+            <label className="field"><span>מחיר חודשי ברירת מחדל, לפני מע&quot;מ</span><N v={A.price} on={(v) => setA({ ...A, price: v })} w={160} /></label>
+            <label className="field"><span>הנחת מבצע על החודש הראשון, באחוזים</span><N v={A.promoPct} on={(v) => setA({ ...A, promoPct: Math.min(99, Math.max(1, v)) })} w={160} /></label>
           </div>
         </Panel>
 
         <Panel icon="plus" title="תוספות חד פעמיות">
-          {P.addons.map((a, i) => (
-            <div className="set-card" key={a.id}>
-              <div className="hdr"><S v={a.label} on={(v) => setArr("addons", i, { label: v })} /><N v={a.price} on={(v) => setArr("addons", i, { price: v })} w={110} /></div>
-              <S v={a.what} on={(v) => setArr("addons", i, { what: v })} ph="במשפט: מה זה" />
-              <label className="field"><span>מה כלול: כותרת | תיאור</span><PairsArea value={a.specs} onChange={(specs) => setArr("addons", i, { specs })} /></label>
+          {A.addons.map((x, i) => (
+            <div className="set-card" key={x.id}>
+              <div className="hdr"><S v={x.label} on={(v) => setAdd(i, { label: v })} /><N v={x.price} on={(v) => setAdd(i, { price: v })} w={110} />
+                <button className="btn icon sm ghost" title="הסרה" onClick={() => setA({ ...A, addons: A.addons.filter((_, n) => n !== i) })}><Icon n="trash" s={15} /></button></div>
+              <label className="field"><span>תיאור קצר</span><S v={x.d} on={(v) => setAdd(i, { d: v })} /></label>
             </div>
           ))}
+          <button className="add" style={{ marginTop: 0 }} onClick={() => setA({ ...A, addons: [...A.addons, { id: "a" + Date.now().toString(36), label: "תוספת חדשה", d: "", price: 0 }] })}><Icon n="plus" s={15} />תוספת חדשה</button>
         </Panel>
 
-        <Panel icon="wa" title="דיוור וואטסאפ">
-          <div className="f2">
-            <label className="field"><span>הודעות במתנה, חודש ראשון</span><N v={P.msg.free} on={(v) => set("msg", { ...P.msg, free: v })} w={140} /></label>
-            <label className="field"><span>מספר דיוור, לחודש</span><N v={P.msg.phone} on={(v) => set("msg", { ...P.msg, phone: v })} w={140} /></label>
-          </div>
-          {P.msg.packs.map((p, i) => (
-            <div className="bar" key={p.id} style={{ marginTop: 8 }}>
-              <span className="tiny">חבילה</span><N v={p.n} on={(v) => set("msg", { ...P.msg, packs: P.msg.packs.map((x, k) => (k === i ? { ...x, n: v } : x)) })} />
-              <span className="tiny">הודעות ב-</span><N v={p.price} on={(v) => set("msg", { ...P.msg, packs: P.msg.packs.map((x, k) => (k === i ? { ...x, price: v } : x)) })} /><span className="tiny">₪</span>
-            </div>
-          ))}
-        </Panel>
-
-        <Panel icon="clock" title="לוחות זמנים">
-          {P.timelines.map((r, i) => (
-            <div className="f2" key={r.id} style={{ marginBottom: 6 }}>
-              <S v={r.t} on={(v) => set("timelines", P.timelines.map((x, k) => (k === i ? { ...x, t: v } : x)))} />
-              <S v={r.s} on={(v) => set("timelines", P.timelines.map((x, k) => (k === i ? { ...x, s: v } : x)))} />
-            </div>
-          ))}
-          <label className="field"><span>אתר: כותרת | זמן</span><PairsArea value={P.webTimelines.site} onChange={(v) => set("webTimelines", { ...P.webTimelines, site: v })} rows={3} /></label>
-          <label className="field"><span>דף נחיתה: כותרת | זמן</span><PairsArea value={P.webTimelines.lp} onChange={(v) => set("webTimelines", { ...P.webTimelines, lp: v })} rows={2} /></label>
-          <label className="field"><span>שניהם: כותרת | זמן</span><PairsArea value={P.webTimelines.both} onChange={(v) => set("webTimelines", { ...P.webTimelines, both: v })} rows={1} /></label>
-        </Panel>
-
-        <Panel icon="star" title="מתנת הצטרפות כשאין עלות הקמה">
-          <div className="f2">
-            <S v={P.gifts.simple.title} on={(v) => set("gifts", { ...P.gifts, simple: { ...P.gifts.simple, title: v } })} />
-            <N v={P.gifts.simple.was} on={(v) => set("gifts", { ...P.gifts, simple: { ...P.gifts.simple, was: v } })} w={140} />
-          </div>
-          <S v={P.gifts.simple.sub} on={(v) => set("gifts", { ...P.gifts, simple: { ...P.gifts.simple, sub: v } })} />
+        <Panel icon="wallet" title="קישור לתשלום">
+          <label className="field"><span>הקישור שהלקוח מקבל לתשלום</span><input className="inp ltr" value={A.payUrl} onChange={(e) => setA({ ...A, payUrl: e.target.value.trim() })} /></label>
+          {!okUrl ? <span className="tiny" style={{ color: "var(--bad)" }}>הקישור צריך להתחיל ב-https://</span> : <span className="tiny">מופיע ללקוח ככפתור &quot;מעבר לתשלום&quot; אחרי החתימה, ונשלח בוואטסאפ מכפתור &quot;שליחת קישור לתשלום&quot; בהצעה.</span>}
         </Panel>
       </div>
       <div className="ctlp" style={{ position: "sticky", top: 92, maxHeight: "calc(100vh - 110px)", overflowY: "auto" }}>
@@ -412,9 +302,7 @@ function PricingTab() {
 
 /* ---------------- template texts ---------------- */
 const TGROUPS: [string, string, [keyof Template, string, boolean?][]][] = [
-  ["tag", "ראש ותחתית ההצעה", [["tag", "תגית בראש ההצעה"], ["cta", "כפתור בתחתית"], ["vatNote", "הערת מע\"מ"]]],
-  ["pkg", "מסלולים והרכבה", [["tracksNote", "הערה מתחת לטבלת המסלולים", true], ["tracksBinding", "שורה מודגשת מתחת לטבלה", true], ["customNote", "הערה בהרכבה אישית", true]]],
-  ["star", "מתנה ולוחות זמנים", [["giftNote", "הערה למתנת ההצטרפות", true], ["timelinesNote", "הערה ללוחות הזמנים", true]]],
+  ["tag", "ראש ותחתית ההצעה", [["tag", "תגית בראש ההצעה"], ["cta", "כפתור בתחתית"]]],
   ["pen", "חתימה", [["signTitle", "כותרת החתימה"], ["agree", "משפט האישור", true], ["signNote", "הערה מתחת לחתימה", true], ["thanks", "הודעה אחרי חתימה", true]]],
 ];
 function TemplateTab() {

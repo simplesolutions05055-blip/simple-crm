@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { REGIONS, CITIES, regionOf, placeLabel } from "@/lib/regions";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { sb } from "@/lib/supabase/browser";
@@ -40,7 +41,7 @@ export default function LeadPage() {
 
   return (
     <>
-      <Top title={l.name} crumb={{ href: "/leads", label: "לידים" }} sub={<>{l.biz}{l.industry ? " · " + l.industry : ""} · נוצר {fmtDate(l.created_at)}</>}
+      <Top title={l.name} crumb={{ href: "/leads", label: "לידים" }} sub={<>{l.biz}{l.industry ? " · " + l.industry : ""}{l.city || l.region ? " · " + placeLabel(l.city, l.region) : ""} · נוצר {fmtDate(l.created_at)}</>}
         right={<div className="bar">
           {l.phone ? <a className="btn wa" href={waLink(l.phone, "היי " + l.name.split(" ")[0] + ", ")} target="_blank" rel="noreferrer"><Icon n="wa" s={16} />וואטסאפ</a> : null}
           {l.phone ? <a className="btn" href={"tel:" + l.phone}><Icon n="phone" s={16} />חיוג</a> : null}
@@ -81,6 +82,12 @@ export default function LeadPage() {
               <FieldRow icon="phone" label="טלפון"><EditField className="fi ltr" value={l.phone} onSave={(v) => save({ phone: v.replace(/[^0-9+]/g, "") || null })} /></FieldRow>
               <FieldRow icon="mail" label="מייל"><EditField className="fi ltr" value={l.email} onSave={(v) => save({ email: v || null })} /></FieldRow>
               <FieldRow icon="tag" label="תחום"><EditField value={l.industry} list="industries" placeholder="בחירה או הקלדה חופשית" onSave={(v) => save({ industry: v })} /></FieldRow>
+              <FieldRow icon="pin" label="עיר"><EditField value={l.city} list="cities" placeholder="בחירה או הקלדה חופשית" onSave={(v) => { const c = v.trim(); save({ city: c || null, region: regionOf(c) || l.region || null }); }} /></FieldRow>
+              <FieldRow icon="pin" label="אזור">
+                <select className="fi" value={l.region || ""} onChange={(e) => save({ region: e.target.value || null })}><option value="">לא ידוע</option>{REGIONS.map((r) => <option key={r}>{r}</option>)}</select>
+              </FieldRow>
+              <FieldRow icon="home" label="כתובת"><EditField value={l.address} placeholder="רחוב ומספר" onSave={(v) => save({ address: v.trim() || null })} /></FieldRow>
+              <datalist id="cities">{CITIES.map((c) => <option key={c} value={c} />)}</datalist>
               <FieldRow icon="inbox" label="מקור">
                 <select className="fi" value={l.source} onChange={(e) => save({ source: e.target.value })}>{[...new Set([...SOURCES, l.source])].map((s) => <option key={s}>{s}</option>)}</select>
               </FieldRow>
