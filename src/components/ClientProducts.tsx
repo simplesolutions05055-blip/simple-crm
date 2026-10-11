@@ -162,11 +162,16 @@ function ProductModal({ clientId, row, suppliers, reloadSuppliers, onClose, onDo
       start_date: f.start_date || today(),
     };
     const res = row
-      ? await sb().from("crm_client_services").update(body).eq("id", row.id)
-      : await sb().from("crm_client_services").insert({ ...body, org_id: org, client_id: clientId, status: "פעיל" });
+      ? await sb().from("crm_client_services").update(body).eq("id", row.id).select("id").single()
+      : await sb().from("crm_client_services").insert({ ...body, org_id: org, client_id: clientId, status: "פעיל" }).select("id").single();
     if (res.error) { setBusy(false); return toast("לא נשמר: " + res.error.message, true); }
+    const gross = oneoff ? Math.round(oneoff * (1 + settings.vat / 100)) : 0;
     if (!row && f.pay && oneoff) {
-      await sb().from("crm_payments").insert({ org_id: org, client_id: clientId, what: body.name + ", חד פעמי", amount: Math.round(oneoff * (1 + settings.vat / 100)), due: body.start_date });
+      await sb().from("crm_payments").insert({ org_id: org, client_id: clientId, service_id: res.data.id, what: body.name + ", חד פעמי", amount: gross, due: body.start_date });
+    }
+    // the one-off payment follows the product: a changed one-off price updates it
+    if (row && oneoff !== oneoffOf(row)) {
+      if (gross) await sb().from("crm_payments").update({ amount: gross, what: body.name + ", חד פעמי" }).eq("service_id", row.id);
     }
     await sb().from("crm_activities").insert({ org_id: org, client_id: clientId, type: "מערכת", text: (row ? "עודכן מוצר: " : "שויך מוצר: ") + body.name, by: "מערכת" });
     setBusy(false);

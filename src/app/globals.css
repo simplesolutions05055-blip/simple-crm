@@ -463,9 +463,12 @@ b.bad{color:var(--bad)}
 .psum div{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--sunk);min-width:0}
 .psum small{display:block;color:var(--muted);font-size:12px}.psum b{font-size:17px;white-space:nowrap}
 .psec{margin:16px 0 4px;font-size:13px;color:var(--soft)}
-.prow2{display:grid;grid-template-columns:minmax(0,1fr) 84px 104px 88px auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px}
+.prow2{display:grid;grid-template-columns:minmax(0,1fr) 92px 104px 88px auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px}
 .prow2 .pw{display:flex;flex-direction:column;min-width:0}.prow2 .pw b{font-weight:600}
 .prow2 .pa{font-weight:700;white-space:nowrap}
+.prow2 .pa .inp{width:100%;font-weight:700}
+.prow2.phead{font-size:11.5px;color:var(--muted);border-top:0;padding:10px 0 0}
+@media (max-width:700px){.prow2.phead{display:none}}
 .prow2 .pp .inp{width:100%}.prow2 .pm select{width:100%}
 .ptog{display:inline-flex;border:1px solid var(--line2);border-radius:999px;overflow:hidden;font-size:12px;flex-shrink:0}
 .ptog button{background:var(--surface);border:0;padding:5px 10px;cursor:pointer;color:var(--muted);font:inherit;font-size:12px}

@@ -60,3 +60,8 @@ begin
   return n;
 end $$;
 revoke execute on function crm_generate_monthly_payments() from public, anon, authenticated;
+
+-- a product's one-off payment is linked to it, so changing the product's one-off price updates the payment
+alter table crm_payments add column if not exists service_id uuid references crm_client_services(id) on delete set null;
+update crm_payments p set service_id = s.id from crm_client_services s
+ where p.service_id is null and p.client_id = s.client_id and p.what = s.name || ', חד פעמי';

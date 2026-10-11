@@ -69,6 +69,7 @@ export default function ClientPayments({ client, pays, retainerDefault, onSave, 
         </select>
       </label>
 
+      <div className="prow2 phead"><span /><span>סכום</span><span>שולם בפועל</span><span>אופן</span><span>מצב</span></div>
       <h4 className="psec">תשלום ראשון</h4>
       {first.length ? first.map((p) => <PayRow key={p.id} p={p} onPaid={setPaid} onUpd={upd} />)
         : <AddPayment clientId={client.id} kind="first" label="הגדרת תשלום ראשון" method={client.pay_method} onDone={onDone} />}
@@ -120,7 +121,8 @@ function PayRow({ p, title, onPaid, onUpd }: { p: Row; title?: string; onPaid: (
     <div className="prow2">
       <span className="pw"><b>{title || p.what}</b>
         <span className={"meta" + (late ? " bad" : "")}>{p.paid_at ? "שולם " + fmtDate(p.paid_at) : (late ? "באיחור · " : "לתשלום ") + fmtDate(p.due)}{partial ? " · חלקי" : ""}</span></span>
-      <span className="pa">{money(p.amount)}</span>
+      <span className="pa"><EditField className="inp sm" type="number" value={p.amount} placeholder="סכום"
+        onSave={(v) => { const n = Math.round(Number(v)); if (n > 0) onUpd(p, { amount: n }); }} /></span>
       <span className="pp">
         <EditField className="inp sm" type="number" value={p.paid_at ? p.paid_amount ?? p.amount : ""} placeholder="שולם בפועל"
           onSave={(v) => { const n = v === "" ? null : Number(v); onUpd(p, n ? { paid_amount: n, paid_at: p.paid_at || today() } : { paid_amount: null, paid_at: null }); }} />
