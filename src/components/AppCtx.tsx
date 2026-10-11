@@ -4,7 +4,8 @@ import { sb } from "@/lib/supabase/browser";
 import { DEFAULT_PRICING, DEFAULT_TEMPLATE, withPricing, withTemplate, type Pricing, type Template } from "@/lib/quote-engine";
 import type { Row } from "@/lib/crm";
 
-export type Settings = { vat: number; valid_days: number; wa_template: string; n8n_webhook: string | null; onboarding: string[]; pricing: Pricing; template: Template; wa: Row; agency: Row; gcal: Row };
+export const PRODUCTS_DEFAULT = ["קמפיין ממומן", "ניהול סושיאל", "יום צילום", "חבילת 3 סרטונים", "אוטומציות", "פיתוח מערכת"];
+export type Settings = { vat: number; valid_days: number; wa_template: string; n8n_webhook: string | null; onboarding: string[]; pricing: Pricing; template: Template; wa: Row; agency: Row; gcal: Row; products: string[] };
 export type Biz = { id: string; name: string; brand: Row; role: string; active: boolean; home: boolean };
 type Ctx = {
   org: string;
@@ -89,6 +90,7 @@ export default function AppProvider({ children }: { children: React.ReactNode })
           wa_template: row.wa_template || "",
           n8n_webhook: row.n8n_webhook || null,
           onboarding: row.onboarding || [],
+          products: Array.isArray(row.products) && row.products.length ? row.products : PRODUCTS_DEFAULT,
           wa: row.wa || {},
           agency: row.agency || {},
           gcal: (gcal as Row) || row.gcal || {},

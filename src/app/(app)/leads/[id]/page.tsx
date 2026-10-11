@@ -35,6 +35,14 @@ export default function LeadPage() {
     if (log) { await sb().from("crm_activities").insert({ org_id: org, lead_id: id, type: "מערכת", text: log, by: "מערכת" }); setLogTick((t) => t + 1); }
   }
 
+  // reaching "לקוח" turns the lead into a client card and takes it off the pipeline
+  async function toClient() {
+    const { data, error } = await sb().rpc("crm_lead_to_client", { p_lead: id });
+    if (error) return toast("לא נוצר לקוח: " + error.message, true);
+    toast(l!.name + " הפך ללקוח");
+    router.push("/clients/" + data);
+  }
+
   if (!l) return <><Top title="ליד" crumb={{ href: "/leads", label: "לידים" }} /><div className="loading" style={{ minHeight: 200 }}>טוען…</div></>;
   const idx = STAGES.indexOf(l.stage);
   const custom = (l.custom || {}) as { details?: CField[]; links?: CField[] };
@@ -52,7 +60,7 @@ export default function LeadPage() {
           <ol className="steps">
             {STAGES.map((s, i) => (
               <li key={s} className={i < idx ? "passed" : ""}>
-                <button className={i < idx ? "done" : i === idx ? "cur" : ""} onClick={() => s !== l.stage && save({ stage: s }, "שלב: " + l.stage + " ← " + s)}>
+                <button className={i < idx ? "done" : i === idx ? "cur" : ""} onClick={() => s !== l.stage && (s === "לקוח" ? toClient() : save({ stage: s }, "שלב: " + l.stage + " ← " + s))}>
                   <span className="numw">{i < idx ? <Icon n="check" s={15} /> : i + 1}</span>{s}
                 </button>
               </li>

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { sb } from "@/lib/supabase/browser";
 import { Panel, Modal, St, Empty } from "@/components/Shell";
@@ -7,6 +7,11 @@ import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
 import { fmtDate, type Row } from "@/lib/crm";
 import { INTAKE_FORMS, formByKind, formText, filledCount, type Answers, type IntakeForm } from "@/lib/intake-forms";
+
+const MAX_FILE = 25 * 1024 * 1024;
+function fileSize(n: number) {
+  return n >= 1048576 ? (n / 1048576).toFixed(1) + "MB" : Math.max(1, Math.round(n / 1024)) + "KB";
+}
 
 /* documents of a lead or a client: intake forms and signed quotes.
    A lead's documents stay visible on the client card after the lead becomes a client. */
@@ -17,7 +22,7 @@ export function DocsBox({ leadId, clientId, who }: { leadId?: string; clientId?:
   const [open, setOpen] = useState<{ doc: Row | null; form: IntakeForm } | null>(null);
 
   const load = async () => {
-    let q = sb().from("crm_documents").select("id,kind,title,data,quote_id,created_at,updated_at").order("created_at", { ascending: false });
+    let q = sb().from("crm_documents").select("id,kind,title,data,quote_id,path,size,mime,created_at,updated_at").order("created_at", { ascending: false });
     if (leadId && clientId) q = q.or(`lead_id.eq.${leadId},client_id.eq.${clientId}`);
     else if (leadId) q = q.eq("lead_id", leadId);
     else q = q.eq("client_id", clientId!);
@@ -27,6 +32,48 @@ export function DocsBox({ leadId, clientId, who }: { leadId?: string; clientId?:
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [leadId, clientId]);
+
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [upl, setUpl] = useState("");
+
+  // uploaded files: private bucket, one folder per business, opened through short-lived links
+  async function upload(files: FileList | null) {
+    if (!files?.length) return;
+    const list = Array.from(files);
+    const big = list.filter((f) => f.size > MAX_FILE);
+    if (big.length) toast("גדול מ-25MB ולא הועלה: " + big.map((f) => f.name).join(", "), true);
+    const ok = list.filter((f) => f.size <= MAX_FILE);
+    let n = 0;
+    for (const f of ok) {
+      setUpl("מעלה " + (n + 1) + " מתוך " + ok.length + "…");
+      const ext = (f.name.match(/\.([a-z0-9]{1,8})$/i)?.[1] || "bin").toLowerCase();
+      const path = org + "/" + crypto.randomUUID() + "." + ext;
+      const up = await sb().storage.from("crm-docs").upload(path, f, { contentType: f.type || undefined, upsert: false });
+      if (up.error) { toast("לא הועלה: " + f.name + " (" + up.error.message + ")", true); continue; }
+      const { error } = await sb().from("crm_documents").insert({ org_id: org, lead_id: leadId || null, client_id: clientId || null, kind: "file", title: f.name, path, size: f.size, mime: f.type || null });
+      if (error) { await sb().storage.from("crm-docs").remove([path]); toast("לא נשמר: " + f.name, true); continue; }
+      n++;
+    }
+    setUpl("");
+    if (fileRef.current) fileRef.current.value = "";
+    if (n) {
+      await sb().from("crm_activities").insert({ org_id: org, lead_id: leadId || null, client_id: clientId || null, type: "מערכת", text: n === 1 ? "הועלה קובץ: " + ok[0].name : "הועלו " + n + " קבצים", by: "מערכת" });
+      toast(n === 1 ? "הקובץ הועלה" : n + " קבצים הועלו");
+      load();
+    }
+  }
+  async function openFile(d: Row, download = false) {
+    const { data, error } = await sb().storage.from("crm-docs").createSignedUrl(d.path, 300, download ? { download: d.title } : undefined);
+    if (error || !data) return toast("הקובץ לא נפתח: " + (error?.message || ""), true);
+    window.open(data.signedUrl, "_blank", "noopener");
+  }
+  async function removeFile(d: Row) {
+    if (!confirm("למחוק את הקובץ " + d.title + "?")) return;
+    const r = await sb().storage.from("crm-docs").remove([d.path]);
+    if (r.error) return toast("לא נמחק: " + r.error.message, true);
+    await sb().from("crm_documents").delete().eq("id", d.id);
+    load();
+  }
 
   async function save(doc: Row | null, form: IntakeForm, answers: Answers) {
     const { n, all } = filledCount(form, answers);
@@ -43,8 +90,22 @@ export function DocsBox({ leadId, clientId, who }: { leadId?: string; clientId?:
   }
 
   return (
-    <Panel icon="note" title="מסמכים ואפיונים" right={<button className="btn sm primary" onClick={() => setPick(true)}><Icon n="plus" s={15} />אפיון חדש</button>}>
+    <Panel icon="note" title="מסמכים ואפיונים" right={<div className="bar">
+      <input ref={fileRef} type="file" multiple hidden onChange={(e) => upload(e.target.files)} />
+      <button className="btn sm" disabled={!!upl} onClick={() => fileRef.current?.click()}><Icon n="upload" s={15} />{upl || "העלאת קובץ"}</button>
+      <button className="btn sm primary" onClick={() => setPick(true)}><Icon n="plus" s={15} />אפיון חדש</button>
+    </div>}>
       {!rows.length ? <Empty>אין מסמכים</Empty> : rows.map((d) => {
+        if (d.kind === "file" && d.path) return (
+          <div key={d.id} className="lrow">
+            <button className="grow linkish" onClick={() => openFile(d)} title="פתיחה">
+              <b>{d.title}</b><span className="meta">הועלה {fmtDate(d.created_at)}{d.size ? " · " + fileSize(d.size) : ""}</span>
+            </button>
+            <button className="btn icon sm ghost" title="הורדה" onClick={() => openFile(d, true)}><Icon n="download" s={15} /></button>
+            <button className="btn icon sm ghost" title="מחיקה" onClick={() => removeFile(d)}><Icon n="trash" s={15} /></button>
+            <St cls="">קובץ</St>
+          </div>
+        );
         const form = d.kind?.startsWith("intake:") ? formByKind(d.kind.slice(7)) : undefined;
         if (d.kind === "quote_signed" && d.quote_id) return (
           <Link key={d.id} href={"/quotes/" + d.quote_id} className="lrow link" style={{ textDecoration: "none", color: "inherit" }}>

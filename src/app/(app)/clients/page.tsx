@@ -48,7 +48,7 @@ export default function Clients() {
                     return (
                       <tr key={c.id} className="click" onClick={() => router.push("/clients/" + c.id)}>
                         <td><b>{c.biz}</b><div className="sub">{c.contact}{c.industry ? " · " + c.industry : ""}</div></td>
-                        <td><St cls={CLIENT_STATUS_CLS[c.status]}>{c.status}</St></td>
+                        <td><St cls={CLIENT_STATUS_CLS[c.status]}>{c.status}</St>{c.left_at ? <div className="sub">עזב {fmtDate(c.left_at)}</div> : null}</td>
                         <td>{monthly ? money(monthly) : "-"}</td>
                         <td>{open.length ? <span className={"meta" + (late ? " bad" : "")}>{money(open.reduce((a: number, p: Row) => a + Number(p.amount), 0))}</span> : "-"}</td>
                         <td><span className="meta">{ago(c.last_contact_at)}</span></td>

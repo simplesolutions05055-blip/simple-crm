@@ -70,8 +70,25 @@ function BusinessSection() {
           </div>
         </div>
       </Panel>
+      <ProductsPanel />
       <AgencyTab />
     </div>
+  );
+}
+
+function ProductsPanel() {
+  const { settings, saveSettings, toast } = useApp();
+  const [t, setT] = useState(settings.products.join("\n"));
+  const list = t.split("\n").map((x) => x.trim()).filter(Boolean);
+  const dirty = JSON.stringify(list) !== JSON.stringify(settings.products);
+  return (
+    <Panel icon="pkg" title="מוצרים ללקוחות">
+      <p className="tiny lead">הרשימה שמופיעה ב&quot;שיוך מוצר&quot; בכרטיס הלקוח. שורה לכל מוצר. אפשר תמיד לבחור גם &quot;אחר&quot;.</p>
+      <textarea className="inp" rows={7} value={t} onChange={(e) => setT(e.target.value)} />
+      <div className="bar" style={{ marginTop: 10 }}>
+        <button className="btn primary" disabled={!dirty || !list.length} onClick={async () => { if (await saveSettings({ products: [...new Set(list)] })) toast("רשימת המוצרים נשמרה"); }}><Icon n="check" s={16} />שמירה</button>
+      </div>
+    </Panel>
   );
 }
 

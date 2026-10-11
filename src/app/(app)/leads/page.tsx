@@ -22,7 +22,8 @@ export default function Leads() {
   const [region, setRegion] = useState("");
 
   const load = async () => {
-    const { data } = await sb().from("crm_leads").select("*").is("archived_at", null).order("created_at", { ascending: false });
+    // a lead in "לקוח" already lives under clients, so the board does not show it
+    const { data } = await sb().from("crm_leads").select("*").is("archived_at", null).neq("stage", "לקוח").order("created_at", { ascending: false });
     setRows(data || []);
   };
   useEffect(() => { load(); }, []);
@@ -38,6 +39,13 @@ export default function Leads() {
     const l = rows?.find((r) => r.id === id);
     if (!l || l.stage === stage) return;
     if (stage === "נפסל") return router.push("/leads/" + id + "?disq=1");
+    if (stage === "לקוח") {
+      setRows((rs) => rs!.filter((r) => r.id !== id));
+      const { error } = await sb().rpc("crm_lead_to_client", { p_lead: id });
+      if (error) { toast("לא נוצר לקוח: " + error.message, true); load(); return; }
+      toast(l.name + " הפך ללקוח. הוא נמצא עכשיו ברשימת הלקוחות.");
+      return;
+    }
     setRows((rs) => rs!.map((r) => (r.id === id ? { ...r, stage } : r)));
     const { error } = await sb().from("crm_leads").update({ stage }).eq("id", id);
     if (error) { toast(error.message, true); load(); return; }
@@ -62,14 +70,15 @@ export default function Leads() {
           </select>
           <label className="pillck"><input type="checkbox" checked={showOff} onChange={(e) => setShowOff(e.target.checked)} />להציג גם &quot;לא עכשיו&quot; ו&quot;נפסל&quot;</label>
         </div>
-        <div className="kanban" style={{ gridTemplateColumns: `repeat(${cols.length},minmax(220px,1fr))` }}>
+        <div className="kanban" style={{ gridTemplateColumns: cols.map((c) => (c === "לקוח" ? "minmax(120px,.55fr)" : "minmax(170px,1fr)")).join(" ") }}>
           {cols.map((s) => {
             const list = filtered.filter((l) => l.stage === s);
             return (
               <div key={s} className={"kcol" + (over === s ? " over" : "")}
                 onDragOver={(e) => { e.preventDefault(); setOver(s); }} onDragLeave={() => setOver(null)}
                 onDrop={(e) => { e.preventDefault(); setOver(null); move(e.dataTransfer.getData("id"), s); }}>
-                <h3>{s}<span className="n">{list.length}</span></h3>
+                <h3>{s}{s === "לקוח" ? null : <span className="n">{list.length}</span>}</h3>
+                {s === "לקוח" ? <div className="kdrop">גוררים לכאן<br />והליד הופך ללקוח</div> : null}
                 {list.map((l) => {
                   const late = l.next_at && l.next_at < today();
                   const untouched = l.stage === "חדש" && !l.last_contact_at;

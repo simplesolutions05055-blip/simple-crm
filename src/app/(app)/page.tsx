@@ -6,21 +6,22 @@ import { Top, Panel, St, Empty } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import { STAGES, today, fmtDate, money, ago, QUOTE_STATUS_CLS, type Row } from "@/lib/crm";
 import { useApp } from "@/components/AppCtx";
+import { StopAlerts, needsStop } from "@/components/ClientProducts";
 
 export default function Dashboard() {
   const { settings } = useApp();
   const [d, setD] = useState<Row | null>(null);
 
-  useEffect(() => {
-    (async () => {
+  const load = async () => {
       const t = today();
       const since = new Date(Date.now() - 7 * 86400000).toISOString();
-      const [leads, tasks, quotes, pays, services] = await Promise.all([
+      const [leads, tasks, quotes, pays, services, sup] = await Promise.all([
         sb().from("crm_leads").select("id,name,biz,stage,created_at,next_step,next_at,last_contact_at").is("archived_at", null),
         sb().from("crm_tasks").select("id,title,due_date,lead_id,client_id").eq("done", false).lte("due_date", t).order("due_date"),
         sb().from("crm_quotes").select("id,no,status,views,sent_at,totals,lead:crm_leads(name,biz),client:crm_clients(biz)").in("status", ["נשלחה", "נצפתה"]).order("sent_at", { ascending: false }),
         sb().from("crm_payments").select("id,what,amount,due,client:crm_clients(id,biz)").is("paid_at", null).lte("due", t).order("due"),
         sb().from("crm_client_services").select("price,billing,status,client:crm_clients(status)").eq("billing", "חודשי").eq("status", "פעיל"),
+        sb().from("crm_client_services").select("*,client:crm_clients(id,biz,status,left_at),supplier:crm_suppliers(id,name)").eq("supplier_billing", "חודשי").eq("supplier_active", true).eq("supplier_keep", false),
       ]);
       const L = leads.data || [];
       const mrr = (services.data || []).filter((s: Row) => s.client && ["בקליטה", "פעיל", "בסיכון"].includes(s.client.status)).reduce((a: number, s: Row) => a + Number(s.price), 0);
@@ -33,9 +34,10 @@ export default function Dashboard() {
         quotes: quotes.data || [],
         pays: pays.data || [],
         mrr,
+        stop: (sup.data || []).filter((x: Row) => needsStop(x)),
       });
-    })();
-  }, []);
+  };
+  useEffect(() => { load(); }, []);
 
   if (!d) return <><Top title="לוח בקרה" /><div className="content"><div className="loading" style={{ minHeight: 200 }}>טוען…</div></div></>;
   const maxPipe = Math.max(1, ...d.pipe.map((p: Row) => p.n));
@@ -51,6 +53,8 @@ export default function Dashboard() {
           <Kpi icon="repeat" v={money(d.mrr)} l='הכנסה חודשית קבועה, לפני מע"מ' c="var(--ok)" href="/clients" />
           <Kpi icon="wallet" v={d.pays.length ? money(overdueSum) : "0"} l="תשלומים שמועדם עבר" c={d.pays.length ? "var(--bad)" : "var(--muted)"} href="/clients" />
         </div>
+
+        <StopAlerts rows={d.stop} showClient onDone={load} />
 
         <Panel icon="trend" title="צינור הלידים" right={<Link className="btn sm" href="/leads">ללוח הלידים</Link>}>
           <div className="pipe">

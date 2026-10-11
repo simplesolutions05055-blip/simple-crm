@@ -1,16 +1,17 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { sb } from "@/lib/supabase/browser";
-import { Top, Panel, St, Empty } from "@/components/Shell";
+import { Top, Panel, St, Empty, Modal } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
 import { EditField, FieldRow, CustomFields, LinksBox, ActivityLog, QuotesBox, TasksBox, type CField } from "@/components/Blocks";
 import { AccessBox, VaultBox } from "@/components/ClientAccess";
 import WaBox from "@/components/WaBox";
 import { DocsBox } from "@/components/DocsBox";
-import { CLIENT_STATUS, CLIENT_STATUS_CLS, INDUSTRIES, fmtDate, money, today, waLink, type Row } from "@/lib/crm";
+import ClientProducts, { monthlyOf } from "@/components/ClientProducts";
+import { STAGES, CLIENT_STATUS, CLIENT_STATUS_CLS, INDUSTRIES, fmtDate, money, today, waLink, type Row } from "@/lib/crm";
 
 export default function ClientPage() {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +21,8 @@ export default function ClientPage() {
   const [svc, setSvc] = useState<Row[]>([]);
   const [pays, setPays] = useState<Row[]>([]);
   const [tick, setTick] = useState(0);
+  const [back, setBack] = useState(false);
+  const router = useRouter();
 
   const load = async () => {
     const [a, b, s, p] = await Promise.all([
@@ -43,15 +46,16 @@ export default function ClientPage() {
   if (!c) return <><Top title="לקוח" crumb={{ href: "/clients", label: "לקוחות" }} /><div className="loading" style={{ minHeight: 200 }}>טוען…</div></>;
   const custom = (c.custom || {}) as { info?: CField[]; links?: CField[] };
   const done = onb.filter((o) => o.done).length;
-  const monthly = svc.filter((s) => s.billing === "חודשי" && s.status === "פעיל").reduce((a, s) => a + Number(s.price), 0);
+  const monthly = svc.filter((s) => s.status === "פעיל").reduce((a, s) => a + monthlyOf(s), 0);
   const vat = settings.vat / 100;
 
   return (
     <>
-      <Top title={c.biz} crumb={{ href: "/clients", label: "לקוחות" }} sub={<>{c.contact}{c.industry ? " · " + c.industry : ""} · לקוח מאז {fmtDate(c.since)}</>}
+      <Top title={c.biz} crumb={{ href: "/clients", label: "לקוחות" }} sub={<>{c.contact}{c.industry ? " · " + c.industry : ""} · לקוח מאז {fmtDate(c.since)}{c.left_at ? " · עזב " + fmtDate(c.left_at) : ""}</>}
         right={<div className="bar">
-          <select className="inp sm" style={{ width: 130 }} value={c.status} onChange={(e) => save({ status: e.target.value }, "סטטוס: " + c.status + " ← " + e.target.value)}>
+          <select className="inp sm" style={{ width: 150 }} value={c.status} onChange={(e) => e.target.value === "__lead" ? setBack(true) : save({ status: e.target.value }, "סטטוס: " + c.status + " ← " + e.target.value)}>
             {CLIENT_STATUS.map((s) => <option key={s}>{s}</option>)}
+            <option value="__lead">↩ החזרה ללידים</option>
           </select>
           {c.wa_group ? <a className="btn wa" href={c.wa_group} target="_blank" rel="noreferrer"><Icon n="wa" s={16} />קבוצת הלקוח</a>
             : c.phone ? <a className="btn wa" href={waLink(c.phone, "היי " + (c.contact || "").split(" ")[0] + ", ")} target="_blank" rel="noreferrer"><Icon n="wa" s={16} />וואטסאפ</a> : null}
@@ -92,20 +96,7 @@ export default function ClientPage() {
               }}><Icon n="plus" s={15} />יצירת רשימת קליטה</button> : null}
             </Panel>
 
-            <Panel icon="pkg" title="שירותים">
-              {!svc.length ? <Empty>אין שירותים. הם נוצרים לבד כשהלקוח חותם על הצעה.</Empty> : svc.map((s) => (
-                <div className="lrow" key={s.id}>
-                  <span className="grow"><b>{s.name}</b><span className="meta">{s.billing} · מ-{fmtDate(s.start_date)}{s.end_date ? " עד " + fmtDate(s.end_date) : ""}</span></span>
-                  <b>{money(s.price)}</b>
-                  <select className="inp sm" style={{ width: 100 }} value={s.status} onChange={async (e) => {
-                    const patch: Row = { status: e.target.value };
-                    if (e.target.value === "הסתיים" && !s.end_date) patch.end_date = today();
-                    await sb().from("crm_client_services").update(patch).eq("id", s.id); load();
-                  }}>{["פעיל", "מושהה", "הסתיים"].map((x) => <option key={x}>{x}</option>)}</select>
-                </div>
-              ))}
-              <AddService clientId={id} onDone={load} />
-            </Panel>
+            <ClientProducts clientId={id} client={c} svc={svc} onDone={load} />
 
             <Panel icon="wallet" title="תשלומים" right={<span className="tiny">סכומים כולל מע&quot;מ</span>}>
               {!pays.length ? <Empty>אין תשלומים</Empty> : pays.map((p) => {
@@ -154,29 +145,32 @@ export default function ClientPage() {
           </div>
         </div>
       </div>
+      {back ? <BackToLeads biz={c.biz} onClose={() => setBack(false)} onGo={async (stage) => {
+        const { data, error } = await sb().rpc("crm_client_to_lead", { p_client: id, p_stage: stage });
+        if (error) return toast("לא הוחזר: " + error.message, true);
+        toast(c.biz + " הוחזר לרשימת הלידים");
+        router.push("/leads/" + data);
+      }} /> : null}
     </>
   );
 }
 
-function AddService({ clientId, onDone }: { clientId: string; onDone: () => void }) {
-  const { org, toast } = useApp();
-  const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ name: "", billing: "חודשי", price: "" });
-  if (!open) return <button className="add" onClick={() => setOpen(true)}><Icon n="plus" s={15} />הוספת שירות</button>;
+function BackToLeads({ biz, onClose, onGo }: { biz: string; onClose: () => void; onGo: (stage: string) => void }) {
+  const [stage, setStage] = useState("הצעה נשלחה");
+  const [busy, setBusy] = useState(false);
   return (
-    <div className="f3" style={{ gridTemplateColumns: "1fr 110px 100px auto", marginTop: 10 }}>
-      <input className="inp sm" placeholder="שם השירות" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
-      <select className="inp sm" value={f.billing} onChange={(e) => setF({ ...f, billing: e.target.value })}><option>חודשי</option><option>חד-פעמי</option></select>
-      <input className="inp sm" type="number" placeholder="מחיר" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} />
-      <button className="btn sm primary" onClick={async () => {
-        if (!f.name.trim()) return;
-        const { error } = await sb().from("crm_client_services").insert({ org_id: org, client_id: clientId, name: f.name.trim(), billing: f.billing, price: Number(f.price) || 0 });
-        if (error) return toast(error.message, true);
-        setOpen(false); setF({ name: "", billing: "חודשי", price: "" }); onDone();
-      }}>הוספה</button>
-    </div>
+    <Modal title={"להחזיר את " + biz + " לרשימת הלידים?"} icon="target" onClose={onClose}>
+      <label className="field"><span>לאיזה שלב בפייפליין</span>
+        <select className="inp" value={stage} onChange={(e) => setStage(e.target.value)}>
+          {[...STAGES.filter((s) => s !== "לקוח"), "לא עכשיו"].map((s) => <option key={s}>{s}</option>)}
+        </select>
+      </label>
+      <p className="tiny" style={{ margin: 0 }}>כרטיס הלקוח יוסתר מרשימת הלקוחות. השירותים, התשלומים וההצעות שלו נשמרים. אם הליד יחזור להיות לקוח, אותו כרטיס יחזור.</p>
+      <div className="bar"><button className="btn primary" disabled={busy} onClick={async () => { setBusy(true); await onGo(stage); setBusy(false); }}>החזרה ללידים</button><button className="btn ghost" onClick={onClose}>ביטול</button></div>
+    </Modal>
   );
 }
+
 
 function AddPayment({ clientId, vat, onDone }: { clientId: string; vat: number; onDone: () => void }) {
   const { org, toast } = useApp();
