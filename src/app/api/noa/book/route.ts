@@ -40,11 +40,12 @@ export async function POST(req: NextRequest) {
   const token = tj.access_token as string;
 
   try {
-    const fb = await gapi(token, "/freeBusy", {
-      method: "POST",
-      body: JSON.stringify({ timeMin: start, timeMax: end, timeZone: "Asia/Jerusalem", items: [{ id: "primary" }] }),
-    });
-    const busy = (fb?.calendars?.primary?.busy || []) as unknown[];
+    // the CRM's scope is calendar.events (no freeBusy), so read the events in the slot instead.
+    // all-day events and events marked "free" do not block a call.
+    const qs = new URLSearchParams({ timeMin: start, timeMax: end, singleEvents: "true", maxResults: "20" });
+    const list = await gapi(token, "/calendars/primary/events?" + qs.toString());
+    const busy = ((list?.items || []) as { status?: string; transparency?: string; start?: { dateTime?: string } }[])
+      .filter((e) => e.status !== "cancelled" && e.transparency !== "transparent" && !!e.start?.dateTime);
     if (busy.length) {
       if (taskId) await db.rpc("noa_task_booked", { p_secret: secret, p_task: taskId, p_event: null, p_booked: false });
       return NextResponse.json({ ok: true, booked: false });
