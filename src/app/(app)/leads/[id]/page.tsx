@@ -18,6 +18,8 @@ export default function LeadPage() {
   const { org, toast } = useApp();
   const [l, setL] = useState<Row | null>(null);
   const [disq, setDisq] = useState(false);
+  const [del, setDel] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [logTick, setLogTick] = useState(0);
 
   useEffect(() => {
@@ -41,6 +43,29 @@ export default function LeadPage() {
     if (error) return toast("לא נוצר לקוח: " + error.message, true);
     toast(l!.name + " הפך ללקוח");
     router.push("/clients/" + data);
+  }
+
+  // permanent delete: removes the lead with its quotes, tasks, messages and history (documents stay, unlinked)
+  async function deleteForever() {
+    if (l?.client_id) return toast("הליד כבר הפך ללקוח, ולכן אי אפשר למחוק אותו לצמיתות", true);
+    setDeleting(true);
+    const db = sb();
+    const { data: qs } = await db.from("crm_quotes").select("id").eq("lead_id", id);
+    const qids = (qs || []).map((q: Row) => q.id);
+    if (qids.length) {
+      await db.from("crm_documents").update({ quote_id: null }).in("quote_id", qids);
+      await db.from("crm_quotes").update({ replaced_by: null }).in("replaced_by", qids);
+      const r = await db.from("crm_quotes").delete().eq("lead_id", id);
+      if (r.error) { setDeleting(false); return toast("לא נמחק: " + r.error.message, true); }
+    }
+    await db.from("crm_tasks").delete().eq("lead_id", id);
+    await db.from("crm_wa_messages").delete().eq("lead_id", id);
+    await db.from("crm_ai_suggestions").delete().eq("lead_id", id);
+    const { error } = await db.from("crm_leads").delete().eq("id", id);
+    setDeleting(false);
+    if (error) return toast("לא נמחק: " + error.message, true);
+    toast(l!.name + " נמחק לצמיתות");
+    router.push("/leads");
   }
 
   if (!l) return <><Top title="ליד" crumb={{ href: "/leads", label: "לידים" }} /><div className="loading" style={{ minHeight: 200 }}>טוען…</div></>;
@@ -67,10 +92,12 @@ export default function LeadPage() {
             ))}
           </ol>
           <div className="bar" style={{ marginTop: 14, justifyContent: "flex-end" }}>
-            {l.stage === "לא עכשיו" || l.stage === "נפסל" ? <St cls={l.stage === "נפסל" ? "bad" : "warn"}>{l.stage}{l.reason ? ": " + l.reason : ""}</St> : null}
+            {l.stage === "לא עכשיו" || l.stage === "נפסל" || l.stage === "סגירת פנייה" ? <St cls={l.stage === "נפסל" ? "bad" : l.stage === "סגירת פנייה" ? "ok" : "warn"}>{l.stage}{l.reason ? ": " + l.reason : ""}</St> : null}
             <button className="btn sm" onClick={() => save({ stage: "לא עכשיו" }, "שלב: לא עכשיו")}>לא עכשיו</button>
+            <button className="btn sm" onClick={() => save({ stage: "סגירת פנייה" }, "שלב: " + l.stage + " ← סגירת פנייה")}>סגירת פנייה</button>
             <button className="btn sm danger" onClick={() => setDisq(true)}>פסילה</button>
             <button className="btn sm ghost" onClick={async () => { if (!confirm("להעביר את הליד לארכיון?")) return; await save({ archived_at: new Date().toISOString() }); router.push("/leads"); }}>ארכיון</button>
+            <button className="btn sm danger" onClick={() => setDel(true)}>מחיקה לצמיתות</button>
           </div>
         </Panel>
 
@@ -142,6 +169,16 @@ export default function LeadPage() {
             {DISQ.map((r) => (
               <button key={r} className="btn sm" onClick={async () => { await save({ stage: "נפסל", reason: r }, "נפסל: " + r); setDisq(false); }}>{r}</button>
             ))}
+          </div>
+        </Modal>
+      ) : null}
+      {del ? (
+        <Modal title="מחיקה לצמיתות" icon="x" onClose={() => !deleting && setDel(false)}>
+          <p style={{ margin: 0 }}>הליד <b>{l.name}</b> יימחק לגמרי, יחד עם הצעות המחיר, המשימות, ההודעות וההיסטוריה שלו.</p>
+          <p style={{ margin: "8px 0 0", color: "var(--soft)" }}>אי אפשר לשחזר את זה. אם רק רוצים להוריד אותו מהלוח, עדיף &quot;סגירת פנייה&quot; או ארכיון.</p>
+          <div className="bar" style={{ marginTop: 14 }}>
+            <button className="btn danger" disabled={deleting} onClick={deleteForever}>{deleting ? "מוחק…" : "כן, למחוק לצמיתות"}</button>
+            <button className="btn ghost" disabled={deleting} onClick={() => setDel(false)}>ביטול</button>
           </div>
         </Modal>
       ) : null}

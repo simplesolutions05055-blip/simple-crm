@@ -66,7 +66,7 @@ function NewQuote({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     (async () => {
       const [l, c] = await Promise.all([
-        sb().from("crm_leads").select("id,name,biz,stage").is("archived_at", null).not("stage", "in", "(לקוח,נפסל)").order("created_at", { ascending: false }),
+        sb().from("crm_leads").select("id,name,biz,stage").is("archived_at", null).not("stage", "in", "(לקוח,נפסל,סגירת פנייה)").order("created_at", { ascending: false }),
         sb().from("crm_clients").select("id,biz").is("archived_at", null).order("biz"),
       ]);
       setOpts([...(l.data || []).map((x: Row) => ({ v: "l:" + x.id, l: "ליד · " + x.name + (x.biz ? " · " + x.biz : "") + " (" + x.stage + ")" })), ...(c.data || []).map((x: Row) => ({ v: "c:" + x.id, l: "לקוח · " + x.biz }))]);

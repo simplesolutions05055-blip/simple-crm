@@ -68,7 +68,7 @@ export default function Leads() {
           <select className="inp" style={{ maxWidth: 200 }} value={region} onChange={(e) => setRegion(e.target.value)} aria-label="אזור">
             <option value="">כל האזורים</option>{REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}<option value="-">בלי אזור</option>
           </select>
-          <label className="pillck"><input type="checkbox" checked={showOff} onChange={(e) => setShowOff(e.target.checked)} />להציג גם &quot;לא עכשיו&quot; ו&quot;נפסל&quot;</label>
+          <label className="pillck"><input type="checkbox" checked={showOff} onChange={(e) => setShowOff(e.target.checked)} />להציג גם &quot;לא עכשיו&quot;, &quot;נפסל&quot; ו&quot;סגירת פנייה&quot;</label>
         </div>
         <div className="kanban" style={{ gridTemplateColumns: cols.map((c) => (c === "לקוח" ? "minmax(120px,.55fr)" : "minmax(170px,1fr)")).join(" ") }}>
           {cols.map((s) => {
@@ -137,7 +137,7 @@ function Archive({ onBack }: { onBack: () => void }) {
                     <td><Link href={"/leads/" + l.id}><b>{l.name}</b></Link></td>
                     <td>{l.biz || ""}{l.industry ? <span className="meta"> · {l.industry}</span> : null}</td>
                     <td className="ltr" style={{ textAlign: "right" }}>{l.phone || ""}</td>
-                    <td><St cls={l.stage === "נפסל" ? "bad" : undefined}>{l.stage}</St>{l.reason ? <span className="meta" style={{ display: "block" }}>{l.reason}</span> : null}</td>
+                    <td><St cls={l.stage === "נפסל" ? "bad" : l.stage === "סגירת פנייה" ? "ok" : undefined}>{l.stage}</St>{l.reason ? <span className="meta" style={{ display: "block" }}>{l.reason}</span> : null}</td>
                     <td className="meta">{fmtDate(l.archived_at)}</td>
                     <td style={{ whiteSpace: "nowrap" }}>
                       <button className="btn sm" onClick={() => restore(l)}><Icon n="reset" s={14} />החזרה ללידים</button>

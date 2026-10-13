@@ -29,7 +29,7 @@ export default function Dashboard() {
         newLeads: L.filter((l: Row) => l.created_at >= since).length,
         untouched: L.filter((l: Row) => l.stage === "חדש" && !l.last_contact_at),
         pipe: STAGES.map((s) => ({ s, n: L.filter((l: Row) => l.stage === s).length })),
-        next: L.filter((l: Row) => l.next_at && l.next_at <= t && !["לקוח", "נפסל"].includes(l.stage)).sort((a: Row, b: Row) => a.next_at.localeCompare(b.next_at)),
+        next: L.filter((l: Row) => l.next_at && l.next_at <= t && !["לקוח", "נפסל", "סגירת פנייה"].includes(l.stage)).sort((a: Row, b: Row) => a.next_at.localeCompare(b.next_at)),
         tasks: tasks.data || [],
         quotes: quotes.data || [],
         pays: pays.data || [],
