@@ -56,6 +56,7 @@ export default function Dashboard() {
 
         <StopAlerts rows={d.stop} showClient onDone={load} />
         <IntakeAlerts />
+        <SocialCard />
 
         <Panel icon="trend" title="צינור הלידים" right={<Link className="btn sm" href="/leads">ללוח הלידים</Link>}>
           <div className="pipe">
@@ -156,5 +157,26 @@ function IntakeAlerts() {
         );
       })}
     </Panel>
+  );
+}
+
+/* the weekly social scan is ready */
+function SocialCard() {
+  const [r, setR] = useState<Row | null>(null);
+  useEffect(() => {
+    const since = new Date(Date.now() - 7 * 864e5).toISOString();
+    sb().from("crm_social_reports").select("id,scanned_at,recommendations,trends,updates").gte("scanned_at", since).order("scanned_at", { ascending: false }).limit(1)
+      .then(({ data }: { data: Row[] | null }) => setR((data || [])[0] || null));
+  }, []);
+  if (!r) return null;
+  const n = (x: unknown) => (Array.isArray(x) ? x.length : 0);
+  const open = (Array.isArray(r.recommendations) ? r.recommendations : []).filter((x: Row) => !x.task_id).length;
+  return (
+    <Link href="/social" className="panel lrow link" style={{ textDecoration: "none", color: "inherit" }}>
+      <span className="ic-alert" style={{ color: "var(--gold)" }}><Icon n="star" s={16} /></span>
+      <span className="grow"><b>המלצות השבוע לסושיאל מוכנות</b>
+        <span className="meta">{n(r.recommendations)} המלצות{open ? " · " + open + " עוד לא במשימות" : ""} · {n(r.trends)} טרנדים · {n(r.updates)} עדכוני פלטפורמה</span></span>
+      <St cls="gold">חדש</St>
+    </Link>
   );
 }
