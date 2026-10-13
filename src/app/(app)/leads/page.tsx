@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { REGIONS, CITIES, regionOf, placeLabel } from "@/lib/regions";
+import { REGIONS, CITIES, regionOf } from "@/lib/regions";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { sb } from "@/lib/supabase/browser";
@@ -8,7 +8,7 @@ import { Top, Modal, St } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
 import ExcelIO from "@/components/ExcelIO";
-import { STAGES, OFF_STAGES, SOURCES, INDUSTRIES, BUDGETS, ago, fmtDate, today, money, FIT, type Row } from "@/lib/crm";
+import { STAGES, OFF_STAGES, SOURCES, INDUSTRIES, BUDGETS, fmtDate, today, type Row } from "@/lib/crm";
 
 export default function Leads() {
   const { org, toast } = useApp();
@@ -85,16 +85,9 @@ export default function Leads() {
                   return (
                     <Link key={l.id} href={"/leads/" + l.id} draggable onDragStart={(e) => e.dataTransfer.setData("id", l.id)}
                       className={"kcard" + (late || untouched ? " alert" : "")} style={{ textDecoration: "none" }}>
-                      <div className="kf"><b>{l.name}</b><span className="dots" title="התאמה">{FIT.map(([k]) => <i key={k} className={l.fit?.[k] ? "on" : ""} />)}</span></div>
-                      {l.biz ? <span className="sub">{l.biz}{l.industry ? " · " + l.industry : ""}</span> : null}
-                      {l.city || l.region ? <span className="meta"><Icon n="pin" s={13} />{placeLabel(l.city, l.region)}</span> : null}
-                      <div className="kf">
-                        <span className="meta">{l.source}</span>
-                        {l.value ? <span className="meta">{money(l.value)}</span> : null}
-                      </div>
-                      {l.next_step ? <span className={"meta" + (late ? " bad" : "")}><Icon n="flag" s={13} />{l.next_step}{l.next_at ? " · " + fmtDate(l.next_at) : ""}</span>
-                        : untouched ? <span className="meta bad"><Icon n="alert" s={13} />לא נוצר קשר · {ago(l.created_at)}</span> : null}
-                      {l.reason && l.stage === "נפסל" ? <St cls="bad">{l.reason}</St> : null}
+                      <b className="kname">{l.name || l.biz || "ללא שם"}</b>
+                      {l.phone ? <span className="meta" dir="ltr" style={{ alignSelf: "flex-start" }}>{l.phone}</span> : <span className="meta faint">אין טלפון</span>}
+                      <span className="sub">{l.industry || <span className="faint">סוג העסק לא צוין</span>}</span>
                     </Link>
                   );
                 })}
@@ -102,7 +95,7 @@ export default function Leads() {
             );
           })}
         </div>
-        <p className="tiny">גוררים כרטיס בין העמודות כדי לשנות שלב. הנקודות בכרטיס הן ההתאמה לפי 5 הקריטריונים.</p>
+        <p className="tiny">גוררים כרטיס בין העמודות כדי לשנות שלב.</p>
       </div>
       {adding ? <NewLead onClose={() => setAdding(false)} onDone={(id) => router.push("/leads/" + id)} /> : null}
     </>

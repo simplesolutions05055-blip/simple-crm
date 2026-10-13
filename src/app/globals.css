@@ -572,3 +572,5 @@ b.bad{color:var(--bad)}
 .iempty{font-size:13px;color:var(--faint)}
 .iplat{font-weight:600;color:var(--gold);border-style:dashed}
 .ifields.ro .pills:empty{display:none}
+.kcard .kname{font-size:14.5px}
+.kcard .faint{color:var(--faint)}
