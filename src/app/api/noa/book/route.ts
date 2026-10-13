@@ -42,10 +42,17 @@ export async function POST(req: NextRequest) {
   try {
     // the CRM's scope is calendar.events (no freeBusy), so read the events in the slot instead.
     // all-day events and events marked "free" do not block a call.
-    const qs = new URLSearchParams({ timeMin: start, timeMax: end, singleEvents: "true", maxResults: "20" });
+    // Maor's rule: keep 30 minutes free before and after every call.
+    const GAP = 30 * 60000;
+    const winMin = new Date(Date.parse(start) - GAP).toISOString();
+    const winMax = new Date(Date.parse(end) + GAP).toISOString();
+    const qs = new URLSearchParams({ timeMin: winMin, timeMax: winMax, singleEvents: "true", maxResults: "20" });
     const list = await gapi(token, "/calendars/primary/events?" + qs.toString());
-    const busy = ((list?.items || []) as { status?: string; transparency?: string; start?: { dateTime?: string } }[])
+    const busy: unknown[] = ((list?.items || []) as { id?: string; status?: string; transparency?: string; start?: { dateTime?: string } }[])
       .filter((e) => e.status !== "cancelled" && e.transparency !== "transparent" && !!e.start?.dateTime);
+    // timed CRM tasks that never reached the calendar count too
+    const { data: clash } = await db.rpc("noa_slot_conflict", { p_secret: secret, p_start: start, p_end: end, p_exclude: taskId || null });
+    if (clash) busy.push("crm_task");
     if (busy.length) {
       if (taskId) await db.rpc("noa_task_booked", { p_secret: secret, p_task: taskId, p_event: null, p_booked: false });
       return NextResponse.json({ ok: true, booked: false });
