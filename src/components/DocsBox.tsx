@@ -6,8 +6,8 @@ import { Panel, Modal, St, Empty } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
 import { fmtDate, appUrl, waLink, fillTemplate, waTemplates, type Row } from "@/lib/crm";
-import IntakeFields from "@/components/IntakeFields";
-import { INTAKE_FORMS, formByKind, formText, filledCount, type Answers, type IntakeForm } from "@/lib/intake-forms";
+import IntakeFields, { type SecretApi } from "@/components/IntakeFields";
+import { INTAKE_FORMS, formByKind, formText, filledCount, type Answers, type AnswerValue, type IntakeForm } from "@/lib/intake-forms";
 import { clientForms, clientFormByKind, newToken, intakeStatus, autoBrief, INTAKE_MSG_DEFAULT } from "@/lib/client-forms";
 
 const MAX_FILE = 25 * 1024 * 1024;
@@ -40,7 +40,7 @@ export function DocsBox({ leadId, clientId, who }: { leadId?: string; clientId?:
   const [open, setOpen] = useState<{ doc: Row | null; form: IntakeForm } | null>(null);
 
   const load = async () => {
-    let q = sb().from("crm_documents").select("id,kind,title,data,quote_id,path,size,mime,created_at,updated_at,token,sent_at,opened_at,submitted_at,views").order("created_at", { ascending: false });
+    let q = sb().from("crm_documents").select("id,kind,title,data,quote_id,path,size,mime,created_at,updated_at,token,sent_at,opened_at,submitted_at,views,reopened_at").order("created_at", { ascending: false });
     if (leadId && clientId) q = q.or(`lead_id.eq.${leadId},client_id.eq.${clientId}`);
     else if (leadId) q = q.eq("lead_id", leadId);
     else q = q.eq("client_id", clientId!);
@@ -148,6 +148,14 @@ export function DocsBox({ leadId, clientId, who }: { leadId?: string; clientId?:
   async function copyLink(d: Row) {
     try { await navigator.clipboard.writeText(linkOf(d)); toast("הקישור הועתק"); } catch { toast(linkOf(d)); }
   }
+  async function reopen(d: Row) {
+    if (!confirm("לפתוח ללקוח את \"" + d.title + "\" למילוי חוזר? הוא ימשיך מאיפה שעצר, עם כל התשובות.")) return;
+    const { error } = await sb().from("crm_documents").update({ submitted_at: null, reopened_at: new Date().toISOString() }).eq("id", d.id);
+    if (error) return toast("לא נפתח: " + error.message, true);
+    await sb().from("crm_activities").insert({ org_id: org, lead_id: leadId || null, client_id: clientId || null, type: "מערכת", text: "נפתח למילוי חוזר: " + d.title, by: "מאור" });
+    toast("נפתח למילוי. אפשר לשלוח ללקוח את הקישור שוב");
+    load();
+  }
   function formOf(d: Row): IntakeForm | undefined {
     const k = d.kind?.startsWith("intake:") ? d.kind.slice(7) : "";
     if (!k) return undefined;
@@ -185,10 +193,11 @@ export function DocsBox({ leadId, clientId, who }: { leadId?: string; clientId?:
             <button className="grow linkish" onClick={() => form && setOpen({ doc: d, form })} title="פתיחה">
               <b>{d.title}</b>
               <span className="meta">נשלח {fmtDate(d.sent_at || d.created_at)}
-                {d.submitted_at ? " · מולא " + fmtDate(d.submitted_at) : d.opened_at ? " · נפתח" + (d.views > 1 ? " " + d.views + " פעמים" : "") : ""}
+                {d.submitted_at ? " · מולא " + fmtDate(d.submitted_at) + " · נעול" : d.reopened_at ? " · נפתח שוב למילוי " + fmtDate(d.reopened_at) : d.opened_at ? " · נפתח" + (d.views > 1 ? " " + d.views + " פעמים" : "") : ""}
                 {d.data?.total ? " · " + (d.data.filled || 0) + " מתוך " + d.data.total : ""}</span>
             </button>
             {d.kind === "intake:c_auto" && d.data?.filled ? <button className="btn icon sm ghost" title="הורדה כקובץ ל-Claude Code" onClick={() => downloadBrief(d, form!, who)}><Icon n="download" s={15} /></button> : null}
+            {d.submitted_at ? <button className="btn sm ghost" title="הלקוח יוכל להיכנס שוב לקישור ולהמשיך מאיפה שעצר" onClick={() => reopen(d)}><Icon n="reset" s={15} />פתיחה למילוי חוזר</button> : null}
             {!d.submitted_at ? <>
               <button className="btn icon sm ghost" title="העתקת הקישור" onClick={() => copyLink(d)}><Icon n="copy" s={15} /></button>
               <button className="btn icon sm ghost" title="שליחה שוב בוואטסאפ" onClick={() => deliver(d, true)}><Icon n="wa" s={15} /></button>
@@ -237,21 +246,33 @@ export function DocsBox({ leadId, clientId, who }: { leadId?: string; clientId?:
 }
 
 function FormModal({ doc, form, who, onSave, onClose }: { doc: Row | null; form: IntakeForm; who: string; onSave: (a: Answers) => Promise<boolean>; onClose: () => void }) {
-  const [a, setA] = useState<Answers>(() => (doc?.data?.answers as Answers) || {});
+  const start = (doc?.data?.answers as Answers) || {};
+  const [a, setA] = useState<Answers>(start);
+  const [ro, setRo] = useState(!!doc?.id); // an existing document opens read only, "עריכה" unlocks it
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
-  const set = (id: string, v: Answers[string]) => { setA((x) => ({ ...x, [id]: v })); setDirty(true); };
+  const set = (id: string, v: AnswerValue) => { setA((x) => ({ ...x, [id]: v })); setDirty(true); };
   const close = () => { if (dirty && !confirm("יש שינויים שלא נשמרו. לסגור בלי לשמור?")) return; onClose(); };
   const { n, all } = filledCount(form, a);
+  const secret: SecretApi | undefined = doc?.id ? {
+    save: async (key, label, url, user, value) => {
+      const { error } = await sb().rpc("crm_intake_set_secret", { p_doc: doc.id, p_key: key, p_label: label, p_url: url, p_user: user, p_value: value });
+      return !error;
+    },
+    reveal: async (key) => {
+      const { data, error } = await sb().rpc("crm_intake_reveal", { p_doc: doc.id, p_key: key });
+      return error ? null : (data as string | null);
+    },
+  } : undefined;
 
   return (
     <Modal title={form.title} icon="note" onClose={close} wide>
-      <p className="tiny" style={{ margin: 0 }}>{form.intro} · מולאו {n} מתוך {all}</p>
+      <p className="tiny" style={{ margin: 0 }}>{form.intro} · מולאו {n} מתוך {all}{doc?.submitted_at ? " · הלקוח שלח, נעול אצלו" : ""}</p>
       {form.sections.map((s) => (
         <div key={s.title} style={s.internal ? { border: "2px dashed var(--gold-2)", borderRadius: 12, padding: 12 } : undefined}>
           <h3 style={{ fontSize: 15, margin: "4px 0 10px" }}>{s.title}{s.internal ? <span className="tiny"> · לא נשלח ללקוח</span> : null}</h3>
-          <IntakeFields fields={s.fields} a={a} set={set} name={form.kind} onOpenFile={openStored} />
+          <IntakeFields fields={s.fields} a={a} set={set} name={form.kind} onOpenFile={openStored} secret={secret} ro={ro} />
         </div>
       ))}
       <div className="bar" style={{ position: "sticky", bottom: -24, background: "var(--surface)", padding: "12px 0 0", justifyContent: "flex-end" }}>
@@ -259,10 +280,15 @@ function FormModal({ doc, form, who, onSave, onClose }: { doc: Row | null; form:
           try { await navigator.clipboard.writeText(formText(form, a, who)); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* clipboard blocked */ }
         }}><Icon n="copy" s={15} />{copied ? "הועתק" : "העתקה למשרד"}</button>
         {doc?.kind === "intake:c_auto" ? <button className="btn sm ghost" onClick={() => downloadBrief({ ...doc, data: { ...(doc.data || {}), answers: a } }, form, who)}><Icon n="download" s={15} />הורדה כקובץ ל-Claude Code</button> : null}
-        <button className="btn sm ghost" onClick={close}>סגירה</button>
-        <button className="btn sm primary" disabled={busy} onClick={async () => { setBusy(true); const ok = await onSave(a); setBusy(false); if (ok) setDirty(false); }}>
-          <Icon n="check" s={15} />{busy ? "שומר…" : "שמירה"}
-        </button>
+        {ro ? <>
+          <button className="btn sm ghost" onClick={close}>סגירה</button>
+          <button className="btn sm primary" onClick={() => setRo(false)}><Icon n="pen" s={15} />עריכה</button>
+        </> : <>
+          <button className="btn sm ghost" onClick={() => { if (doc?.id) { if (dirty && !confirm("לבטל את השינויים?")) return; setA(start); setDirty(false); setRo(true); } else close(); }}>{doc?.id ? "ביטול" : "סגירה"}</button>
+          <button className="btn sm primary" disabled={busy} onClick={async () => { setBusy(true); const ok = await onSave(a); setBusy(false); if (ok) { setDirty(false); if (doc?.id) setRo(true); } }}>
+            <Icon n="check" s={15} />{busy ? "שומר…" : "שמירה"}
+          </button>
+        </>}
       </div>
     </Modal>
   );

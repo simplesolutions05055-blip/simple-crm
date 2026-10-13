@@ -1,13 +1,34 @@
 /* intake forms (אפיונים) - generated from the office templates of 04/10/2026.
    field types: t short text, n number, a long text, r one choice, c several choices */
-/* d = a requirement the client marks as done, f = file upload (the answer is the list of uploaded files) */
-export type FormField = { id: string; t: "t" | "n" | "a" | "r" | "c" | "d" | "f"; q: string; o?: string[]; h?: string };
+/* d = a requirement the client marks as done, f = file upload (the answer is the list of uploaded files)
+   l = separate rows with "add a row" (cols: one heading per column; the answer is string[] or string[][])
+   p = digital assets: per platform in o, a link, a user name and a password (the password itself goes to the vault, never here)
+   show = the field appears only when another field's answer includes v */
+export type FormField = {
+  id: string; t: "t" | "n" | "a" | "r" | "c" | "d" | "f" | "l" | "p"; q: string; o?: string[]; h?: string;
+  n?: number; cols?: string[]; show?: { id: string; v: string };
+};
 export type FormSection = { title: string; internal: boolean; fields: FormField[] };
 export type IntakeForm = { kind: string; title: string; intro: string; sections: FormSection[] };
 export type UploadedFile = { name: string; path: string; size?: number };
-export type Answers = Record<string, string | string[] | UploadedFile[]>;
-export const answerText = (v: Answers[string] | undefined): string =>
-  !v ? "" : Array.isArray(v) ? v.map((x) => (typeof x === "string" ? x : x.name)).join(" · ") : String(v).trim();
+export type Account = { url?: string; user?: string; pw?: boolean };
+export type Accounts = Record<string, Account>;
+export type AnswerValue = string | string[] | UploadedFile[] | string[][] | Accounts;
+export type Answers = Record<string, AnswerValue>;
+const isAccounts = (v: unknown): v is Accounts => !!v && typeof v === "object" && !Array.isArray(v);
+export const answerText = (v: AnswerValue | undefined): string => {
+  if (!v) return "";
+  if (isAccounts(v)) return Object.entries(v).filter(([, x]) => x && (x.url || x.user || x.pw))
+    .map(([k, x]) => k + ": " + [x.url, x.user ? "משתמש " + x.user : "", x.pw ? "סיסמה בכספת" : ""].filter(Boolean).join(", ")).join(" · ");
+  if (Array.isArray(v)) return (v as unknown[]).map((x) => (typeof x === "string" ? x.trim() : Array.isArray(x) ? x.map((c) => String(c || "").trim()).filter(Boolean).join(" - ") : (x as UploadedFile).name))
+    .filter(Boolean).join(" · ");
+  return String(v).trim();
+};
+export function shown(f: FormField, a: Answers) {
+  if (!f.show) return true;
+  const v = a[f.show.id];
+  return Array.isArray(v) ? (v as unknown[]).includes(f.show.v) : v === f.show.v;
+}
 
 export const INTAKE_FORMS: IntakeForm[] = [
  {
@@ -1349,6 +1370,7 @@ export function formText(f: IntakeForm, a: Answers, who: string) {
   for (const s of f.sections) {
     out.push("## " + s.title);
     for (const x of s.fields) {
+      if (!shown(x, a)) continue;
       const val = x.t === "d" ? (a[x.id] ? "בוצע" : "") : answerText(a[x.id]);
       out.push("- " + x.q + ": " + (val || "לא מולא"));
     }
@@ -1359,6 +1381,6 @@ export function formText(f: IntakeForm, a: Answers, who: string) {
 
 export function filledCount(f: IntakeForm, a: Answers) {
   let n = 0, all = 0;
-  for (const s of f.sections) for (const x of s.fields) { all++; if (answerText(a[x.id])) n++; }
+  for (const s of f.sections) for (const x of s.fields) { if (!shown(x, a)) continue; all++; if (answerText(a[x.id])) n++; }
   return { n, all };
 }

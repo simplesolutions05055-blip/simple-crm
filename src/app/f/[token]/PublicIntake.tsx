@@ -2,8 +2,8 @@
 /* The client's intake form: one topic per step, saved while typing, files uploaded inside the form. */
 import { useEffect, useRef, useState } from "react";
 import { sb } from "@/lib/supabase/browser";
-import IntakeFields from "@/components/IntakeFields";
-import { filledCount, type Answers, type IntakeForm, type UploadedFile } from "@/lib/intake-forms";
+import IntakeFields, { type SecretApi } from "@/components/IntakeFields";
+import { filledCount, type Answers, type AnswerValue, type IntakeForm, type UploadedFile } from "@/lib/intake-forms";
 
 type Data = { title: string; org: string; form: IntakeForm; answers: Answers; submitted_at: string | null; name: string; biz: string };
 const MAX_FILE = 25 * 1024 * 1024;
@@ -15,6 +15,8 @@ export default function PublicIntake({ token, data }: { token: string; data: Dat
   const [step, setStep] = useState(0);
   const [saved, setSaved] = useState<"" | "saving" | "saved" | "error">("");
   const [done, setDone] = useState(!!data.submitted_at);
+  const [justSent, setJustSent] = useState(false);
+  const [sentAt, setSentAt] = useState<string | null>(data.submitted_at);
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState("");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -31,7 +33,13 @@ export default function PublicIntake({ token, data }: { token: string; data: Dat
     setSaved("saved");
     return true;
   }
-  function set(id: string, v: Answers[string]) {
+  const secret: SecretApi = {
+    save: async (key, label, url, user, value) => {
+      const { error } = await sb().rpc("crm_intake_secret", { p_token: token, p_key: key, p_label: label, p_url: url, p_user: user, p_value: value });
+      return !error;
+    },
+  };
+  function set(id: string, v: AnswerValue) {
     const next = { ...latest.current, [id]: v };
     latest.current = next;
     setA(next);
@@ -74,7 +82,7 @@ export default function PublicIntake({ token, data }: { token: string; data: Dat
     if (timer.current) { clearTimeout(timer.current); timer.current = null; }
     const ok = await persist(latest.current, true);
     setSending(false);
-    if (ok) { setDone(true); window.scrollTo({ top: 0, behavior: "smooth" }); }
+    if (ok) { setDone(true); setJustSent(true); setSentAt(new Date().toISOString()); window.scrollTo({ top: 0, behavior: "smooth" }); }
     else setErr("השליחה לא הצליחה. בדקו את החיבור ונסו שוב.");
   }
 
@@ -84,12 +92,27 @@ export default function PublicIntake({ token, data }: { token: string; data: Dat
 
   if (done) return (
     <div className="ipub">
-      <div className="icard ithanks">
-        <div className="icheck" aria-hidden>✓</div>
-        <h1>תודה{data.name ? " " + data.name : ""}, השאלון התקבל</h1>
-        <p>התשובות הגיעו אלינו. נעבור עליהן ונחזור אליכם.</p>
-        <small>{data.biz}</small>
-      </div>
+      {justSent ? (
+        <div className="icard ithanks">
+          <div className="icheck" aria-hidden>✓</div>
+          <h1>תודה{data.name ? " " + data.name : ""}, השאלון התקבל</h1>
+          <p>התשובות הגיעו אלינו. נעבור עליהן ונחזור אליכם.</p>
+          <small>{data.biz}</small>
+        </div>
+      ) : (
+        <header className="ihead">
+          <small>{data.biz}</small>
+          <h1>{form.title}</h1>
+          {sentAt ? <p>נשלח ב-{new Date(sentAt).toLocaleDateString("he-IL")}</p> : null}
+        </header>
+      )}
+      <div className="ilock">השאלון נשלח וננעל. אפשר לראות את התשובות, לא לשנות אותן.</div>
+      {steps.map((x, i) => (
+        <section key={x.title + i} className="icard">
+          <h2>{x.title}</h2>
+          <IntakeFields fields={x.fields} a={a} set={() => {}} name={"r" + i} ro />
+        </section>
+      ))}
     </div>
   );
 
@@ -108,7 +131,7 @@ export default function PublicIntake({ token, data }: { token: string; data: Dat
 
       <main className="icard">
         <h2>{s.title}</h2>
-        <IntakeFields fields={s.fields} a={a} set={set} name={"s" + step} upload={upload} />
+        <IntakeFields fields={s.fields} a={a} set={set} name={"s" + step} upload={upload} secret={secret} />
         {err ? <p className="ierr">{err}</p> : null}
       </main>
 

@@ -9,7 +9,7 @@ import { CLIENT_FORMS, clientForms, INTAKE_MSG_DEFAULT } from "@/lib/client-form
 import type { Answers, FormField, IntakeForm } from "@/lib/intake-forms";
 
 const TYPES: [FormField["t"], string][] = [
-  ["t", "טקסט קצר"], ["a", "טקסט ארוך"], ["n", "מספר"], ["r", "בחירה אחת"], ["c", "כמה בחירות"], ["d", "דרישה: סימון בוצע"], ["f", "העלאת קבצים"],
+  ["t", "טקסט קצר"], ["a", "טקסט ארוך"], ["n", "מספר"], ["r", "בחירה אחת"], ["c", "כמה בחירות"], ["d", "דרישה: סימון בוצע"], ["f", "העלאת קבצים"], ["l", "שורות נפרדות"], ["p", "נכסים: קישור, משתמש וסיסמה"],
 ];
 const SHORT: Record<string, string> = { c_campaign: "קמפיין", c_site: "אתר", c_lp: "דף נחיתה", c_social: "סושיאל", c_auto: "אוטומציות" };
 const newId = () => "x" + Math.random().toString(36).slice(2, 8);
@@ -79,7 +79,7 @@ export default function IntakeTemplates() {
                   <div key={f.id} className="itpl-f">
                     <div className="itpl-row">
                       <input className="inp sm" value={f.q} placeholder="השאלה" onChange={(e) => upd((d) => { d.sections[si].fields[fi].q = e.target.value; })} />
-                      <select className="inp sm" value={f.t} aria-label="סוג תשובה" onChange={(e) => upd((d) => { const x = d.sections[si].fields[fi]; x.t = e.target.value as FormField["t"]; if ((x.t === "r" || x.t === "c") && !x.o?.length) x.o = ["כן", "לא"]; })}>
+                      <select className="inp sm" value={f.t} aria-label="סוג תשובה" onChange={(e) => upd((d) => { const x = d.sections[si].fields[fi]; x.t = e.target.value as FormField["t"]; if ((x.t === "r" || x.t === "c") && !x.o?.length) x.o = ["כן", "לא"]; if (x.t === "p" && !x.o?.length) x.o = ["אינסטגרם", "פייסבוק", "טיקטוק"]; if (x.t === "l" && !x.n) x.n = 3; })}>
                         {TYPES.map(([t, l]) => <option key={t} value={t}>{l}</option>)}
                       </select>
                       <span className="bar" style={{ gap: 2, flexWrap: "nowrap" }}>
@@ -88,8 +88,16 @@ export default function IntakeTemplates() {
                       </span>
                     </div>
                     <input className="inp sm itpl-h" value={f.h || ""} placeholder="הסבר קטן מתחת לשאלה (לא חובה)" onChange={(e) => upd((d) => { const x = d.sections[si].fields[fi]; if (e.target.value) x.h = e.target.value; else delete x.h; })} />
-                    {f.t === "r" || f.t === "c" ? (
-                      <input className="inp sm itpl-h" value={(f.o || []).join(", ")} placeholder="אפשרויות, מופרדות בפסיק"
+                    {f.t === "l" ? (
+                      <div className="itpl-row2">
+                        <label className="tiny">כמה שורות בהתחלה <input className="inp sm" type="number" min={1} max={10} value={f.n || 3} onChange={(e) => upd((d) => { d.sections[si].fields[fi].n = Math.min(10, Math.max(1, Number(e.target.value) || 1)); })} /></label>
+                        <label className="tiny">עמודות (לשאלה ותשובה: שאלה, תשובה) <input className="inp sm" value={(f.cols || []).join(", ")} placeholder="עמודה אחת"
+                          onChange={(e) => upd((d) => { const c = e.target.value.split(",").map((x) => x.trimStart()); const x = d.sections[si].fields[fi]; if (c.filter(Boolean).length > 1) x.cols = c; else delete x.cols; })} /></label>
+                      </div>
+                    ) : null}
+                    {f.show ? <span className="tiny">מופיעה רק כשבשאלה הקודמת בוחרים &quot;{f.show.v}&quot;</span> : null}
+                    {f.t === "r" || f.t === "c" || f.t === "p" ? (
+                      <input className="inp sm itpl-h" value={(f.o || []).join(", ")} placeholder={f.t === "p" ? "פלטפורמות, מופרדות בפסיק" : "אפשרויות, מופרדות בפסיק"}
                         onChange={(e) => upd((d) => { d.sections[si].fields[fi].o = e.target.value.split(",").map((x) => x.trimStart()); })}
                         onBlur={() => upd((d) => { const x = d.sections[si].fields[fi]; x.o = (x.o || []).map((o) => o.trim()).filter(Boolean); })} />
                     ) : null}
