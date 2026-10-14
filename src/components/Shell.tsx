@@ -20,6 +20,7 @@ const NAV = [
   { href: "/", label: "לוח בקרה", icon: "home" },
   { href: "/tasks", label: "משימות", icon: "tasks", count: true },
   { href: "/leads", label: "לידים", icon: "target" },
+  { href: "/leads/all", label: "מאגר לידים", icon: "list", sub: true },
   { href: "/quotes", label: "הצעות מחיר", icon: "file" },
   { href: "/clients", label: "לקוחות", icon: "brief" },
   { href: "/finance", label: "כספים", icon: "wallet" },
@@ -33,7 +34,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const { email, counts, orgs, biz, switchOrg } = useApp();
   const others = orgs.filter((o) => o.id !== biz.id);
   const b = biz.brand;
-  const on = (h: string) => (h === "/" ? path === "/" : path.startsWith(h));
+  const on = (h: string) => (h === "/" ? path === "/" : h === "/leads" ? path.startsWith(h) && !path.startsWith("/leads/all") : path.startsWith(h));
   const router = useRouter();
   // after an email link (e.g. password reset) land on the page that sent it
   useEffect(() => {
@@ -73,7 +74,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <nav className="nav">
             {NAV.map((n) => (
               <div key={n.href} style={{ display: "contents" }}>
-                <Link href={n.href === "/settings" ? "/settings/business" : n.href} className={"navbtn" + (on(n.href) ? " on" : "")}>
+                <Link href={n.href === "/settings" ? "/settings/business" : n.href} className={"navbtn" + ("sub" in n && n.sub ? " navsub" : "") + (on(n.href) ? " on" : "")}>
                   <Icon n={n.icon} />
                   {n.label}
                   {n.count && counts.tasksDue > 0 ? <span className="cnt">{counts.tasksDue}</span> : null}

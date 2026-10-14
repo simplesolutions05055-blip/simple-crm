@@ -35,7 +35,7 @@ async function loadAll(kind: Kind, withArchived: boolean) {
   return all;
 }
 
-async function download(kind: Kind, rows: Row[] | null, pick?: Set<string>) {
+export async function download(kind: Kind, rows: Row[] | null, pick?: Set<string>, name?: string) {
   const ExcelJS = await excel();
   const N = NAMES[kind];
   const wb = new ExcelJS.Workbook();
@@ -99,7 +99,7 @@ async function download(kind: Kind, rows: Row[] | null, pick?: Set<string>) {
   const buf = await wb.xlsx.writeBuffer();
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
-  a.download = template ? `${N.many} - קובץ לייבוא.xlsx` : `${N.many} ${today()}.xlsx`;
+  a.download = name ? name + ".xlsx" : template ? `${N.many} - קובץ לייבוא.xlsx` : `${N.many} ${today()}.xlsx`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }

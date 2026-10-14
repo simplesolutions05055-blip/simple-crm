@@ -23,6 +23,7 @@ export default function ClientPage() {
   const [pays, setPays] = useState<Row[]>([]);
   const [tick, setTick] = useState(0);
   const [back, setBack] = useState(false);
+  const [del, setDel] = useState(false);
   const router = useRouter();
 
   const load = async () => {
@@ -61,7 +62,9 @@ export default function ClientPage() {
           {c.wa_group ? <a className="btn wa" href={c.wa_group} target="_blank" rel="noreferrer"><Icon n="wa" s={16} />קבוצת הלקוח</a>
             : c.phone ? <a className="btn wa" href={waLink(c.phone, "היי " + (c.contact || "").split(" ")[0] + ", ")} target="_blank" rel="noreferrer"><Icon n="wa" s={16} />וואטסאפ</a> : null}
           {c.lead_id ? <Link className="btn" href={"/leads/" + c.lead_id}><Icon n="target" s={16} />הליד המקורי</Link> : null}
+          <button className="btn danger" onClick={() => setDel(true)}><Icon n="trash" s={15} />מחיקה לצמיתות</button>
         </div>} />
+      {del ? <DeleteClient c={c} onClose={() => setDel(false)} onDone={() => router.push("/clients")} /> : null}
       <div className="content">
         <div className="grid g4">
           <div className="panel stat"><span className="hi" style={{ color: "var(--ok)" }}><Icon n="repeat" s={18} /></span><div><b>{money(monthly)}</b><span className="sub">לחודש, לפני מע&quot;מ</span></div></div>
@@ -158,3 +161,68 @@ function BackToLeads({ biz, onClose, onGo }: { biz: string; onClose: () => void;
 }
 
 
+
+/* permanent delete: the client with everything under it, and by default the lead it came from.
+   Order matters: everything that blocks the client row goes first, the files go last. */
+function DeleteClient({ c, onClose, onDone }: { c: Row; onClose: () => void; onDone: () => void }) {
+  const { org, toast } = useApp();
+  const [withLead, setWithLead] = useState(true);
+  const [busy, setBusy] = useState("");
+  async function run() {
+    const db = sb();
+    const fail = (what: string, e: { message: string } | null) => { setBusy(""); toast("לא נמחק (" + what + "): " + (e?.message || ""), true); return false; };
+    setBusy("מוחק…");
+    const ors = (col: string, ids: string[]) => (ids.length ? "," + col + ".in.(" + ids.join(",") + ")" : "");
+    const { data: ls } = await db.from("crm_leads").select("id").or("client_id.eq." + c.id + (c.lead_id ? ",id.eq." + c.lead_id : ""));
+    const leads = (ls || []).map((x: Row) => x.id as string);
+    const lw = withLead ? leads : [];
+    const { data: qs } = await db.from("crm_quotes").select("id").or("client_id.eq." + c.id + ors("lead_id", lw));
+    const qids = (qs || []).map((x: Row) => x.id as string);
+    const { data: ds } = await db.from("crm_documents").select("id,path").or("client_id.eq." + c.id + ors("quote_id", qids) + ors("lead_id", lw));
+    const paths = (ds || []).map((x: Row) => x.path).filter(Boolean) as string[];
+    if (ds?.length) { const r = await db.from("crm_documents").delete().in("id", ds.map((x: Row) => x.id)); if (r.error) return fail("מסמכים", r.error); }
+    if (qids.length) {
+      await db.from("crm_client_services").update({ quote_id: null }).in("quote_id", qids);
+      await db.from("crm_documents").update({ quote_id: null }).in("quote_id", qids);
+      await db.from("crm_quotes").update({ replaced_by: null }).in("replaced_by", qids);
+      const r = await db.from("crm_quotes").delete().in("id", qids);
+      if (r.error) return fail("הצעות מחיר", r.error);
+    }
+    await db.from("crm_tasks").delete().or("client_id.eq." + c.id + ors("lead_id", lw));
+    await db.from("crm_ai_suggestions").delete().or("client_id.eq." + c.id + ors("lead_id", lw));
+    const { data: vs } = await db.from("crm_vault_items").select("id").eq("client_id", c.id);
+    for (const v of vs || []) { const r = await db.rpc("crm_vault_delete", { p_id: v.id }); if (r.error) return fail("כספת", r.error); }
+    if (leads.length) await db.from("crm_leads").update({ client_id: null }).in("id", leads);
+    if (c.lead_id) await db.from("crm_clients").update({ lead_id: null }).eq("id", c.id);
+    const r = await db.from("crm_clients").delete().eq("id", c.id);
+    if (r.error) return fail("לקוח", r.error);
+    if (leads.length) {
+      if (withLead) await db.from("crm_leads").delete().in("id", leads);
+      else {
+        await db.from("crm_leads").update({ stage: "סגירת פנייה", reason: "הלקוח נמחק" }).in("id", leads);
+        await db.from("crm_leads").update({ archived_at: null }).in("id", leads); // stays archived if an active lead has the same phone
+        await db.from("crm_activities").insert(leads.map((l: string) => ({ org_id: org, lead_id: l, type: "מערכת", text: "הלקוח שנוצר מהליד נמחק לצמיתות", by: "מערכת" })));
+      }
+    }
+    if (paths.length) await db.storage.from("crm-docs").remove(paths);
+    setBusy("");
+    toast((c.biz || c.contact || "הלקוח") + " נמחק לצמיתות");
+    onDone();
+  }
+  return (
+    <Modal title="מחיקה לצמיתות" icon="x" onClose={() => !busy && onClose()}>
+      <p style={{ margin: 0 }}>הלקוח <b>{c.biz || c.contact}</b> יימחק לגמרי, יחד עם המוצרים, התשלומים, הצעות המחיר, המסמכים והאפיונים, הכספת, המשימות וההיסטוריה שלו.</p>
+      {c.lead_id ? (
+        <label className={"pillck" + (withLead ? " on" : "")} style={{ alignSelf: "flex-start", marginTop: 10 }}>
+          <input type="checkbox" checked={withLead} onChange={(e) => setWithLead(e.target.checked)} />למחוק גם את הליד שממנו הלקוח נוצר
+        </label>
+      ) : null}
+      {c.lead_id && !withLead ? <p className="tiny" style={{ margin: "6px 0 0" }}>הליד יישאר במאגר הלידים בסטטוס &quot;סגירת פנייה&quot;.</p> : null}
+      <p style={{ margin: "8px 0 0", color: "var(--soft)" }}>אי אפשר לשחזר את זה.</p>
+      <div className="bar" style={{ marginTop: 14 }}>
+        <button className="btn danger" disabled={!!busy} onClick={run}>{busy || "כן, למחוק לצמיתות"}</button>
+        <button className="btn ghost" disabled={!!busy} onClick={onClose}>ביטול</button>
+      </div>
+    </Modal>
+  );
+}
