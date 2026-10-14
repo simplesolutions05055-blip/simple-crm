@@ -26,6 +26,7 @@ export type Pricing = {
   webTimelines: { site: Pair[]; lp: Pair[]; both: Pair[] };
   timelines: { id: string; t: string; s: string }[];
   ai?: import("./ai-campaign").AiPricing;
+  pack?: import("./products").PackPricing;
 };
 export type Template = typeof TEMPLATE_DEFAULT;
 
@@ -52,8 +53,9 @@ export type QuoteInput = {
   overrides: Record<string, number>;
   hidden: string[];
   extra: ExtraLine[];
-  product?: "ai" | "packages"; // missing = the original packages quote
+  product?: "ai" | "pack" | "packages"; // missing = the original packages quote
   ai?: Partial<import("./ai-campaign").AiInput>;
+  prods?: Partial<import("./products").PackInput>; // product "pack": one or more products
 };
 
 export const DEFAULT_PRICING = PRICING_DEFAULT as unknown as Pricing;

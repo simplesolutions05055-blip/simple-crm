@@ -10,6 +10,7 @@ import AiQuoteDoc from "@/components/AiQuoteDoc";
 import { useApp } from "@/components/AppCtx";
 import { computeQuote, normalizeInput, toggleableCards, withPricing, withTemplate, nis, type QuoteInput, type Pricing, type ExtraLine } from "@/lib/quote-engine";
 import { aiView, emptyAi, normalizeAi, withAi, computeAi, type AiInput, type AiPricing } from "@/lib/ai-campaign";
+import { packView, emptyPack, normalizePack, withPack, computePack, newLine, basePrice, priceOf, type PackInput, type PackLine, type PackPricing, type ProdId } from "@/lib/products";
 import { QUOTE_STATUS_CLS, fillTemplate, waLink, waTemplates, appUrl, fmtDateTime, type Row } from "@/lib/crm";
 
 export default function QuoteEditor() {
@@ -37,7 +38,7 @@ export default function QuoteEditor() {
       // a brand-new quote starts as an AI campaign; the three fixed packages are retired, so an
       // unsent draft that used one continues as a custom build
       if (!data.input || !Object.keys(data.input).length) { inp.product = "ai"; inp.ai = emptyAi(withAi(settings.pricing.ai)); }
-      else if (!data.sent_at && inp.product !== "ai" && inp.track !== "custom") inp.track = "custom";
+      else if (!data.sent_at && inp.product !== "ai" && inp.product !== "pack" && inp.track !== "custom") inp.track = "custom";
       setI(inp);
       if (data.status === "נחתמה") {
         const { data: s } = await sb().from("crm_signatures").select("name,biz,signed_at,signature_png,doc_hash,ip").eq("quote_id", id).single();
@@ -52,16 +53,21 @@ export default function QuoteEditor() {
   const T = useMemo(() => (signed && q?.template ? withTemplate(q.template) : settings.template), [signed, q, settings.template]);
   const vat = signed && q?.vat != null ? Number(q.vat) : settings.vat;
   const ai = I?.product === "ai";
-  const model = useMemo(() => (I && !ai ? computeQuote(P, I, vat, T) : null), [P, I, vat, T, ai]);
+  const pk = I?.product === "pack";
+  const model = useMemo(() => (I && !ai && !pk ? computeQuote(P, I, vat, T) : null), [P, I, vat, T, ai, pk]);
   const aiv = useMemo(() => (I && ai ? aiView(I as unknown as Record<string, unknown>, P, vat, T) : null), [P, I, vat, T, ai]);
+  const pkv = useMemo(() => (I && pk ? packView(I as unknown as Record<string, unknown>, P, vat, T) : null), [P, I, vat, T, pk]);
   // a sent quote in the retired packages format can be viewed, not edited
-  const locked = signed || (!ai && !!q?.sent_at && I?.track !== "custom");
+  const locked = signed || (!ai && !pk && !!q?.sent_at && I?.track !== "custom");
+  const payUrl = aiv?.I.payUrl || pkv?.I.payUrl || "";
 
   const persist = useCallback(async (inp: QuoteInput, extra?: Row) => {
     if (!q || signed) return false;
     setSaved("saving");
     const m = inp.product === "ai"
       ? computeAi(withAi(settings.pricing.ai), normalizeAi(inp.ai, withAi(settings.pricing.ai)), settings.vat, settings.template)
+      : inp.product === "pack"
+      ? computePack(withPack(settings.pricing.pack), normalizePack(inp.prods, withAi(settings.pricing.ai).payUrl), settings.vat, settings.template)
       : computeQuote(settings.pricing, inp, settings.vat, settings.template);
     const patch: Row = {
       input: inp, totals: m.totals, pricing: settings.pricing, template: settings.template, vat: settings.vat,
@@ -109,8 +115,8 @@ export default function QuoteEditor() {
   }
 
   async function sendPay() {
-    if (!q || !aiv) return;
-    const url = aiv.I.payUrl;
+    if (!q || !payUrl) return;
+    const url = payUrl;
     const first = (I?.client || who?.name || "").split(" ")[0];
     const text = (first ? "היי " + first + ", " : "") + "זה הקישור לתשלום עבור הצעת המחיר " + q.no + ":\n" + url;
     await sb().from("crm_activities").insert({ org_id: org, lead_id: q.lead_id, client_id: q.client_id, type: "וואטסאפ", text: "נשלח קישור לתשלום, הצעה " + q.no, by: "מאור" });
@@ -120,29 +126,47 @@ export default function QuoteEditor() {
 
   async function duplicate() {
     if (!q || !I) return;
-    const base = ai || I.track === "custom" ? I : { ...I, track: "custom" };
+    const base = ai || pk || I.track === "custom" ? I : { ...I, track: "custom" };
     const { data, error } = await sb().from("crm_quotes").insert({ org_id: org, lead_id: q.lead_id, client_id: q.client_id, input: { ...base, date: new Date().toISOString().slice(0, 10) }, totals: base === I ? q.totals : {} }).select("id").single();
     if (error) return toast(error.message, true);
     router.push("/quotes/" + data.id);
   }
 
-  const hasMail = !!I && !ai && (I.track === "custom" ? I.items.includes("mail") : I.track === "more" || I.track === "max");
+  const hasMail = !!I && !ai && !pk && (I.track === "custom" ? I.items.includes("mail") : I.track === "more" || I.track === "max");
+  // which product the quote is: the AI campaign, one or more of the products, or a custom build.
+  // A sent quote keeps its type, so the switch shows only before the first send.
+  const PP = withPack(settings.pricing.pack);
+  const lines = pkv?.I.lines || [];
+  function toggleProd(id: ProdId) {
+    const cur = pk ? normalizePack(I?.prods, withAi(settings.pricing.ai).payUrl) : emptyPack(withAi(settings.pricing.ai).payUrl);
+    const on = cur.lines.some((l) => l.id === id);
+    let next = on ? cur.lines.filter((l) => l.id !== id) : [...cur.lines, newLine(id)];
+    if (!on && id === "soc") next = next.filter((l) => l.id !== "socfull");
+    if (!on && id === "socfull") next = next.filter((l) => l.id !== "soc");
+    if (pk && !next.length) return toast("בהצעה צריך להישאר לפחות מוצר אחד", true);
+    upd({ product: "pack", prods: { ...cur, lines: next } });
+  }
   const product = !locked && !q?.sent_at ? (
     <div className="cgroup">
-      <b>סוג ההצעה</b>
-      <div className="tabs" style={{ margin: 0 }}>
-        <button type="button" className={"btn sm" + (ai ? " on" : "")} onClick={() => !ai && upd({ product: "ai", ai: I?.ai && Object.keys(I.ai).length ? I.ai : emptyAi(withAi(settings.pricing.ai)) })}>קמפיין AI</button>
-        <button type="button" className={"btn sm" + (!ai ? " on" : "")} onClick={() => ai && upd({ product: "packages", track: "custom" })}>הרכבה אישית</button>
+      <b>מה בהצעה</b>
+      <div className="pills">
+        <button type="button" className={"pillck" + (ai ? " on" : "")} onClick={() => !ai && upd({ product: "ai", ai: I?.ai && Object.keys(I.ai).length ? I.ai : emptyAi(withAi(settings.pricing.ai)) })}>קמפיין AI</button>
+        {PP.products.map((p) => {
+          const on = lines.some((l) => l.id === p.id);
+          return <button key={p.id} type="button" className={"pillck" + (on ? " on" : "")} onClick={() => toggleProd(p.id)}>{on ? "✓ " : ""}{p.short}</button>;
+        })}
+        <button type="button" className={"pillck" + (!ai && !pk ? " on" : "")} onClick={() => (ai || pk) && upd({ product: "packages", track: "custom" })}>הרכבה אישית</button>
       </div>
+      <span className="tiny">אפשר לסמן כמה מוצרים יחד. קמפיין AI והרכבה אישית הם הצעה נפרדת.</span>
     </div>
   ) : null;
-  if (!q || !I || (!model && !aiv)) return <><Top title="הצעת מחיר" crumb={{ href: "/quotes", label: "הצעות מחיר" }} /><div className="loading" style={{ minHeight: 200 }}>טוען…</div></>;
+  if (!q || !I || (!model && !aiv && !pkv)) return <><Top title="הצעת מחיר" crumb={{ href: "/quotes", label: "הצעות מחיר" }} /><div className="loading" style={{ minHeight: 200 }}>טוען…</div></>;
   const link = appUrl() + "/q/" + q.token;
 
   return (
     <>
       <Top title={"הצעה " + q.no + (who ? " · " + (who.biz || who.name) : "")} crumb={{ href: "/quotes", label: "הצעות מחיר" }}
-        sub={<><St cls={QUOTE_STATUS_CLS[q.status]}>{q.status}</St>{ai ? " · קמפיין AI" : I.track === "custom" ? " · הרכבה אישית" : " · חבילה (הוסרה)"}{q.sent_at ? " · נשלחה " + fmtDateTime(q.sent_at) : ""}{q.views ? " · " + q.views + " צפיות" : ""}{!locked ? " · " + (saved === "saved" ? "נשמר" : saved === "saving" ? "שומר…" : "יש שינויים") : ""}</>}
+        sub={<><St cls={QUOTE_STATUS_CLS[q.status]}>{q.status}</St>{ai ? " · קמפיין AI" : pkv ? " · " + pkv.m.totals.title : I.track === "custom" ? " · הרכבה אישית" : " · חבילה (הוסרה)"}{q.sent_at ? " · נשלחה " + fmtDateTime(q.sent_at) : ""}{q.views ? " · " + q.views + " צפיות" : ""}{!locked ? " · " + (saved === "saved" ? "נשמר" : saved === "saving" ? "שומר…" : "יש שינויים") : ""}</>}
         right={<div className="bar">
           {q.lead_id ? <Link className="btn sm" href={"/leads/" + q.lead_id}><Icon n="target" s={15} />ליד</Link> : null}
           {q.client_id ? <Link className="btn sm" href={"/clients/" + q.client_id}><Icon n="brief" s={15} />לקוח</Link> : null}
@@ -155,9 +179,9 @@ export default function QuoteEditor() {
             <button className="btn" onClick={() => { navigator.clipboard.writeText(link); toast("הקישור הועתק"); }}><Icon n="copy" s={16} />העתקת קישור</button>
             <a className="btn" href={"/q/" + q.token} target="_blank" rel="noreferrer"><Icon n="eye" s={16} />כמו שהלקוח רואה</a>
           </> : <span className="tiny">הקישור ללקוח נפתח עם השליחה הראשונה.</span>}
-          {aiv ? <>
+          {payUrl ? <>
             <button className="btn" onClick={sendPay}><Icon n="wallet" s={16} />שליחת קישור לתשלום</button>
-            <button className="btn" onClick={() => { navigator.clipboard.writeText(aiv.I.payUrl); toast("קישור התשלום הועתק"); }}><Icon n="link" s={16} />העתקת קישור לתשלום</button>
+            <button className="btn" onClick={() => { navigator.clipboard.writeText(payUrl); toast("קישור התשלום הועתק"); }}><Icon n="link" s={16} />העתקת קישור לתשלום</button>
           </> : null}
           <button className="btn" onClick={() => window.print()}><Icon n="file" s={16} />PDF</button>
           <button className="btn" onClick={duplicate}><Icon n="copy" s={16} />שכפול</button>
@@ -177,12 +201,13 @@ export default function QuoteEditor() {
               <div className="tiny mono">{sig.doc_hash}</div></div>
           </div>
         ) : null}
-        {!ai && !signed && q.sent_at && I.track !== "custom" ? <p className="tiny" style={{ margin: 0 }}>ההצעה נשלחה על אחת משלוש החבילות שהוסרו, ולכן אינה ניתנת לעריכה. ללקוח היא ממשיכה לעבוד כרגיל. &quot;שכפול&quot; יוצר ממנה הצעה חדשה בהרכבה אישית.</p> : null}
+        {!ai && !pk && !signed && q.sent_at && I.track !== "custom" ? <p className="tiny" style={{ margin: 0 }}>ההצעה נשלחה על אחת משלוש החבילות שהוסרו, ולכן אינה ניתנת לעריכה. ללקוח היא ממשיכה לעבוד כרגיל. &quot;שכפול&quot; יוצר ממנה הצעה חדשה בהרכבה אישית.</p> : null}
         <div className="split">
           {locked ? <div /> : aiv ? <AiControls I={I} ai={aiv.I} A={withAi(P.ai)} vat={vat} upd={upd} top={product} />
+            : pkv ? <PackControls I={I} pi={pkv.I} P={pkv.P} vat={vat} upd={upd} top={product} />
             : <Controls I={I} P={P} upd={upd} hasMail={hasMail} vat={vat} T={T} top={product} />}
           <div className="preview">
-            {aiv ? <AiQuoteDoc m={aiv.m} T={T} to={aiv.to} biz={aiv.biz} date={aiv.date} until={aiv.until}
+            {aiv || pkv ? <AiQuoteDoc m={(aiv || pkv)!.m} T={T} to={(aiv || pkv)!.to} biz={(aiv || pkv)!.biz} date={(aiv || pkv)!.date} until={(aiv || pkv)!.until}
                 signed={sig ? { name: sig.name, biz: sig.biz, signed_at: sig.signed_at, png: sig.signature_png, doc_hash: sig.doc_hash } : null} />
               : model ? <QuoteDoc m={model} T={T} signed={sig ? { name: sig.name, biz: sig.biz, signed_at: sig.signed_at, png: sig.signature_png, doc_hash: sig.doc_hash } : null} /> : null}
           </div>
@@ -419,6 +444,109 @@ function AiControls({ I, ai, A, vat, upd, top }: { I: QuoteInput; ai: AiInput; A
         <b>קישור לתשלום</b>
         <input className="inp sm ltr" value={ai.payUrl} onChange={(e) => set({ payUrl: e.target.value.trim() })} />
         <span className="tiny">אחרי החתימה הלקוח רואה כפתור &quot;מעבר לתשלום&quot; עם הקישור הזה. אפשר גם לשלוח אותו ישירות בוואטסאפ מהכפתור למעלה.</span>
+      </div>
+    </div>
+  );
+}
+
+/* one price: the original (empty = the catalog) and an optional price after discount */
+function PriceIn({ label, def, orig, sale, set }: { label: string; def: number; orig: number | null; sale: number | null; set: (o: number | null, s: number | null) => void }) {
+  const val = (v: string) => (v.trim() === "" || isNaN(Number(v)) ? null : Math.max(0, Math.round(Number(v))));
+  return (
+    <div className="f2">
+      <label className="field"><span>{label}, מחיר מקורי</span>
+        <input className="inp sm" type="number" min={0} placeholder={String(def)} value={orig ?? ""} onChange={(e) => set(val(e.target.value), sale)} />
+      </label>
+      <label className="field"><span>אחרי הנחה (לא חובה)</span>
+        <input className="inp sm" type="number" min={0} placeholder="ריק = בלי הנחה" value={sale ?? ""} onChange={(e) => set(orig, val(e.target.value))} />
+      </label>
+    </div>
+  );
+}
+
+function PackControls({ I, pi, P, vat, upd, top }: { I: QuoteInput; pi: PackInput; P: PackPricing; vat: number; upd: (p: Partial<QuoteInput>) => void; top: React.ReactNode }) {
+  const set = (p: Partial<PackInput>) => upd({ prods: { ...pi, ...p } });
+  const setLine = (id: ProdId, p: Partial<PackLine>) => set({ lines: pi.lines.map((l) => (l.id === id ? { ...l, ...p } : l)) });
+  const g = (n: number) => Math.round(n * (1 + vat / 100));
+  const hasSite = pi.lines.some((l) => l.id === "site");
+  const hasMail = pi.lines.some((l) => l.id === "mail");
+  const bundled = hasMail && pi.lines.some((l) => l.id === "bot");
+  return (
+    <div className="panel ctlp">
+      {top}
+      <div className="cgroup">
+        <b>פרטי ההצעה</b>
+        <div className="f2">
+          <label className="field"><span>לכבוד</span><input className="inp sm" value={I.client} onChange={(e) => upd({ client: e.target.value })} /></label>
+          <label className="field"><span>שם העסק</span><input className="inp sm" value={I.biz} onChange={(e) => upd({ biz: e.target.value })} /></label>
+          <label className="field"><span>תאריך</span><input className="inp sm" type="date" value={I.date} onChange={(e) => upd({ date: e.target.value })} /></label>
+          <label className="field"><span>תוקף, בימים</span><input className="inp sm" type="number" min={1} value={I.validDays} onChange={(e) => upd({ validDays: Math.max(1, Number(e.target.value) || 14) })} /></label>
+        </div>
+      </div>
+
+      {pi.lines.map((l) => {
+        const d = P.products.find((x) => x.id === l.id)!;
+        const def = basePrice(P, pi, l.id);
+        const p = priceOf(l.price, l.sale, def);
+        return (
+          <div className="cgroup pline" key={l.id}>
+            <b>{d.label}</b>
+            {l.id === "mail" && bundled && l.price == null ? <span className="tiny">מחיר חבילה עם הצ&apos;אטבוט: {nis(P.bundleMail)} במקום {nis(d.price)}.</span> : null}
+            <PriceIn label={d.kind === "monthly" ? "לחודש" : "חד פעמי"} def={def} orig={l.price} sale={l.sale} set={(o, s) => setLine(l.id, { price: o, sale: s })} />
+            <span className="tiny">{p.was != null ? "בהצעה: " + nis(p.was) + " מחוק, ולידו " + nis(p.eff) + "." : "בהצעה: " + nis(p.eff) + (d.kind === "monthly" ? " לחודש" : "") + ", " + nis(g(p.eff)) + " כולל מע\"מ."}</span>
+            {d.kind === "monthly" ? <>
+              <label className={"pillck" + (l.setupOn ? " on" : "")} style={{ alignSelf: "flex-start" }}>
+                <input type="checkbox" checked={l.setupOn} onChange={(e) => setLine(l.id, { setupOn: e.target.checked })} />להוסיף עלות הקמה
+              </label>
+              {l.setupOn ? <>
+                <PriceIn label="הקמה" def={d.setup} orig={l.setup} sale={l.setupSale} set={(o, s) => setLine(l.id, { setup: o, setupSale: s })} />
+                <span className="tiny">&quot;0&quot; אחרי הנחה מוצג כ&quot;ללא עלות&quot; ליד המחיר המקורי המחוק.</span>
+              </> : null}
+            </> : null}
+            {d.fee ? <PriceIn label="אחסון ותחזוקה לחודש" def={d.fee} orig={l.fee} sale={l.feeSale} set={(o, s) => setLine(l.id, { fee: o, feeSale: s })} /> : null}
+            {l.id === "site" ? (
+              <label className="field"><span>דפים נוספים מעבר ל-5, {nis(P.extraPage)} לדף</span>
+                <input className="inp sm" type="number" min={0} value={pi.pages || ""} placeholder="0" onChange={(e) => set({ pages: Math.max(0, Math.round(Number(e.target.value) || 0)) })} />
+              </label>
+            ) : null}
+            {l.id === "mail" ? (
+              <label className="field"><span>חבילת הודעות, חד פעמי ({P.freeMsgs.toLocaleString("he-IL")} בחודש כלולות תמיד)</span>
+                <select className="inp sm" value={pi.msgPack} onChange={(e) => set({ msgPack: e.target.value })}>
+                  <option value="">בלי חבילה</option>
+                  {P.packs.map((x) => <option key={x.id} value={x.id}>{x.n.toLocaleString("he-IL")} הודעות, {nis(x.price)}</option>)}
+                </select>
+              </label>
+            ) : null}
+          </div>
+        );
+      })}
+
+      <div className="cgroup">
+        <b>תוספות חד פעמיות</b>
+        {P.addons.map((x) => {
+          const on = pi.addons.includes(x.id);
+          return (
+            <label key={x.id} className="hidrow">
+              <input type="checkbox" checked={on} onChange={(e) => set({ addons: e.target.checked ? [...new Set([...pi.addons, x.id])] : pi.addons.filter((a) => a !== x.id) })} />
+              <span style={{ flex: 1 }}>{x.label}</span><b className="num">{nis(x.price)}</b>
+            </label>
+          );
+        })}
+        <span className="tiny">תוספת שלא סומנה מופיעה בהצעה בטבלת &quot;תוספות אפשריות&quot;.{hasSite || hasMail ? " דפים נוספים וחבילות הודעות נבחרים בכרטיס של המוצר." : ""}</span>
+      </div>
+
+      <div className="cgroup">
+        <b>באנר מבצע</b>
+        <label className={"pillck" + (pi.promo ? " on" : "")} style={{ alignSelf: "flex-start" }}>
+          <input type="checkbox" checked={pi.promo} onChange={(e) => set({ promo: e.target.checked })} />להציג באנר מבצע
+        </label>
+        {pi.promo ? <input className="inp sm" value={pi.promoText} onChange={(e) => set({ promoText: e.target.value })} /> : <span className="tiny">כבוי. ההצעה מוצגת בלי באנר.</span>}
+      </div>
+
+      <div className="cgroup">
+        <b>קישור לתשלום</b>
+        <input className="inp sm ltr" value={pi.payUrl} onChange={(e) => set({ payUrl: e.target.value.trim() })} />
+        <span className="tiny">אחרי החתימה הלקוח רואה כפתור &quot;מעבר לתשלום&quot; עם הקישור הזה.</span>
       </div>
     </div>
   );

@@ -160,7 +160,7 @@ export function QuotesBox({ leadId, clientId }: { leadId?: string; clientId?: st
       {!rows.length ? <Empty>אין הצעות</Empty> : rows.map((q) => (
         <Link key={q.id} href={"/quotes/" + q.id} className="lrow link" style={{ textDecoration: "none", color: "inherit" }}>
           <span className="grow"><b>{q.no} · {q.totals?.title || "טיוטה"}</b>
-            <span className="meta">{q.totals?.monthly ? money(q.totals.monthly) + " לחודש" : ""}{q.totals?.oneoff ? " · " + money(q.totals.oneoff) + (q.totals.product === "ai" ? " בחתימה" : " חד פעמי") : ""} · {fmtDate(q.created_at)}</span></span>
+            <span className="meta">{q.totals?.monthly ? money(q.totals.monthly) + " לחודש" : ""}{q.totals?.oneoff ? " · " + money(q.totals.oneoff) + (q.totals.product === "ai" || q.totals.product === "pack" ? " בחתימה" : " חד פעמי") : ""} · {fmtDate(q.created_at)}</span></span>
           <St cls={QUOTE_STATUS_CLS[q.status]}>{q.status}</St>
         </Link>
       ))}

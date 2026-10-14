@@ -198,3 +198,12 @@
 .qd table.aq-add{font-size:12.5px}
 .qd table.aq-add th,.qd table.aq-add td{padding:9px 8px}}
 @media print{.qd .aq-pay{display:none}.qd .aq-badge,.qd .notice,.qd .aq-meta div{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+/* products quote: price lines under the price card title, grouped "what's included" and terms */
+.qd .aq-plines{display:flex;flex-direction:column;gap:4px;margin-top:10px;font-size:13px;color:#d6ccf3;min-width:0}
+.qd .aq-plines div{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline}
+.qd .aq-plines .money{font-weight:900;color:#fff;white-space:nowrap}
+.qd .aq-plines s,.qd .summary s.aq-was{color:#b9ade0;font-weight:700;text-decoration-color:var(--red);text-decoration-thickness:2px;margin-inline-end:8px}
+.qd .summary s.aq-was{color:var(--muted)}
+.qd .aq-group+.aq-group{margin-top:16px}
+.qd .aq-group h4{font-size:14.5px;font-weight:900;color:var(--deep);margin:0 0 8px}
+.qd .aq-plines s,.qd .aq-plines bdi,.qd .summary s.aq-was,.qd .summary bdi{display:inline-block;unicode-bidi:isolate}

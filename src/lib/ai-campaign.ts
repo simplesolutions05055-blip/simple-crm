@@ -22,8 +22,10 @@ export const DEFAULT_AI: AiPricing = {
   payUrl: PAY_URL_DEFAULT,
   addons: [
     { id: "lp", label: "דף נחיתה", d: "דף ממיר שמחובר לקמפיין, עם טופס לידים וכפתור וואטסאפ", price: 1200 },
-    { id: "site5", label: "אתר עד 5 דפים", d: "אתר עסקי מעוצב, מותאם לנייד, עם טפסים לאיסוף לידים", price: 4900 },
-    { id: "anim3", label: "3 סרטוני אנימציה", d: "סרטונים שיווקיים מוכנים לפרסום בקמפיין ובעמודים", price: 550 },
+    { id: "site5", label: "אתר תדמית, עד 5 דפים", d: "אתר עסקי מעוצב, מותאם לנייד, עם טפסים לאיסוף לידים", price: 4500 },
+    { id: "anim3", label: "חבילת 3 סרטונים", d: "סרטונים שיווקיים מוכנים לפרסום בקמפיין ובעמודים", price: 550 },
+    { id: "shoot", label: "יום צילום", d: "צילום בבית העסק, עד 5 שעות, עם תכנים כתובים מראש", price: 2200 },
+    { id: "gfx8", label: "חבילת גרפיקות, 8 גרפיקות", d: "גרפיקות מעוצבות לפי השפה של העסק", price: 300 },
   ],
 };
 
@@ -59,7 +61,7 @@ const PLATFORM: Record<AiPlatform, string> = {
   tiktok: "טיקטוק",
 };
 
-export type AiRow = { cls: "" | "head" | "grand"; a: string; b: string };
+export type AiRow = { cls: "" | "head" | "grand"; a: string; b: string; was?: string };
 export type AiModel = {
   title: string;
   sub: string;
@@ -74,6 +76,12 @@ export type AiModel = {
   timelines: { t: string; s: string }[];
   timelinesNote: string;
   terms: string[];
+  // used by the products quote (lib/products.ts); the AI campaign leaves them empty
+  notice?: { text: string; chip: string } | null;
+  priceLines?: { a: string; was?: string; b: string }[];
+  incGroups?: { title: string; items: { t: string; s: string; no?: boolean }[] }[];
+  termGroups?: { title: string; items: string[] }[];
+  payNow?: string;
   totals: {
     product: "ai";
     title: string;

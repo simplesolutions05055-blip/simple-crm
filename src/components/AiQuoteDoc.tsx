@@ -8,8 +8,11 @@ const dmy = (iso: string) => {
   return d && m && y ? `${d}/${m}/${y}` : "";
 };
 
+/* renders the AI campaign and the products quote: both produce this model (minus their totals) */
+type DocModel = Omit<AiModel, "totals">;
+
 export default function AiQuoteDoc({ m, T, to, biz, date, until, signed, children, pay, openAll }: {
-  m: AiModel; T: Template; to: string; biz: string; date: string; until: string;
+  m: DocModel; T: Template; to: string; biz: string; date: string; until: string;
   signed?: SignedInfo; children?: React.ReactNode; pay?: React.ReactNode; openAll?: boolean;
 }) {
   const inc = m.inc.filter((c) => !c.no);
@@ -38,7 +41,12 @@ export default function AiQuoteDoc({ m, T, to, biz, date, until, signed, childre
         <div className="rule" />
 
         <div className="body">
-          {m.promo ? (
+          {m.notice ? (
+            <div className="notice">
+              <span>{m.notice.text}</span>
+              <span className="chip">{m.notice.chip}</span>
+            </div>
+          ) : m.promo ? (
             <div className="notice">
               <span>מבצע הצטרפות: החודש הראשון בחצי מחיר</span>
               <span className="chip">לזמן מוגבל</span>
@@ -48,7 +56,14 @@ export default function AiQuoteDoc({ m, T, to, biz, date, until, signed, childre
           <div className="pricecard">
             <div className="what">
               <h2>{m.price.title}</h2>
-              <p>{m.price.desc}</p>
+              {m.price.desc ? <p>{m.price.desc}</p> : null}
+              {m.priceLines?.length ? (
+                <div className="aq-plines">
+                  {m.priceLines.map((r, i) => (
+                    <div key={i}><span>{r.a}</span><span className="money">{r.was ? <s>{r.was}</s> : null}<bdi>{r.b}</bdi></span></div>
+                  ))}
+                </div>
+              ) : null}
             </div>
             <div className="aq-amount">
               {m.promo ? <div className="aq-badge">{m.promoPct}%<br />הנחה</div> : null}
@@ -61,6 +76,16 @@ export default function AiQuoteDoc({ m, T, to, biz, date, until, signed, childre
           </div>
 
           <Fold badge="✓" title="מה כלול">
+          {m.incGroups ? m.incGroups.map((g, n) => (
+            <div className="aq-group" key={n}>
+              {m.incGroups!.length > 1 ? <h4>{g.title}</h4> : null}
+              <div className="cards">
+                {g.items.map((c, i) => (
+                  <div className="card" key={i}><span className={"mark" + (c.no ? " no" : "")}>{c.no ? "✕" : "✓"}</span><span className="txt"><b>{c.t}</b><span>{c.s}</span></span></div>
+                ))}
+              </div>
+            </div>
+          )) : <>
           <div className="cards">
             {inc.map((c, i) => (
               <div className="card" key={i}><span className="mark">✓</span><span className="txt"><b>{c.t}</b><span>{c.s}</span></span></div>
@@ -71,12 +96,13 @@ export default function AiQuoteDoc({ m, T, to, biz, date, until, signed, childre
               <div className="card" key={i}><span className="mark no">✕</span><span className="txt"><b>{c.t}</b><span>{c.s}</span></span></div>
             ))}
           </div>
+          </>}
           </Fold>
 
           <Fold badge="₪" title="סיכום לתשלום">
           <div className="summary">
             {m.summary.map((r, i) => (
-              <div key={i} className={"row " + r.cls}><span>{r.a}</span><span>{r.b}</span></div>
+              <div key={i} className={"row " + r.cls}><span>{r.a}</span><span>{r.was ? <s className="aq-was">{r.was}</s> : null}<bdi>{r.b}</bdi></span></div>
             ))}
           </div>
           {m.summaryNote ? <p className="note">{m.summaryNote}</p> : null}
@@ -106,7 +132,12 @@ export default function AiQuoteDoc({ m, T, to, biz, date, until, signed, childre
           </Fold>
 
           <Fold badge="i" title="תנאים והגבלות">
-            <div className="terms">{m.terms.map((x, i) => <div key={i}>{x}</div>)}</div>
+            {m.termGroups ? m.termGroups.map((g, n) => (
+              <div className="aq-group" key={n}>
+                <h4>{g.title}</h4>
+                <div className="terms">{g.items.map((x, i) => <div key={i}>{x}</div>)}</div>
+              </div>
+            )) : <div className="terms">{m.terms.map((x, i) => <div key={i}>{x}</div>)}</div>}
           </Fold>
 
           {signed ? (
