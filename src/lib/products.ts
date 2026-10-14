@@ -4,9 +4,9 @@
    so AiQuoteDoc renders both. */
 import type { Pair, Template } from "./quote-engine";
 import type { AiModel, AiRow } from "./ai-campaign";
-import { PAY_URL_DEFAULT } from "./ai-campaign";
+import { PAY_URL_DEFAULT, withAi } from "./ai-campaign";
 
-export type ProdId = "bot" | "mail" | "site" | "lp" | "soc" | "socfull";
+export type ProdId = "ai" | "bot" | "mail" | "site" | "lp" | "soc" | "socfull";
 export type ProdDef = {
   id: ProdId;
   label: string;      // full name, shown in the document
@@ -31,11 +31,34 @@ export type PackPricing = {
   freeMsgs: number;    // messages per month at no cost, permanently
   packs: MsgPack[];
   general: string[];   // terms in every quote
+  aiPct: number;       // AI campaign: first-month discount when its promo is on (from the AI campaign settings)
 };
 
 const SESSIONS = "סשן נוסף בתשלום, 280 ₪ לשעה";
 export const DEFAULT_PACK: PackPricing = {
   products: [
+    {
+      // price and first-month discount come from the "קמפיין AI" settings tab
+      id: "ai", label: "קמפיין AI, ניהול קמפיין ממומן", short: "קמפיין AI", kind: "monthly", price: 600, setup: 0, fee: 0, addons: ["vid3", "shoot", "gfx8"],
+      sub: "ניהול קמפיין ממומן בפלטפורמה אחת, דרך מערכת AI",
+      inc: [
+        { t: "ניהול קמפיין ממומן, פלטפורמה אחת", s: "מטא (פייסבוק ואינסטגרם) או טיקטוק: בניית הקמפיין, המודעות, מעקב ואופטימיזציה שוטפת" },
+        { t: "ניהול דרך מערכת AI", s: "כל החלטה בקמפיין נשענת על המספרים של העסק שלך" },
+        { t: "פגישת תוצאות כל שבועיים", s: "רואים בדיוק מה עובד, לאן הולך כל שקל, ומה משפרים" },
+        { t: "איש קשר אחד לכל הקמפיין", s: "כתובת אחת לכל שאלה, בלי לרדוף אחרי כמה גורמים" },
+        { t: "לא כלול: תקציב הפרסום", s: "משולם ישירות לפלטפורמה, מכרטיס האשראי שלך" },
+      ],
+      timelines: [
+        { t: "אפיון וקליטת חומרים", s: "עד 3 ימים" },
+        { t: "העלאת הקמפיין לאוויר", s: "עד 4 ימים מסיום פגישת האפיון" },
+        { t: "פגישת תוצאות", s: "כל שבועיים" },
+      ],
+      terms: [
+        "תקציב הפרסום אינו כלול, ומשולם ישירות לפלטפורמה",
+        "נדרשת גישה מלאה לחשבונות הפלטפורמה",
+        "אין התחייבות לתוצאות. תלוי בנתוני העסק והשוק",
+      ],
+    },
     {
       id: "bot", label: "צ'אטבוט וואטסאפ, פייסבוק ואינסטגרם", short: "צ'אטבוט", kind: "monthly", price: 780, setup: 2000, fee: 0, addons: ["vid3", "shoot", "gfx8"],
       sub: "מענה אוטומטי בתגובות, בסטורי ובפרטי, שמוביל את הפונה לשיחה בוואטסאפ",
@@ -189,6 +212,7 @@ export const DEFAULT_PACK: PackPricing = {
     { id: "p5", n: 5000, price: 2850 },
     { id: "p10", n: 10000, price: 4500 },
   ],
+  aiPct: 50,
   general: [
     "ההצעה בתוקף עד התאריך שבראש ההצעה",
     "תשלום בכרטיס אשראי בלבד. תשלום חודשי בהוראה קבועה",
@@ -202,8 +226,10 @@ export const PROD_IDS = DEFAULT_PACK.products.map((p) => p.id);
 const num = (v: unknown, d: number) => (typeof v === "number" && isFinite(v) && v >= 0 ? v : d);
 const arr = <T,>(v: unknown, d: T[]) => (Array.isArray(v) ? (v as T[]) : d);
 
-export function withPack(p: unknown): PackPricing {
+/* ai = the AI campaign settings: the "ai" product always takes its monthly price and promo from there */
+export function withPack(p: unknown, ai?: unknown): PackPricing {
   const o = (p && typeof p === "object" ? p : {}) as Partial<PackPricing>;
+  const A = withAi(ai);
   const saved = arr<Partial<ProdDef>>(o.products, []);
   return {
     products: DEFAULT_PACK.products.map((d) => {
@@ -213,7 +239,7 @@ export function withPack(p: unknown): PackPricing {
         label: typeof s.label === "string" && s.label.trim() ? s.label : d.label,
         short: typeof s.short === "string" && s.short.trim() ? s.short : d.short,
         sub: typeof s.sub === "string" ? s.sub : d.sub,
-        price: num(s.price, d.price), setup: num(s.setup, d.setup), fee: num(s.fee, d.fee),
+        price: d.id === "ai" ? A.price : num(s.price, d.price), setup: num(s.setup, d.setup), fee: num(s.fee, d.fee),
         inc: arr(s.inc, d.inc), timelines: arr(s.timelines, d.timelines), terms: arr(s.terms, d.terms),
         addons: arr(s.addons, d.addons || []),
       };
@@ -224,6 +250,7 @@ export function withPack(p: unknown): PackPricing {
     freeMsgs: num(o.freeMsgs, DEFAULT_PACK.freeMsgs),
     packs: arr(o.packs, DEFAULT_PACK.packs),
     general: arr(o.general, DEFAULT_PACK.general),
+    aiPct: A.promoPct,
   };
 }
 
@@ -241,6 +268,7 @@ export type PackLine = {
   price: number | null; sale: number | null;
   setupOn: boolean; setup: number | null; setupSale: number | null;
   fee: number | null; feeSale: number | null;
+  promo: boolean;      // AI campaign: first month at the promo discount
 };
 export type PackInput = {
   lines: PackLine[];
@@ -253,7 +281,7 @@ export type PackInput = {
 };
 export const PROMO_TEXT_DEFAULT = "מבצע לזמן מוגבל";
 
-export const newLine = (id: ProdId): PackLine => ({ id, price: null, sale: null, setupOn: false, setup: null, setupSale: null, fee: null, feeSale: null });
+export const newLine = (id: ProdId): PackLine => ({ id, price: null, sale: null, setupOn: false, setup: null, setupSale: null, fee: null, feeSale: null, promo: id === "ai" });
 export function emptyPack(payUrl?: string, ids: ProdId[] = []): PackInput {
   return { lines: ids.map(newLine), addons: [], pages: 0, msgPack: "", promo: false, promoText: PROMO_TEXT_DEFAULT, payUrl: payUrl || PAY_URL_DEFAULT };
 }
@@ -263,7 +291,7 @@ export function normalizePack(a: unknown, payUrl?: string): PackInput {
   const o = (a && typeof a === "object" ? a : {}) as Partial<PackInput>;
   const seen = new Set<string>();
   const lines = arr<Partial<PackLine>>(o.lines, []).filter((l) => l && PROD_IDS.includes(l.id as ProdId) && !seen.has(l.id!) && !!seen.add(l.id!))
-    .map((l) => ({ id: l.id as ProdId, price: nn(l.price), sale: nn(l.sale), setupOn: !!l.setupOn, setup: nn(l.setup), setupSale: nn(l.setupSale), fee: nn(l.fee), feeSale: nn(l.feeSale) }));
+    .map((l) => ({ id: l.id as ProdId, price: nn(l.price), sale: nn(l.sale), setupOn: !!l.setupOn, setup: nn(l.setup), setupSale: nn(l.setupSale), fee: nn(l.fee), feeSale: nn(l.feeSale), promo: l.id === "ai" && l.promo !== false }));
   return {
     lines,
     addons: arr<string>(o.addons, []),
@@ -315,8 +343,11 @@ export function computePack(P: PackPricing, I: PackInput, vat: number, T: Templa
   const oneoff: Ln[] = [];    // paid at signing
   for (const { l, d } of defs) {
     const p = priceOf(l.price, l.sale, basePrice(P, I, d.id));
-    const name = d.id === "mail" && bundled && l.price == null ? d.label + ", מחיר חבילה עם הצ'אטבוט" : d.label;
+    const first = d.id === "ai" && l.promo ? Math.round(p.eff * (100 - P.aiPct) / 100) : null;
+    const name = d.id === "mail" && bundled && l.price == null ? d.label + ", מחיר חבילה עם הצ'אטבוט" : first != null ? d.label + ", מהחודש השני" : d.label;
     (d.kind === "monthly" ? monthly : oneoff).push({ a: name, ...p });
+    // the AI campaign promo: the first month is paid at signing, at the discount
+    if (first != null) oneoff.push({ a: d.short + ", החודש הראשון (" + P.aiPct + "% הנחה)", o: p.eff, eff: first, was: p.eff });
     if (d.kind === "monthly" && l.setupOn) oneoff.push({ a: "הקמה, " + d.short, ...priceOf(l.setup, l.setupSale, d.setup) });
     if (d.kind === "oneoff" && d.fee) hosting.push({ a: "אחסון ותחזוקה, " + d.short, ...priceOf(l.fee, l.feeSale, d.fee) });
   }
@@ -337,20 +368,20 @@ export function computePack(P: PackPricing, I: PackInput, vat: number, T: Templa
   const title = defs.length ? joinHe(shorts) : "הצעת מחיר";
   const sub = defs.length === 1 ? defs[0].d.sub : defs.length ? "הצעה משולבת של " + defs.length + " מוצרים, במסמך אחד" : "בחרו מוצר אחד או יותר";
 
-  // price card: the monthly price when there is one, otherwise the one-off price
+  // price card: the monthly total when there is one, and next to it everything paid at signing
+  // (setups, one-off products, add-ons); with no monthly product, the one-off total including add-ons
   let price: AiModel["price"];
   const priceLines: { a: string; was?: string; b: string }[] = [];
   const mWas = sum(monthly, "o") !== mNet ? nis(sum(monthly, "o")) : "";
+  const oWas = sum(oneoff, "o") !== oNet ? nis(sum(oneoff, "o")) : "";
   if (monthly.length) {
-    price = { title: "מחיר חודשי", desc: "", was: mWas, num: nis(mNet), sub: 'לחודש, לפני מע"מ' };
-    oneoff.filter((x) => x.a.startsWith("הקמה")).forEach((x) => priceLines.push({ a: x.a, was: wasOf(x), b: shown(x) }));
-    oneoff.filter((x) => !x.a.startsWith("הקמה")).forEach((x) => priceLines.push({ a: x.a + ", חד פעמי", was: wasOf(x), b: shown(x) }));
+    price = { title: "מחיר חודשי", desc: "", was: mWas, num: nis(mNet), sub: 'לחודש, לפני מע"מ',
+      ...(oneoff.length ? { was2: oWas, num2: nis(oNet), sub2: 'בהצטרפות, חד פעמי, לפני מע"מ' } : {}) };
+    if (monthly.length > 1) monthly.forEach((x) => priceLines.push({ a: x.a + ", לחודש", was: wasOf(x), b: shown(x) }));
   } else {
-    const prods = oneoff.filter((x) => defs.some((d) => d.d.label === x.a));
-    const oWas = sum(prods, "o") !== sum(prods, "eff") ? nis(sum(prods, "o")) : "";
-    price = { title: "מחיר חד פעמי", desc: "", was: oWas, num: nis(sum(prods, "eff")), sub: 'חד פעמי, לפני מע"מ' };
-    oneoff.filter((x) => !prods.includes(x)).forEach((x) => priceLines.push({ a: x.a, was: wasOf(x), b: shown(x) }));
+    price = { title: "מחיר כולל", desc: "", was: oWas, num: nis(oNet), sub: 'חד פעמי, לפני מע"מ' };
   }
+  if (monthly.length || oneoff.length > 1) oneoff.forEach((x) => priceLines.push({ a: x.a + (!monthly.length || x.a.startsWith("הקמה") || x.a.includes("החודש הראשון") ? "" : ", חד פעמי"), was: wasOf(x), b: shown(x) }));
   hosting.forEach((x) => priceLines.push({ a: x.a + ", לחודש", was: wasOf(x), b: shown(x) }));
 
   const incGroups = defs.map(({ d }) => ({
@@ -418,7 +449,7 @@ export function computePack(P: PackPricing, I: PackInput, vat: number, T: Templa
 export function packView(input: Record<string, unknown> | null | undefined, pricing: unknown, vat: number, T: Template) {
   const inp = (input || {}) as { client?: string; biz?: string; date?: string; validDays?: number; prods?: unknown };
   const pr = (pricing || {}) as { pack?: unknown; ai?: { payUrl?: string } };
-  const P = withPack(pr.pack);
+  const P = withPack(pr.pack, pr.ai);
   const I = normalizePack(inp.prods, pr.ai?.payUrl);
   const m = computePack(P, I, vat, T);
   const date = inp.date || new Date().toISOString().slice(0, 10);
@@ -437,7 +468,7 @@ export function productCatalog(pricing: { ai?: unknown; pack?: unknown } | null 
   const P = withPack(pricing?.pack);
   const out: CatalogItem[] = [
     { name: "קמפיין AI", kind: "monthly", price: typeof ai.price === "number" ? ai.price : 600 },
-    ...P.products.map((p) => ({ name: p.label, kind: p.kind, price: p.price, setup: p.kind === "monthly" ? p.setup : undefined })),
+    ...P.products.filter((p) => p.id !== "ai").map((p) => ({ name: p.label, kind: p.kind, price: p.price, setup: p.kind === "monthly" ? p.setup : undefined })),
     ...P.products.filter((p) => p.fee).map((p) => ({ name: "אחסון ותחזוקה, " + p.short, kind: "monthly" as const, price: p.fee })),
     ...P.addons.map((a) => ({ name: a.label, kind: "oneoff" as const, price: a.price })),
     ...(Array.isArray(ai.addons) ? ai.addons : []).map((a) => ({ name: a.label, kind: "oneoff" as const, price: a.price })),

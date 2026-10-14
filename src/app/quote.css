@@ -169,15 +169,17 @@
 .qd .aq-top img{height:52px;width:auto;display:block}
 .qd .aq-meta{position:relative;z-index:2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:20px}
 .qd.aq .page{container-type:inline-size}
-@container (max-width:620px){.qd .aq-meta{grid-template-columns:repeat(2,minmax(0,1fr))}.qd .aq-top{padding:14px 20px}.qd .aq-fig .num{font-size:36px}}
+@container (max-width:620px){.qd .aq-meta{grid-template-columns:repeat(2,minmax(0,1fr))}.qd .aq-top{padding:14px 20px}.qd .aq-fig .num{font-size:36px}.qd .aq-fig.second{border:0;padding:0}}
 .qd .aq-meta div{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:8px 12px;min-width:0}
 .qd .aq-meta small{display:block;font-size:11px;color:#b9ade0}
 .qd .aq-meta b{display:block;min-height:22px;font-size:14px;font-weight:700;overflow-wrap:break-word}
-.qd .aq-amount{position:relative;z-index:2;display:flex;gap:22px;align-items:flex-end;white-space:nowrap}
+.qd .aq-amount{position:relative;z-index:2;display:flex;flex-wrap:wrap;gap:16px 22px;align-items:flex-end;white-space:nowrap}
 .qd .aq-fig{text-align:right}
 .qd .aq-fig .num{font-size:44px;font-weight:900;color:var(--gold);line-height:1}
 .qd .aq-fig .was{font-size:18px;font-weight:700;color:#b9ade0;text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:2px}
 .qd .aq-fig .sub{font-size:11.5px;color:#b9ade0;margin-top:6px}
+.qd .aq-fig.second{padding-inline-start:22px;border-inline-start:1px solid rgba(255,255,255,.18)}
+.qd .aq-fig.second .num{font-size:30px;color:#fff}
 .qd .aq-badge{background:var(--gold);color:#3a2a06;font-weight:900;font-size:15px;border-radius:12px;padding:8px 12px;text-align:center;line-height:1.1}
 .qd .notice .chip{font-weight:900}
 .qd .summary .row span:last-child{color:#5b3fb5;font-weight:900;white-space:nowrap}
@@ -191,6 +193,7 @@
 .qd .aq-pay span{font-size:13px;color:#d6ccf3}
 .qd .aq-pay a{background:var(--gold);color:#3a2a06;font-weight:900;font-size:15px;border-radius:999px;padding:12px 28px;text-decoration:none;white-space:nowrap}
 @media (max-width:680px){
+.qd .aq-fig.second{border:0;padding:0}
 .qd .aq-top{padding:14px 20px}
 .qd .aq-top img{height:42px}
 .qd .aq-meta{grid-template-columns:repeat(2,minmax(0,1fr))}

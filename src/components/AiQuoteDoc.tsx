@@ -72,6 +72,13 @@ export default function AiQuoteDoc({ m, T, to, biz, date, until, signed, childre
                 <div className="num">{m.price.num}</div>
                 <div className="sub">{m.price.sub}</div>
               </div>
+              {m.price.num2 ? (
+                <div className="aq-fig second">
+                  {m.price.was2 ? <div className="was">{m.price.was2}</div> : null}
+                  <div className="num">{m.price.num2}</div>
+                  <div className="sub">{m.price.sub2}</div>
+                </div>
+              ) : null}
             </div>
           </div>
 

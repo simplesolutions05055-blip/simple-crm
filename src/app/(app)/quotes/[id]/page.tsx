@@ -35,9 +35,9 @@ export default function QuoteEditor() {
       if (!data.input || !Object.keys(data.input).length) {
         inp.client = w?.name || ""; inp.biz = w?.biz || ""; inp.validDays = settings.valid_days;
       }
-      // a brand-new quote starts as an AI campaign; the three fixed packages are retired, so an
-      // unsent draft that used one continues as a custom build
-      if (!data.input || !Object.keys(data.input).length) { inp.product = "ai"; inp.ai = emptyAi(withAi(settings.pricing.ai)); }
+      // a brand-new quote starts with the AI campaign as its product (other products can be added next to it);
+      // the three fixed packages are retired, so an unsent draft that used one continues as a custom build
+      if (!data.input || !Object.keys(data.input).length) { inp.product = "pack"; inp.prods = emptyPack(withAi(settings.pricing.ai).payUrl, ["ai"]); }
       else if (!data.sent_at && inp.product !== "ai" && inp.product !== "pack" && inp.track !== "custom") inp.track = "custom";
       setI(inp);
       if (data.status === "נחתמה") {
@@ -67,7 +67,7 @@ export default function QuoteEditor() {
     const m = inp.product === "ai"
       ? computeAi(withAi(settings.pricing.ai), normalizeAi(inp.ai, withAi(settings.pricing.ai)), settings.vat, settings.template)
       : inp.product === "pack"
-      ? computePack(withPack(settings.pricing.pack), normalizePack(inp.prods, withAi(settings.pricing.ai).payUrl), settings.vat, settings.template)
+      ? computePack(withPack(settings.pricing.pack, settings.pricing.ai), normalizePack(inp.prods, withAi(settings.pricing.ai).payUrl), settings.vat, settings.template)
       : computeQuote(settings.pricing, inp, settings.vat, settings.template);
     const patch: Row = {
       input: inp, totals: m.totals, pricing: settings.pricing, template: settings.template, vat: settings.vat,
@@ -135,29 +135,37 @@ export default function QuoteEditor() {
   const hasMail = !!I && !ai && !pk && (I.track === "custom" ? I.items.includes("mail") : I.track === "more" || I.track === "max");
   // which product the quote is: the AI campaign, one or more of the products, or a custom build.
   // A sent quote keeps its type, so the switch shows only before the first send.
-  const PP = withPack(settings.pricing.pack);
+  const PP = withPack(settings.pricing.pack, settings.pricing.ai);
   const lines = pkv?.I.lines || [];
+  // an unsent quote made as a standalone AI campaign moves into the products quote with its price, promo and add-ons
+  function fromAi(): PackInput {
+    const A = withAi(settings.pricing.ai);
+    const a = normalizeAi(I?.ai, A);
+    const ids = new Set(PP.addons.map((x) => x.id));
+    return { ...emptyPack(a.payUrl, []), lines: [{ ...newLine("ai"), price: a.price !== A.price ? a.price : null, promo: a.promo },
+      ...(a.addons.includes("lp") ? [newLine("lp")] : []), ...(a.addons.includes("site5") ? [newLine("site")] : [])],
+      addons: [...new Set(a.addons.map((x) => (x === "anim3" ? "vid3" : x)).filter((x) => ids.has(x)))] };
+  }
   function toggleProd(id: ProdId) {
-    const cur = pk ? normalizePack(I?.prods, withAi(settings.pricing.ai).payUrl) : emptyPack(withAi(settings.pricing.ai).payUrl);
+    const cur = pk ? normalizePack(I?.prods, withAi(settings.pricing.ai).payUrl) : ai ? fromAi() : emptyPack(withAi(settings.pricing.ai).payUrl);
     const on = cur.lines.some((l) => l.id === id);
     let next = on ? cur.lines.filter((l) => l.id !== id) : [...cur.lines, newLine(id)];
     if (!on && id === "soc") next = next.filter((l) => l.id !== "socfull");
     if (!on && id === "socfull") next = next.filter((l) => l.id !== "soc");
-    if (pk && !next.length) return toast("בהצעה צריך להישאר לפחות מוצר אחד", true);
+    if ((pk || ai) && !next.length) return toast("בהצעה צריך להישאר לפחות מוצר אחד", true);
     upd({ product: "pack", prods: { ...cur, lines: next } });
   }
   const product = !locked && !q?.sent_at ? (
     <div className="cgroup">
       <b>מה בהצעה</b>
       <div className="pills">
-        <button type="button" className={"pillck" + (ai ? " on" : "")} onClick={() => !ai && upd({ product: "ai", ai: I?.ai && Object.keys(I.ai).length ? I.ai : emptyAi(withAi(settings.pricing.ai)) })}>קמפיין AI</button>
         {PP.products.map((p) => {
-          const on = lines.some((l) => l.id === p.id);
+          const on = lines.some((l) => l.id === p.id) || (ai && p.id === "ai");
           return <button key={p.id} type="button" className={"pillck" + (on ? " on" : "")} onClick={() => toggleProd(p.id)}>{on ? "✓ " : ""}{p.short}</button>;
         })}
         <button type="button" className={"pillck" + (!ai && !pk ? " on" : "")} onClick={() => (ai || pk) && upd({ product: "packages", track: "custom" })}>הרכבה אישית</button>
       </div>
-      <span className="tiny">אפשר לסמן כמה מוצרים יחד. קמפיין AI והרכבה אישית הם הצעה נפרדת.</span>
+      <span className="tiny">אפשר לסמן כמה מוצרים יחד, כולל קמפיין AI עם המבצע. הרכבה אישית היא הצעה נפרדת.</span>
     </div>
   ) : null;
   if (!q || !I || (!model && !aiv && !pkv)) return <><Top title="הצעת מחיר" crumb={{ href: "/quotes", label: "הצעות מחיר" }} /><div className="loading" style={{ minHeight: 200 }}>טוען…</div></>;
@@ -494,7 +502,12 @@ function PackControls({ I, pi, P, vat, upd, top }: { I: QuoteInput; pi: PackInpu
             {l.id === "mail" && bundled && l.price == null ? <span className="tiny">מחיר חבילה עם הצ&apos;אטבוט: {nis(P.bundleMail)} במקום {nis(d.price)}.</span> : null}
             <PriceIn label={d.kind === "monthly" ? "לחודש" : "חד פעמי"} def={def} orig={l.price} sale={l.sale} set={(o, s) => setLine(l.id, { price: o, sale: s })} />
             <span className="tiny">{p.was != null ? "בהצעה: " + nis(p.was) + " מחוק, ולידו " + nis(p.eff) + "." : "בהצעה: " + nis(p.eff) + (d.kind === "monthly" ? " לחודש" : "") + ", " + nis(g(p.eff)) + " כולל מע\"מ."}</span>
-            {d.kind === "monthly" ? <>
+            {l.id === "ai" ? <>
+              <label className={"pillck" + (l.promo ? " on" : "")} style={{ alignSelf: "flex-start" }}>
+                <input type="checkbox" checked={l.promo} onChange={(e) => setLine(l.id, { promo: e.target.checked })} />מבצע הצטרפות: {P.aiPct}% הנחה על החודש הראשון
+              </label>
+              {l.promo ? <span className="tiny">חודש ראשון {nis(Math.round(p.eff * (100 - P.aiPct) / 100))} לפני מע&quot;מ, משולם בהצטרפות. מהחודש השני {nis(p.eff)}.</span> : null}
+            </> : d.kind === "monthly" ? <>
               <label className={"pillck" + (l.setupOn ? " on" : "")} style={{ alignSelf: "flex-start" }}>
                 <input type="checkbox" checked={l.setupOn} onChange={(e) => setLine(l.id, { setupOn: e.target.checked })} />להוסיף עלות הקמה
               </label>

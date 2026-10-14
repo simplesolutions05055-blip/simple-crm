@@ -96,11 +96,11 @@ function ProductsPanel() {
 }
 
 /* ---------------- quote templates ---------------- */
-const PROD_TABS = DEFAULT_PACK.products.map((p) => p.short);
+const PROD_TABS = DEFAULT_PACK.products.filter((p) => p.id !== "ai").map((p) => p.short);  // the AI campaign has its own tab
 const QTABS = ["קמפיין AI", ...PROD_TABS, "תוספות ותנאים כלליים", "הרכבה אישית", "טקסטים בהצעה", "שליחה ללקוח וקליטה"];
 function QuotesSection() {
   const [tab, setTab] = useState(QTABS[0]);
-  const prod = DEFAULT_PACK.products.find((p) => p.short === tab);
+  const prod = tab === QTABS[0] ? undefined : DEFAULT_PACK.products.find((p) => p.short === tab);
   return (
     <>
       <SubTabs tabs={QTABS} tab={tab} setTab={setTab} />
@@ -333,7 +333,7 @@ function LinesArea({ value, onChange, rows = 6 }: { value: string[]; onChange: (
 
 function PackPricingTab({ id }: { id?: ProdId }) {
   const { settings, saveSettings, toast } = useApp();
-  const saved = withPack(settings.pricing.pack);
+  const saved = withPack(settings.pricing.pack, settings.pricing.ai);
   const [K, setK] = useState<PackPricing>(saved);
   const dirty = JSON.stringify(K) !== JSON.stringify(saved);
   const d = id ? K.products.find((p) => p.id === id)! : null;

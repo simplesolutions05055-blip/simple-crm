@@ -67,7 +67,7 @@ export type AiModel = {
   sub: string;
   promo: boolean;
   promoPct: number;
-  price: { title: string; desc: string; was: string; num: string; sub: string };
+  price: { title: string; desc: string; was: string; num: string; sub: string; was2?: string; num2?: string; sub2?: string };
   inc: { t: string; s: string; no?: boolean }[];
   summary: AiRow[];
   summaryNote: string;
