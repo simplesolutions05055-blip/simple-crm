@@ -8,14 +8,6 @@ import { useApp } from "./AppCtx";
 import { sb } from "@/lib/supabase/browser";
 import type { Row } from "@/lib/crm";
 
-const SETTINGS_SUB = [
-  { href: "/settings/business", label: "פרטי העסק" },
-  { href: "/settings/quotes", label: "תבניות הצעת מחיר" },
-  { href: "/settings/intake", label: "תבניות אפיון" },
-  { href: "/settings/connections", label: "חיבורים וקשר" },
-  { href: "/settings/automations", label: "אוטומציות" },
-];
-
 const NAV = [
   { href: "/", label: "לוח בקרה", icon: "home" },
   { href: "/tasks", label: "משימות", icon: "tasks", count: true },
@@ -79,13 +71,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   {n.label}
                   {n.count && counts.tasksDue > 0 ? <span className="cnt">{counts.tasksDue}</span> : null}
                 </Link>
-                {n.href === "/settings" && on("/settings") ? (
-                  <div className="subnav">
-                    {SETTINGS_SUB.map((s) => (
-                      <Link key={s.href} href={s.href} className={path.startsWith(s.href) ? "on" : ""}>{s.label}</Link>
-                    ))}
-                  </div>
-                ) : null}
               </div>
             ))}
           </nav>

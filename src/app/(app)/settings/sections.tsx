@@ -13,7 +13,7 @@ import { aiView, emptyAi, withAi, DEFAULT_AI, type AiPricing, type AiAddon } fro
 import { DEFAULT_PACK, withPack, packView, emptyPack, type PackPricing, type ProdDef, type ProdId } from "@/lib/products";
 import { fmtDate, appUrl, accessMessage, ACCESS_MSG_DEFAULT, waTemplates, type Row } from "@/lib/crm";
 
-/* settings sub-pages: the sidebar shows them under "הגדרות" */
+/* settings sub-pages: tabs at the top of the settings screen */
 export const SETTINGS_NAV = [
   { slug: "business", label: "פרטי העסק", icon: "brief", sub: "הפרטים שמופיעים בהצעות, מע\"מ, תוקף, והמזהים שלך כשותף" },
   { slug: "quotes", label: "תבניות הצעת מחיר", icon: "file", sub: "המחירון, הטקסטים בהצעה, והודעת השליחה ללקוח" },
@@ -37,9 +37,9 @@ export function SettingsSection({ slug }: { slug: string }) {
     <>
       <Top title={meta.label} sub={meta.sub} crumb={{ href: "/settings", label: "הגדרות" }} />
       <div className="content roomy">
-        <div className="tabs only-m">
-          {SETTINGS_NAV.map((s) => <Link key={s.slug} href={"/settings/" + s.slug} className={"btn sm" + (s.slug === meta.slug ? " on" : "")}>{s.label}</Link>)}
-        </div>
+        <nav className="settabs" aria-label="אזורי ההגדרות">
+          {SETTINGS_NAV.map((s) => <Link key={s.slug} href={"/settings/" + s.slug} className={s.slug === meta.slug ? "on" : ""}><Icon n={s.icon} s={16} />{s.label}</Link>)}
+        </nav>
         {meta.slug === "business" ? <BusinessSection /> : meta.slug === "quotes" ? <QuotesSection /> : meta.slug === "intake" ? <IntakeTemplates /> : meta.slug === "connections" ? <ConnectionsSection /> : <AutomationTab />}
       </div>
     </>

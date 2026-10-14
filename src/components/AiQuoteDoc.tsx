@@ -57,10 +57,11 @@ export default function AiQuoteDoc({ m, T, to, biz, date, until, signed, childre
             <div className="what">
               {m.price.title && !m.figs ? <h2>{m.price.title}</h2> : null}
               {m.price.desc && !m.figs ? <p>{m.price.desc}</p> : null}
+              {/* nothing shown twice: a single line keeps its price only in the total, a single total needs no label */}
               {m.priceLines?.length ? (
                 <div className="aq-plines">
                   {m.priceLines.map((r, i) => (
-                    <div key={i}><span className="nm">{r.a}</span><span className="k">{r.k ? <i>{r.k}</i> : null}</span><span className="money">{r.was ? <s>{r.was}</s> : null}<bdi>{r.b}</bdi></span></div>
+                    <div key={i}><span className="nm">{r.a}</span><span className="k">{r.k ? <i>{r.k}</i> : null}</span>{m.priceLines!.length > 1 ? <span className="money">{r.was ? <s>{r.was}</s> : null}<bdi>{r.b}</bdi></span> : null}</div>
                   ))}
                 </div>
               ) : null}
@@ -68,7 +69,7 @@ export default function AiQuoteDoc({ m, T, to, biz, date, until, signed, childre
             <div className="aq-figs">
               {(m.figs || [{ label: m.price.title, was: m.price.was, num: m.price.num }]).map((f, i) => (
                 <div className="aq-f" key={i}>
-                  <small>{f.label}</small>
+                  {(m.figs?.length || 0) > 1 ? <small>{f.label}</small> : null}
                   <span className="v">{f.was ? <s><bdi>{f.was}</bdi></s> : null}<b><bdi>{f.num}</bdi></b></span>
                 </div>
               ))}
