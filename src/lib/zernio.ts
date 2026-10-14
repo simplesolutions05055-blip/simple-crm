@@ -19,11 +19,22 @@ async function apiKey(): Promise<string> {
   return cachedKey;
 }
 
+/* the profile's account, after checking it belongs to this business */
+export async function ownAccount(org: string, accountId: string) {
+  const profileId = await profileFor(org, false);
+  if (!profileId) return null;
+  return (await accountsFor(profileId)).find((a) => a.id === accountId) || null;
+}
+
 export async function zernioConfigured() {
   return !!(await apiKey());
 }
 
 type J = Record<string, unknown>;
+
+export class ZError extends Error {
+  constructor(msg: string, public status: number, public code: string, public addon: boolean) { super(msg); }
+}
 
 export async function zapi(path: string, init?: RequestInit): Promise<J> {
   const r = await fetch(BASE + path, {
@@ -34,7 +45,11 @@ export async function zapi(path: string, init?: RequestInit): Promise<J> {
   const text = await r.text();
   let j: J = {};
   try { j = text ? JSON.parse(text) : {}; } catch { j = { message: text.slice(0, 300) }; }
-  if (!r.ok) throw new Error(String(j.message || j.error || "HTTP " + r.status));
+  if (!r.ok) {
+    const code = String(j.code || j.error_code || "");
+    const addon = j.requiresAddon === true || /ADDON/i.test(code);
+    throw new ZError(String(j.message || j.error || "HTTP " + r.status), r.status, code, addon);
+  }
   return j;
 }
 
@@ -59,7 +74,12 @@ export async function profileFor(org: string, create: boolean): Promise<string |
   return id;
 }
 
-export type ZAccount = { id: string; platform: string; username: string; name: string; active: boolean };
+export type ZAccount = {
+  id: string; platform: string; username: string; name: string; active: boolean;
+  followers: number | null; picture: string; url: string; parent: string;
+};
+/* ads connections show up in the same list under their own platform names */
+export const ADS_PLATFORMS = ["metaads", "tiktokads", "googleads", "linkedinads", "pinterestads", "xads", "redditads"];
 
 export async function accountsFor(profileId: string): Promise<ZAccount[]> {
   const j = await zapi("/accounts?profileId=" + encodeURIComponent(profileId));
@@ -75,7 +95,19 @@ export async function accountsFor(profileId: string): Promise<ZAccount[]> {
       platform: String(a.platform || ""),
       username: String(a.username || ""),
       name: String(a.displayName || a.selectedPageName || a.name || ""),
-      active: a.isActive !== false,
+      active: a.isActive !== false && a.needsReconnection !== true,
+      followers: typeof a.followersCount === "number" ? a.followersCount : null,
+      picture: String(a.profilePicture || ""),
+      url: String(a.profileUrl || ""),
+      parent: String(a.parentAccountId || ""),
     }))
     .filter((a) => a.id);
+}
+
+/* turns a thrown error into the JSON the screens read: addon = the Zernio plan lacks the add-on */
+export function zfail(e: unknown) {
+  const m = (e as Error).message;
+  if (m === "no_access") return { body: { error: m }, status: 403 };
+  if (e instanceof ZError) return { body: { error: m, code: e.code, addon: e.addon || e.status === 402 }, status: e.addon || e.status === 402 ? 402 : 502 };
+  return { body: { error: m }, status: 502 };
 }

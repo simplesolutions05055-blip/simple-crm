@@ -8,6 +8,7 @@ import AiQuoteDoc from "@/components/AiQuoteDoc";
 import { useApp } from "@/components/AppCtx";
 import IntakeTemplates from "./IntakeTemplates";
 import QuoteDoc from "@/components/QuoteDoc";
+import { GraphicPicker } from "@/components/Graphics";
 import { computeQuote, emptyInput, DEFAULT_PRICING, isoToday, type Pricing, type Template, type Pair, type QuoteInput } from "@/lib/quote-engine";
 import { aiView, emptyAi, withAi, DEFAULT_AI, type AiPricing, type AiAddon } from "@/lib/ai-campaign";
 import { DEFAULT_PACK, withPack, packView, emptyPack, type PackPricing, type ProdDef, type ProdId } from "@/lib/products";
@@ -177,7 +178,7 @@ function GcalTab() {
 /* ---------------- social networks through Zernio (test stage) ---------------- */
 const Z_NETS: [string, string][] = [["facebook", "פייסבוק"], ["instagram", "אינסטגרם"], ["tiktok", "טיקטוק"], ["linkedin", "לינקדאין"], ["youtube", "יוטיוב"]];
 const zNet = (p: string) => Z_NETS.find((n) => n[0] === p)?.[1] || p;
-type ZAcc = { id: string; platform: string; username: string; name: string; active: boolean };
+type ZAcc = { id: string; platform: string; username: string; name: string; active: boolean; followers: number | null; picture: string; url: string };
 function ZernioTab() {
   const { org, toast } = useApp();
   const [st, setSt] = useState<{ configured: boolean; accounts: ZAcc[]; error?: string } | null>(null);
@@ -197,10 +198,19 @@ function ZernioTab() {
     else if (q.get("error")) setMsg(["החיבור לא הושלם: " + (q.get("error_message") || q.get("error")), true]);
     else if (q.get("zernio") === "missing") setMsg(["חסר מפתח ה-API של Zernio בשרת. ראה את השלבים למטה", true]);
     else if (q.get("zernio") === "fail") setMsg(["Zernio החזיר שגיאה: " + (q.get("reason") || ""), true]);
+    if (q.get("media")?.startsWith("https://")) setMedia(q.get("media")!);
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [org]);
-  const accs = st?.accounts || [];
+  const accs = (st?.accounts || []).filter((a) => Z_NETS.some((n) => n[0] === a.platform));
+  const disconnect = async (a: ZAcc) => {
+    if (!confirm("לנתק את " + zNet(a.platform) + " (" + (a.name || a.username) + ")? פוסטים שכבר פורסמו נשארים ברשת.")) return;
+    const r = await fetch("/api/zernio/accounts", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ org, accountId: a.id }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return toast("הניתוק נכשל: " + (j.error || r.status), true);
+    setPick(pick.filter((x) => x !== a.id));
+    toast("נותק"); load();
+  };
   const hasIg = accs.some((a) => pick.includes(a.id) && a.platform === "instagram");
   const send = async () => {
     if (!text.trim() || !pick.length) return toast("כותבים טקסט ובוחרים לפחות חשבון אחד", true);
@@ -229,14 +239,21 @@ function ZernioTab() {
               {st.error ? <p className="tiny" style={{ color: "var(--bad)" }}>שגיאה בטעינה: {st.error}</p> : null}
               {accs.length ? accs.map((a) => (
                 <div key={a.id} className="set-card">
-                  <div className="hdr"><b>{zNet(a.platform)}</b>{a.active ? null : <span className="tiny" style={{ color: "var(--bad)" }}>צריך חיבור מחדש</span>}</div>
-                  <span className="tiny">{a.name || a.username}{a.name && a.username ? " · " + a.username : ""}</span>
+                  <div className="hdr" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      {a.picture ? <img src={a.picture} alt="" width={28} height={28} style={{ borderRadius: "50%", objectFit: "cover" }} /> : null}
+                      <b>{zNet(a.platform)}</b>{a.active ? null : <span className="tiny" style={{ color: "var(--bad)" }}>צריך חיבור מחדש</span>}
+                    </span>
+                    <button className="btn sm ghost danger" onClick={() => disconnect(a)}>ניתוק</button>
+                  </div>
+                  <span className="tiny">{a.url ? <a href={a.url} target="_blank" rel="noopener noreferrer">{a.name || a.username}</a> : a.name || a.username}{a.name && a.username ? " · " + a.username : ""}{a.followers != null ? " · " + a.followers.toLocaleString("he-IL") + " עוקבים" : ""}</span>
                 </div>
               )) : <p className="tiny lead">עוד לא חובר אף חשבון.</p>}
               <div className="bar" style={{ marginTop: 14, flexWrap: "wrap" }}>
                 {Z_NETS.map(([id, l]) => <a key={id} className="btn" href={"/api/zernio/connect?org=" + encodeURIComponent(org) + "&platform=" + id}><Icon n="link" s={15} />חיבור {l}</a>)}
               </div>
-              <p className="tiny" style={{ marginTop: 10 }}>בתוכנית החינמית אפשר לחבר עד 2 חשבונות. אינסטגרם מתחבר כחשבון מקצועי, ופייסבוק כעמוד עסקי.</p>
+              <p className="tiny" style={{ marginTop: 10 }}>בתוכנית החינמית אפשר לחבר עד 2 חשבונות. פייסבוק מתחבר כעמוד עסקי. אינסטגרם מתחבר דרך פייסבוק: בוחרים בחלון את העמוד שהאינסטגרם העסקי שלך מקושר אליו, וכך מתחבר החשבון הנכון.</p>
+              <p className="tiny">החלפת חשבון: לוחצים &quot;ניתוק&quot; על החשבון הישן ואז שוב על כפתור החיבור. אם החלון מציג חשבון לא נכון, מתנתקים קודם מפייסבוק או מאינסטגרם בדפדפן (או פותחים חלון גלישה בסתר) ומנסים שוב.</p>
             </>
           )}
         </Panel>
@@ -255,6 +272,7 @@ function ZernioTab() {
             </div>
             <label className="field full"><span>טקסט הפוסט</span><textarea className="inp" rows={5} value={text} onChange={(e) => setText(e.target.value)} /></label>
             <label className="field full"><span>קישור לתמונה או סרטון (https, חובה לאינסטגרם ולטיקטוק)</span><input className="inp ltr" value={media} onChange={(e) => setMedia(e.target.value)} placeholder="https://" /></label>
+            <GraphicPicker value={media} onPick={setMedia} />
             <label className="field"><span>מתי (ריק = עכשיו)</span><input className="inp" type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} /></label>
             <div className="full bar"><button className="btn primary" disabled={busy} onClick={send}><Icon n="send" s={15} />{busy ? "שולח…" : when ? "תזמון" : "פרסום עכשיו"}</button></div>
           </div>

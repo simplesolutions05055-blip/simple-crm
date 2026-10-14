@@ -7,8 +7,9 @@ import { Top, Panel, Empty, St } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
 import { fmtDate, today, type Row } from "@/lib/crm";
+import { SocialLive } from "@/components/SocialLive";
 
-const TABS = ["סקירה", "המלצות לשבוע", "טרנדים ולהיטים", "עדכוני פלטפורמות", "מה לסרוק"] as const;
+const TABS = ["נתונים חיים", "סקירה", "המלצות לשבוע", "טרנדים ולהיטים", "עדכוני פלטפורמות", "מה לסרוק"] as const;
 type Tab = (typeof TABS)[number];
 const PLATFORMS = ["אינסטגרם", "פייסבוק", "טיקטוק"] as const;
 const PRIO_CLS: Record<string, string> = { "גבוה": "bad", "בינוני": "warn", "נמוך": "info" };
@@ -20,7 +21,7 @@ const nextSunday = () => { const d = new Date(); d.setDate(d.getDate() + ((7 - d
 
 export default function Social() {
   const { org, toast } = useApp();
-  const [tab, setTab] = useState<Tab>("סקירה");
+  const [tab, setTab] = useState<Tab>("נתונים חיים");
   const [data, setData] = useState<{ reports: Row[]; snaps: Row[]; watch: Row[]; req: Row | null; social: Row } | null>(null);
   const [wi, setWi] = useState(0); // which report (0 = latest)
 
@@ -55,7 +56,7 @@ export default function Social() {
         </div>} />
       <div className="content">
         <div className="tabs">{TABS.map((t) => <button key={t} className={"btn sm" + (tab === t ? " on" : "")} onClick={() => setTab(t)}>{t}</button>)}</div>
-        {data && data.reports.length > 1 && tab !== "מה לסרוק" ? (
+        {data && data.reports.length > 1 && tab !== "מה לסרוק" && tab !== "נתונים חיים" ? (
           <div className="bar">
             <span className="tiny">שבוע:</span>
             <select className="inp sm" style={{ width: "auto" }} value={wi} onChange={(e) => setWi(Number(e.target.value))}>
@@ -64,6 +65,7 @@ export default function Social() {
           </div>
         ) : null}
         {!data ? <div className="loading" style={{ minHeight: 200 }}>טוען…</div>
+          : tab === "נתונים חיים" ? <SocialLive />
           : tab === "מה לסרוק" ? <Watch data={data} reload={load} />
           : !rep ? <FirstRun />
           : tab === "סקירה" ? <Overview rep={rep} snaps={data.snaps} />
