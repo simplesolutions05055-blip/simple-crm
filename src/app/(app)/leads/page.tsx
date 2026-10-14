@@ -8,7 +8,7 @@ import { Top, Modal, St } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
 import ExcelIO from "@/components/ExcelIO";
-import { STAGES, OFF_STAGES, SOURCES, INDUSTRIES, BUDGETS, fmtDate, today, type Row } from "@/lib/crm";
+import { STAGES, OFF_STAGES, SOURCES, INDUSTRIES, BUDGETS, fmtDate, today, type Row, pastePhone } from "@/lib/crm";
 
 export default function Leads() {
   const { org, toast } = useApp();
@@ -174,7 +174,7 @@ function NewLead({ onClose, onDone }: { onClose: () => void; onDone: (id: string
       <form className="form" onSubmit={save}>
         <label className="field"><span>שם</span><input className="inp" required autoFocus value={f.name} onChange={(e) => set("name", e.target.value)} /></label>
         <label className="field"><span>עסק</span><input className="inp" value={f.biz} onChange={(e) => set("biz", e.target.value)} /></label>
-        <label className="field"><span>טלפון</span><input className="inp ltr" value={f.phone} onChange={(e) => set("phone", e.target.value)} /></label>
+        <label className="field"><span>טלפון</span><input className="inp ltr" type="tel" inputMode="tel" autoComplete="off" value={f.phone} onPaste={(e) => pastePhone(e, (v) => set("phone", v))} onChange={(e) => set("phone", e.target.value.replace(/[^\d+\-\s]/g, ""))} /></label>
         <label className="field"><span>מייל</span><input className="inp ltr" type="email" value={f.email} onChange={(e) => set("email", e.target.value)} /></label>
         <label className="field"><span>תחום</span><input className="inp" list="industries" value={f.industry} onChange={(e) => set("industry", e.target.value)} placeholder="בחירה או הקלדה חופשית" /></label>
         <label className="field"><span>עיר</span><input className="inp" list="cities" value={f.city} placeholder="לא חובה"

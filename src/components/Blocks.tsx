@@ -7,16 +7,19 @@ import Icon from "./Icon";
 import { Panel, Empty, St } from "./Shell";
 import { useApp } from "./AppCtx";
 import { FTYPES, LINKS, TOUCH, fmtDateTime, fmtDate, today, QUOTE_STATUS_CLS, money, type Row } from "@/lib/crm";
+import { pastePhone } from "@/lib/crm";
 
 /* inline text field that saves on blur */
-export function EditField({ value, onSave, type = "text", placeholder, className, list }: {
-  value: string | number | null | undefined; onSave: (v: string) => void; type?: string; placeholder?: string; className?: string; list?: string;
+export function EditField({ value, onSave, type = "text", placeholder, className, list, phone }: {
+  value: string | number | null | undefined; onSave: (v: string) => void; type?: string; placeholder?: string; className?: string; list?: string; phone?: boolean;
 }) {
   const [v, setV] = useState(value ?? "");
   useEffect(() => setV(value ?? ""), [value]);
   return (
-    <input className={className || "fi"} type={type} value={v as string} placeholder={placeholder} list={list}
-      onChange={(e) => setV(e.target.value)}
+    <input className={className || "fi"} type={phone ? "tel" : type} value={v as string} placeholder={placeholder} list={list}
+      autoComplete={phone ? "off" : undefined} inputMode={phone ? "tel" : undefined}
+      onPaste={phone ? (e) => pastePhone(e, (x) => setV(x)) : undefined}
+      onChange={(e) => setV(phone ? e.target.value.replace(/[^\d+\-\s]/g, "") : e.target.value)}
       onBlur={() => { if (String(v) !== String(value ?? "")) onSave(String(v)); }}
       onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
   );

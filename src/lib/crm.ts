@@ -115,3 +115,15 @@ export function waTemplates(wa: Row | undefined): WaTpl[] {
     return { name, lang: lang || "he", params: Number(params) || 0, label: label.join(" | ") || name };
   }).filter((t) => /^[a-z0-9_]+$/.test(t.name));
 }
+
+/* a phone number out of pasted text: drops labels, names and anything that is not part of the number */
+export function phoneFromText(t: string) {
+  const m = (t || "").match(/\+?\d[\d\s\-().]{6,18}\d/);
+  return m ? m[0].replace(/[^\d+]/g, "") : (t || "").replace(/[^\d+]/g, "");
+}
+export function pastePhone(e: React.ClipboardEvent<HTMLInputElement>, set: (v: string) => void) {
+  const t = e.clipboardData.getData("text");
+  if (!t) return;
+  e.preventDefault();
+  set(phoneFromText(t));
+}

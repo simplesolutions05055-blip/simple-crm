@@ -18,13 +18,13 @@ const SETTINGS_SUB = [
 
 const NAV = [
   { href: "/", label: "לוח בקרה", icon: "home" },
-  { href: "/leads", label: "לידים", icon: "target" },
-  { href: "/clients", label: "לקוחות", icon: "brief" },
-  { href: "/quotes", label: "הצעות מחיר", icon: "file" },
-  { href: "/finance", label: "כספים", icon: "wallet" },
-  { href: "/social", label: "סושיאל", icon: "pulse" },
   { href: "/tasks", label: "משימות", icon: "tasks", count: true },
+  { href: "/leads", label: "לידים", icon: "target" },
+  { href: "/quotes", label: "הצעות מחיר", icon: "file" },
+  { href: "/clients", label: "לקוחות", icon: "brief" },
+  { href: "/finance", label: "כספים", icon: "wallet" },
   { href: "/calendar", label: "יומן", icon: "cal" },
+  { href: "/social", label: "סושיאל", icon: "pulse" },
   { href: "/settings", label: "הגדרות", icon: "sliders" },
 ];
 

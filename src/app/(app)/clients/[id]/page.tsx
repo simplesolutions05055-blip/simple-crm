@@ -107,7 +107,7 @@ export default function ClientPage() {
             <Panel icon="user" title="פרטים">
               <FieldRow icon="build" label="שם העסק"><EditField value={c.biz} onSave={(v) => v.trim() && save({ biz: v.trim() })} /></FieldRow>
               <FieldRow icon="user" label="איש קשר"><EditField value={c.contact} onSave={(v) => save({ contact: v })} /></FieldRow>
-              <FieldRow icon="phone" label="טלפון"><EditField className="fi ltr" value={c.phone} onSave={(v) => save({ phone: v.replace(/[^0-9+]/g, "") || null })} /></FieldRow>
+              <FieldRow icon="phone" label="טלפון"><EditField className="fi ltr" phone value={c.phone} onSave={(v) => save({ phone: v.replace(/[^0-9+]/g, "") || null })} /></FieldRow>
               <FieldRow icon="mail" label="מייל"><EditField className="fi ltr" value={c.email} onSave={(v) => save({ email: v || null })} /></FieldRow>
               <FieldRow icon="tag" label="תחום"><EditField value={c.industry} list="industries" onSave={(v) => save({ industry: v })} /></FieldRow>
               <FieldRow icon="wa" label="קבוצת וואטסאפ"><EditField className="fi ltr" value={c.wa_group} placeholder="קישור לקבוצה" onSave={(v) => save({ wa_group: v })} /></FieldRow>

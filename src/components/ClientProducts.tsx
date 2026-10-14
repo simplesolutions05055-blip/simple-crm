@@ -9,7 +9,7 @@ import { sb } from "@/lib/supabase/browser";
 import { Panel, Modal, St, Empty } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
-import { fmtDate, money, today, type Row } from "@/lib/crm";
+import { fmtDate, money, today, type Row, pastePhone } from "@/lib/crm";
 
 export const SUP_BILLING = ["חודשי", "חד-פעמי"] as const;
 
@@ -256,7 +256,7 @@ export function SupplierModal({ row, onClose, onSaved }: { row: Row | null; onCl
       <div className="form">
         <label className="field"><span>שם</span><input className="inp" autoFocus value={f.name} onChange={(e) => set({ name: e.target.value })} /></label>
         <label className="field"><span>תחום</span><input className="inp" value={f.field} placeholder="צילום, עיצוב, פיתוח…" onChange={(e) => set({ field: e.target.value })} /></label>
-        <label className="field"><span>טלפון</span><input className="inp ltr" value={f.phone || ""} onChange={(e) => set({ phone: e.target.value })} /></label>
+        <label className="field"><span>טלפון</span><input className="inp ltr" type="tel" inputMode="tel" autoComplete="off" value={f.phone || ""} onPaste={(e) => pastePhone(e, (v) => set({ phone: v }))} onChange={(e) => set({ phone: e.target.value.replace(/[^\d+\-\s]/g, "") })} /></label>
         <label className="field"><span>מייל</span><input className="inp ltr" type="email" value={f.email || ""} onChange={(e) => set({ email: e.target.value })} /></label>
         <label className="field"><span>עלות ברירת מחדל</span><input className="inp" type="number" min={0} value={f.default_cost} onChange={(e) => set({ default_cost: e.target.value })} /></label>
         <div className="field"><span>העלות היא</span>

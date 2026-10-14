@@ -6,7 +6,7 @@ import { Top, Panel, Modal, St, Empty } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
 import ExcelIO from "@/components/ExcelIO";
-import { CLIENT_STATUS, CLIENT_STATUS_CLS, INDUSTRIES, fmtDate, money, ago, type Row } from "@/lib/crm";
+import { CLIENT_STATUS, CLIENT_STATUS_CLS, INDUSTRIES, fmtDate, money, ago, type Row, pastePhone } from "@/lib/crm";
 
 export default function Clients() {
   const router = useRouter();
@@ -84,7 +84,7 @@ function NewClient({ onClose, onDone }: { onClose: () => void; onDone: (id: stri
       <form className="form" onSubmit={save}>
         <label className="field"><span>שם העסק</span><input className="inp" required autoFocus value={f.biz} onChange={(e) => set("biz", e.target.value)} /></label>
         <label className="field"><span>איש קשר</span><input className="inp" value={f.contact} onChange={(e) => set("contact", e.target.value)} /></label>
-        <label className="field"><span>טלפון</span><input className="inp ltr" value={f.phone} onChange={(e) => set("phone", e.target.value)} /></label>
+        <label className="field"><span>טלפון</span><input className="inp ltr" type="tel" inputMode="tel" autoComplete="off" value={f.phone} onPaste={(e) => pastePhone(e, (v) => set("phone", v))} onChange={(e) => set("phone", e.target.value.replace(/[^\d+\-\s]/g, ""))} /></label>
         <label className="field"><span>מייל</span><input className="inp ltr" type="email" value={f.email} onChange={(e) => set("email", e.target.value)} /></label>
         <label className="field full"><span>תחום</span><input className="inp" list="industries" value={f.industry} onChange={(e) => set("industry", e.target.value)} /></label>
         <datalist id="industries">{INDUSTRIES.map((i) => <option key={i} value={i} />)}</datalist>

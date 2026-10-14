@@ -114,7 +114,7 @@ export default function LeadPage() {
             <Panel icon="user" title="פרטים">
               <FieldRow icon="user" label="שם"><EditField value={l.name} onSave={(v) => v.trim() && save({ name: v.trim() })} /></FieldRow>
               <FieldRow icon="build" label="עסק"><EditField value={l.biz} onSave={(v) => save({ biz: v })} /></FieldRow>
-              <FieldRow icon="phone" label="טלפון"><EditField className="fi ltr" value={l.phone} onSave={(v) => save({ phone: v.replace(/[^0-9+]/g, "") || null })} /></FieldRow>
+              <FieldRow icon="phone" label="טלפון"><EditField className="fi ltr" phone value={l.phone} onSave={(v) => save({ phone: v.replace(/[^0-9+]/g, "") || null })} /></FieldRow>
               <FieldRow icon="mail" label="מייל"><EditField className="fi ltr" value={l.email} onSave={(v) => save({ email: v || null })} /></FieldRow>
               <FieldRow icon="tag" label="תחום"><EditField value={l.industry} list="industries" placeholder="בחירה או הקלדה חופשית" onSave={(v) => save({ industry: v })} /></FieldRow>
               <FieldRow icon="pin" label="עיר"><EditField value={l.city} list="cities" placeholder="בחירה או הקלדה חופשית" onSave={(v) => { const c = v.trim(); save({ city: c || null, region: regionOf(c) || l.region || null }); }} /></FieldRow>
