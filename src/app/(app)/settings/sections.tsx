@@ -381,6 +381,16 @@ function PackPricingTab({ id }: { id?: ProdId }) {
               ))}
             </Panel>
           ) : null}
+          <Panel icon="plus" title="תוספות שמוצעות עם המוצר">
+            <div className="pills">{K.addons.map((x) => {
+              const on = (d.addons ?? K.addons.map((y) => y.id)).includes(x.id);
+              return <label key={x.id} className={"pillck" + (on ? " on" : "")}><input type="checkbox" checked={on} onChange={(e) => {
+                const cur = d.addons ?? K.addons.map((y) => y.id);
+                setD({ addons: e.target.checked ? [...cur, x.id] : cur.filter((y) => y !== x.id) });
+              }} />{x.label}</label>;
+            })}</div>
+            <span className="tiny">בהצעה עם כמה מוצרים מוצגות התוספות של כולם.</span>
+          </Panel>
           <Panel icon="check" title="מה כלול">
             <span className="tiny">שורה לכל פריט: כותרת | הסבר. שורה שמתחילה ב&quot;לא כלול&quot; מוצגת עם ✕.</span>
             <PairsArea value={d.inc} onChange={(x) => setD({ inc: x })} rows={7} />

@@ -19,8 +19,9 @@ export type ProdDef = {
   inc: Pair[];
   timelines: Pair[];
   terms: string[];
+  addons?: string[];  // which add-ons this product offers; a quote shows those of all its products
 };
-export type PackAddon = { id: string; label: string; d: string; price: number };
+export type PackAddon = { id: string; label: string; d: string; price: number; was?: number };
 export type MsgPack = { id: string; n: number; price: number };
 export type PackPricing = {
   products: ProdDef[];
@@ -32,11 +33,11 @@ export type PackPricing = {
   general: string[];   // terms in every quote
 };
 
-const SESSIONS = "סשן נוסף בתשלום, 350 ₪ לשעה";
+const SESSIONS = "סשן נוסף בתשלום, 280 ₪ לשעה";
 export const DEFAULT_PACK: PackPricing = {
   products: [
     {
-      id: "bot", label: "צ'אטבוט וואטסאפ, פייסבוק ואינסטגרם", short: "צ'אטבוט", kind: "monthly", price: 780, setup: 2000, fee: 0,
+      id: "bot", label: "צ'אטבוט וואטסאפ, פייסבוק ואינסטגרם", short: "צ'אטבוט", kind: "monthly", price: 780, setup: 2000, fee: 0, addons: ["vid3", "shoot", "gfx8"],
       sub: "מענה אוטומטי בתגובות, בסטורי ובפרטי, שמוביל את הפונה לשיחה בוואטסאפ",
       inc: [
         { t: "מענה בתגובות, בסטורי, ברילס ובפרטי", s: "בפייסבוק ובאינסטגרם, עם הובלה של הפונה לוואטסאפ" },
@@ -56,7 +57,7 @@ export const DEFAULT_PACK: PackPricing = {
       ],
     },
     {
-      id: "mail", label: "דיוור וואטסאפ", short: "דיוור וואטסאפ", kind: "monthly", price: 650, setup: 900, fee: 0,
+      id: "mail", label: "דיוור וואטסאפ", short: "דיוור וואטסאפ", kind: "monthly", price: 650, setup: 900, fee: 0, addons: [],
       sub: "דיוור מפולח בוואטסאפ לרשימות שלך, עם 500 הודעות בחודש ללא עלות",
       inc: [
         { t: "500 הודעות בחודש ללא עלות", s: "באופן קבוע, בכל חודש" },
@@ -72,14 +73,12 @@ export const DEFAULT_PACK: PackPricing = {
         "500 הודעות בחודש ללא עלות, באופן קבוע",
         "הודעות שלא נוצלו בחודש לא עוברות לחודש הבא",
         "הודעות מעבר לכך נרכשות בחבילות חד-פעמיות, ללא התחייבות",
-        "מחיר החבילה עם הצ'אטבוט, 450 ₪ לחודש, חל כל עוד הצ'אטבוט פעיל",
         "הדיוור נשלח לרשימות שאישרו לקבל, ובכל הודעה יש דרך להסיר",
-        "מספר דיוור אחד לכל 20,000 אנשי קשר",
         "ההודעות מוגשות למטא לאישור. האישור אורך עד 24 שעות",
       ],
     },
     {
-      id: "site", label: "אתר תדמית, עד 5 דפים", short: "אתר תדמית", kind: "oneoff", price: 4500, setup: 0, fee: 59,
+      id: "site", label: "אתר תדמית, עד 5 דפים", short: "אתר תדמית", kind: "oneoff", price: 4500, setup: 0, fee: 59, addons: ["vid3", "shoot", "gfx8"],
       sub: "אתר עסקי מעוצב עד 5 דפים, מותאם לנייד, עם טפסים לאיסוף לידים",
       inc: [
         { t: "עיצוב ובנייה של עד 5 דפים", s: "לפי הדרישות שלך. כל דף נוסף 280 ₪" },
@@ -107,7 +106,7 @@ export const DEFAULT_PACK: PackPricing = {
       ],
     },
     {
-      id: "lp", label: "דף נחיתה", short: "דף נחיתה", kind: "oneoff", price: 1200, setup: 0, fee: 29,
+      id: "lp", label: "דף נחיתה", short: "דף נחיתה", kind: "oneoff", price: 1200, setup: 0, fee: 29, addons: ["vid3", "shoot", "gfx8"],
       sub: "עמוד נחיתה ממיר, עם טופס לידים וכפתור וואטסאפ",
       inc: [
         { t: "עמוד נחיתה אחד", s: "מבנה מותאם להמרה גבוהה" },
@@ -132,7 +131,7 @@ export const DEFAULT_PACK: PackPricing = {
       ],
     },
     {
-      id: "soc", label: "ניהול סושיאל, בסיסי", short: "סושיאל בסיסי", kind: "monthly", price: 900, setup: 0, fee: 0,
+      id: "soc", label: "ניהול סושיאל, בסיסי", short: "סושיאל בסיסי", kind: "monthly", price: 900, setup: 0, fee: 0, addons: ["vid3", "shoot", "camp50"],
       sub: "ניהול עמודי הסושיאל: גרפיקות, העלאות ותכנון",
       inc: [
         { t: "10 גרפיקות בחודש", s: "מעוצבות לפי השפה של העסק" },
@@ -153,7 +152,7 @@ export const DEFAULT_PACK: PackPricing = {
       ],
     },
     {
-      id: "socfull", label: "ניהול סושיאל מלא", short: "סושיאל מלא", kind: "monthly", price: 3900, setup: 0, fee: 0,
+      id: "socfull", label: "ניהול סושיאל מלא", short: "סושיאל מלא", kind: "monthly", price: 3900, setup: 0, fee: 0, addons: ["vid3", "gfx8", "camp50"],
       sub: "ניהול סושיאל מקצה לקצה, כולל יום צילום בכל חודש",
       inc: [
         { t: "יום צילום בכל חודש", s: "בבית העסק, עד 5 שעות, עם תכנים כתובים מראש" },
@@ -180,6 +179,7 @@ export const DEFAULT_PACK: PackPricing = {
     { id: "vid3", label: "חבילת 3 סרטונים", d: "סרטונים שיווקיים מוכנים לפרסום", price: 550 },
     { id: "shoot", label: "יום צילום", d: "צילום בבית העסק, עד 5 שעות, עם תכנים כתובים מראש", price: 2200 },
     { id: "gfx8", label: "חבילת גרפיקות, 8 גרפיקות", d: "גרפיקות מעוצבות לפי השפה של העסק", price: 300 },
+    { id: "camp50", label: "הטבה מיוחדת: ניהול קמפיין ב-50% הנחה", d: "במקום 600 ₪, רק 300 ₪ לחודש הראשון", price: 300, was: 600 },
   ],
   extraPage: 280,
   bundleMail: 450,
@@ -215,15 +215,24 @@ export function withPack(p: unknown): PackPricing {
         sub: typeof s.sub === "string" ? s.sub : d.sub,
         price: num(s.price, d.price), setup: num(s.setup, d.setup), fee: num(s.fee, d.fee),
         inc: arr(s.inc, d.inc), timelines: arr(s.timelines, d.timelines), terms: arr(s.terms, d.terms),
+        addons: arr(s.addons, d.addons || []),
       };
     }),
-    addons: arr(o.addons, DEFAULT_PACK.addons),
+    addons: (() => { const a = arr<PackAddon>(o.addons, DEFAULT_PACK.addons); return [...a, ...DEFAULT_PACK.addons.filter((d) => !a.some((x) => x.id === d.id))]; })(),
     extraPage: num(o.extraPage, DEFAULT_PACK.extraPage),
     bundleMail: num(o.bundleMail, DEFAULT_PACK.bundleMail),
     freeMsgs: num(o.freeMsgs, DEFAULT_PACK.freeMsgs),
     packs: arr(o.packs, DEFAULT_PACK.packs),
     general: arr(o.general, DEFAULT_PACK.general),
   };
+}
+
+/* the add-ons a quote offers: those of its products (all of them when no product says) */
+export function offeredAddons(P: PackPricing, ids: string[]) {
+  const defs = P.products.filter((p) => ids.includes(p.id));
+  if (!defs.length) return P.addons;
+  const allow = new Set(defs.flatMap((d) => d.addons ?? P.addons.map((a) => a.id)));
+  return P.addons.filter((a) => allow.has(a.id));
 }
 
 /* one product in a quote. null = take it from the catalog. */
@@ -313,8 +322,9 @@ export function computePack(P: PackPricing, I: PackInput, vat: number, T: Templa
   }
   const pages = hasSite ? I.pages : 0;
   if (pages) oneoff.push({ a: "דפים נוספים באתר × " + pages, o: pages * P.extraPage, eff: pages * P.extraPage, was: null });
-  const picked = P.addons.filter((x) => I.addons.includes(x.id));
-  picked.forEach((x) => oneoff.push({ a: x.label, o: x.price, eff: x.price, was: null }));
+  const offered = offeredAddons(P, defs.map((x) => x.d.id));
+  const picked = offered.filter((x) => I.addons.includes(x.id));
+  picked.forEach((x) => oneoff.push({ a: x.label, o: x.was || x.price, eff: x.price, was: x.was && x.was !== x.price ? x.was : null }));
   const pack = hasMail ? P.packs.find((x) => x.id === I.msgPack) : undefined;
   if (pack) oneoff.push({ a: "חבילת " + pack.n.toLocaleString("he-IL") + " הודעות", o: pack.price, eff: pack.price, was: null });
 
@@ -375,7 +385,7 @@ export function computePack(P: PackPricing, I: PackInput, vat: number, T: Templa
     hasMail ? `בדיוור: ${P.freeMsgs.toLocaleString("he-IL")} הודעות בחודש ללא עלות, באופן קבוע.` : "",
   ].filter(Boolean).join(" ");
 
-  const addons: AiModel["addons"] = P.addons.map((x) => ({ t: x.label, d: x.d, net: nis(x.price), gross: nis(g(x.price)), on: I.addons.includes(x.id) }));
+  const addons: AiModel["addons"] = offered.map((x) => ({ t: x.label, d: x.d, net: nis(x.price), gross: nis(g(x.price)), on: I.addons.includes(x.id) }));
   if (hasSite) addons.push({ t: "דף נוסף באתר" + (pages ? " × " + pages : ""), d: "מעבר ל-5 הדפים שבמחיר, לכל דף", net: nis(P.extraPage), gross: nis(g(P.extraPage)), on: pages > 0 });
   if (hasMail) P.packs.forEach((x) => addons.push({ t: "חבילת " + x.n.toLocaleString("he-IL") + " הודעות", d: "מעבר ל-" + P.freeMsgs.toLocaleString("he-IL") + " ההודעות החינמיות בחודש, חד פעמי", net: nis(x.price), gross: nis(g(x.price)), on: pack?.id === x.id }));
 

@@ -10,7 +10,7 @@ import AiQuoteDoc from "@/components/AiQuoteDoc";
 import { useApp } from "@/components/AppCtx";
 import { computeQuote, normalizeInput, toggleableCards, withPricing, withTemplate, nis, type QuoteInput, type Pricing, type ExtraLine } from "@/lib/quote-engine";
 import { aiView, emptyAi, normalizeAi, withAi, computeAi, type AiInput, type AiPricing } from "@/lib/ai-campaign";
-import { packView, emptyPack, normalizePack, withPack, computePack, newLine, basePrice, priceOf, type PackInput, type PackLine, type PackPricing, type ProdId } from "@/lib/products";
+import { packView, emptyPack, normalizePack, withPack, computePack, newLine, basePrice, priceOf, offeredAddons, type PackInput, type PackLine, type PackPricing, type ProdId } from "@/lib/products";
 import { QUOTE_STATUS_CLS, fillTemplate, waLink, waTemplates, appUrl, fmtDateTime, type Row } from "@/lib/crm";
 
 export default function QuoteEditor() {
@@ -523,7 +523,7 @@ function PackControls({ I, pi, P, vat, upd, top }: { I: QuoteInput; pi: PackInpu
 
       <div className="cgroup">
         <b>תוספות חד פעמיות</b>
-        {P.addons.map((x) => {
+        {offeredAddons(P, pi.lines.map((l) => l.id)).map((x) => {
           const on = pi.addons.includes(x.id);
           return (
             <label key={x.id} className="hidrow">
