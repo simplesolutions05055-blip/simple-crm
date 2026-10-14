@@ -3,7 +3,7 @@ import { ZERNIO_TZ, accountsFor, profileFor, zapi, zernioConfigured } from "@/li
 
 /* body: { org, content, accountIds: string[], when?: "YYYY-MM-DDTHH:mm" (Israel time; empty = publish now), mediaUrl? } */
 export async function POST(req: NextRequest) {
-  if (!zernioConfigured()) return NextResponse.json({ error: "missing" }, { status: 400 });
+  if (!(await zernioConfigured())) return NextResponse.json({ error: "missing" }, { status: 400 });
   const b = await req.json().catch(() => ({}));
   const org = String(b.org || "");
   const content = String(b.content || "").trim();

@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { accountsFor, profileFor, zernioConfigured } from "@/lib/zernio";
 
 export async function GET(req: NextRequest) {
-  if (!zernioConfigured()) return NextResponse.json({ configured: false, accounts: [] });
+  if (!(await zernioConfigured())) return NextResponse.json({ configured: false, accounts: [] });
   const org = req.nextUrl.searchParams.get("org") || "";
   if (!org) return NextResponse.json({ error: "missing org" }, { status: 400 });
   try {

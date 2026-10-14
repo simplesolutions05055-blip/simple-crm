@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const p = req.nextUrl.searchParams;
   const org = p.get("org") || "";
   const platform = p.get("platform") || "";
-  if (!zernioConfigured()) return NextResponse.redirect(back + "&zernio=missing");
+  if (!(await zernioConfigured())) return NextResponse.redirect(back + "&zernio=missing");
   if (!org || !(ZERNIO_PLATFORMS as readonly string[]).includes(platform)) return NextResponse.redirect(back + "&zernio=bad");
   try {
     const profileId = await profileFor(org, true);
