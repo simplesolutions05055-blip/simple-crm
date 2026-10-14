@@ -18,7 +18,7 @@ export const SETTINGS_NAV = [
   { slug: "business", label: "פרטי העסק", icon: "brief", sub: "הפרטים שמופיעים בהצעות, מע\"מ, תוקף, והמזהים שלך כשותף" },
   { slug: "quotes", label: "תבניות הצעת מחיר", icon: "file", sub: "המחירון, הטקסטים בהצעה, והודעת השליחה ללקוח" },
   { slug: "intake", label: "תבניות אפיון", icon: "note", sub: "השאלונים שנשלחים ללקוח בקישור, וההודעה שנשלחת איתם" },
-  { slug: "connections", label: "חיבורים וקשר", icon: "link", sub: "הוואטסאפ שממנו נשלחות הודעות, המייל שממנו נשלחים מיילים, והסיסמה שלך" },
+  { slug: "connections", label: "חיבורים וקשר", icon: "link", sub: "הוואטסאפ שממנו נשלחות הודעות, יומן גוגל, הרשתות החברתיות, המייל והסיסמה שלך" },
   { slug: "automations", label: "אוטומציות", icon: "send", sub: "החיבור ל-n8n: מפתחות, כתובות ואירועים" },
 ] as const;
 
@@ -111,13 +111,13 @@ function QuotesSection() {
 }
 
 /* ---------------- connections ---------------- */
-const CTABS = ["וואטסאפ", "יומן גוגל", "מייל", "סיסמה וכניסה"];
+const CTABS = ["וואטסאפ", "יומן גוגל", "רשתות חברתיות", "מייל", "סיסמה וכניסה"];
 function ConnectionsSection() {
   const [tab, setTab] = useState(CTABS[0]);
   return (
     <>
       <SubTabs tabs={CTABS} tab={tab} setTab={setTab} />
-      {tab === CTABS[0] ? <WhatsAppTab /> : tab === CTABS[1] ? <GcalTab /> : tab === CTABS[2] ? <EmailTab /> : <LoginTab />}
+      {tab === CTABS[0] ? <WhatsAppTab /> : tab === CTABS[1] ? <GcalTab /> : tab === CTABS[2] ? <ZernioTab /> : tab === CTABS[3] ? <EmailTab /> : <LoginTab />}
     </>
   );
 }
@@ -169,6 +169,96 @@ function GcalTab() {
         <div className="set-card"><b>מגוגל ל-CRM</b><span className="tiny">כל האירועים ביומן הראשי, מוצגים במסך היומן. לא נשמרים ב-CRM.</span></div>
         <div className="set-card"><b>מה-CRM לגוגל</b><span className="tiny">משימות שאישרת או יצרת עם הסימון &quot;להציג ביומן גוגל&quot;. שינוי שעה או תאריך במשימה מעדכן את האירוע, וסימון &quot;בוצע&quot; מוריד אותו מהיומן.</span></div>
         <div className="set-card"><b>הרשאה</b><span className="tiny">גישה לאירועים ביומן בלבד. בלי מייל, בלי קבצים.</span></div>
+      </Panel>
+    </div>
+  );
+}
+
+/* ---------------- social networks through Zernio (test stage) ---------------- */
+const Z_NETS: [string, string][] = [["facebook", "פייסבוק"], ["instagram", "אינסטגרם"], ["tiktok", "טיקטוק"], ["linkedin", "לינקדאין"], ["youtube", "יוטיוב"]];
+const zNet = (p: string) => Z_NETS.find((n) => n[0] === p)?.[1] || p;
+type ZAcc = { id: string; platform: string; username: string; name: string; active: boolean };
+function ZernioTab() {
+  const { org, toast } = useApp();
+  const [st, setSt] = useState<{ configured: boolean; accounts: ZAcc[]; error?: string } | null>(null);
+  const [msg, setMsg] = useState<[string, boolean] | null>(null);
+  const [text, setText] = useState("");
+  const [media, setMedia] = useState("");
+  const [when, setWhen] = useState("");
+  const [pick, setPick] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const load = async () => {
+    const r = await fetch("/api/zernio/accounts?org=" + encodeURIComponent(org));
+    setSt(await r.json().catch(() => ({ configured: true, accounts: [], error: "load" })));
+  };
+  useEffect(() => {
+    const q = new URLSearchParams(location.search);
+    if (q.get("connected")) setMsg([zNet(q.get("connected")!) + " חובר" + (q.get("username") ? ": " + q.get("username") : ""), false]);
+    else if (q.get("error")) setMsg(["החיבור לא הושלם: " + (q.get("error_message") || q.get("error")), true]);
+    else if (q.get("zernio") === "missing") setMsg(["חסר מפתח ה-API של Zernio בשרת. ראה את השלבים למטה", true]);
+    else if (q.get("zernio") === "fail") setMsg(["Zernio החזיר שגיאה: " + (q.get("reason") || ""), true]);
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [org]);
+  const accs = st?.accounts || [];
+  const hasIg = accs.some((a) => pick.includes(a.id) && a.platform === "instagram");
+  const send = async () => {
+    if (!text.trim() || !pick.length) return toast("כותבים טקסט ובוחרים לפחות חשבון אחד", true);
+    if (hasIg && !media) return toast("אינסטגרם דורש תמונה או סרטון. מוסיפים קישור למדיה", true);
+    if (!confirm(when ? "לתזמן את הפוסט בחשבונות שנבחרו?" : "לפרסם עכשיו, באמת, בחשבונות שנבחרו?")) return;
+    setBusy(true);
+    const r = await fetch("/api/zernio/posts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ org, content: text, accountIds: pick, when, mediaUrl: media }) });
+    const j = await r.json().catch(() => ({}));
+    setBusy(false);
+    if (!r.ok) return toast("לא נשלח: " + (j.error || r.status), true);
+    toast(when ? "הפוסט תוזמן ב-Zernio" : "הפוסט נשלח לפרסום");
+    setText(""); setMedia(""); setWhen("");
+  };
+  return (
+    <div className="grid g2b">
+      <div className="col">
+        <Panel icon="link" title="חשבונות מחוברים">
+          {msg ? <p className="tiny lead" style={{ color: msg[1] ? "var(--bad)" : "var(--ok)", fontWeight: 600 }}>{msg[0]}</p> : null}
+          {!st ? <p className="tiny">טוען…</p> : !st.configured ? (
+            <div className="set-card">
+              <b>עוד לא מוגדר</b>
+              <span className="tiny">1. פותחים חשבון חינמי ב-zernio.com. 2. יוצרים מפתח API (מתחיל ב-sk_). 3. מוסיפים ב-Vercel משתנה סביבה בשם ZERNIO_API_KEY עם המפתח, ומפעילים פריסה מחדש.</span>
+            </div>
+          ) : (
+            <>
+              {st.error ? <p className="tiny" style={{ color: "var(--bad)" }}>שגיאה בטעינה: {st.error}</p> : null}
+              {accs.length ? accs.map((a) => (
+                <div key={a.id} className="set-card">
+                  <div className="hdr"><b>{zNet(a.platform)}</b>{a.active ? null : <span className="tiny" style={{ color: "var(--bad)" }}>צריך חיבור מחדש</span>}</div>
+                  <span className="tiny">{a.name || a.username}{a.name && a.username ? " · " + a.username : ""}</span>
+                </div>
+              )) : <p className="tiny lead">עוד לא חובר אף חשבון.</p>}
+              <div className="bar" style={{ marginTop: 14, flexWrap: "wrap" }}>
+                {Z_NETS.map(([id, l]) => <a key={id} className="btn" href={"/api/zernio/connect?org=" + encodeURIComponent(org) + "&platform=" + id}><Icon n="link" s={15} />חיבור {l}</a>)}
+              </div>
+              <p className="tiny" style={{ marginTop: 10 }}>בתוכנית החינמית אפשר לחבר עד 2 חשבונות. אינסטגרם מתחבר כחשבון מקצועי, ופייסבוק כעמוד עסקי.</p>
+            </>
+          )}
+        </Panel>
+      </div>
+      <Panel icon="send" title="פוסט בדיקה">
+        <p className="tiny lead">שולח פוסט אמיתי לחשבונות שבוחרים. בלי תאריך הוא מתפרסם מיד; עם תאריך הוא מתוזמן לפי שעון ישראל.</p>
+        {accs.length ? (
+          <div className="form">
+            <div className="full bar" style={{ flexWrap: "wrap" }}>
+              {accs.map((a) => (
+                <label key={a.id} className="btn sm" style={{ cursor: "pointer" }}>
+                  <input type="checkbox" checked={pick.includes(a.id)} onChange={(e) => setPick(e.target.checked ? [...pick, a.id] : pick.filter((x) => x !== a.id))} />
+                  {zNet(a.platform)} · {a.name || a.username}
+                </label>
+              ))}
+            </div>
+            <label className="field full"><span>טקסט הפוסט</span><textarea className="inp" rows={5} value={text} onChange={(e) => setText(e.target.value)} /></label>
+            <label className="field full"><span>קישור לתמונה או סרטון (https, חובה לאינסטגרם ולטיקטוק)</span><input className="inp ltr" value={media} onChange={(e) => setMedia(e.target.value)} placeholder="https://" /></label>
+            <label className="field"><span>מתי (ריק = עכשיו)</span><input className="inp" type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} /></label>
+            <div className="full bar"><button className="btn primary" disabled={busy} onClick={send}><Icon n="send" s={15} />{busy ? "שולח…" : when ? "תזמון" : "פרסום עכשיו"}</button></div>
+          </div>
+        ) : <p className="tiny">מחברים חשבון קודם, ואז אפשר לשלוח מכאן פוסט בדיקה.</p>}
       </Panel>
     </div>
   );
