@@ -163,7 +163,8 @@ export function DocsBox({ leadId, clientId, who, intake = true }: { leadId?: str
     return (d.data?.form?.sections ? (d.data.form as IntakeForm) : undefined) || clientFormByKind(k, settings.intake_templates) || formByKind(k);
   }
 
-  const shown = intake ? rows : rows.filter((d) => !String(d.kind || "").startsWith("intake:"));
+  // signed quotes live in the quotes box; here only intake forms and other documents
+  const shown = rows.filter((d) => d.kind !== "quote_signed" && (intake || !String(d.kind || "").startsWith("intake:")));
   return (
     <Panel icon="note" title={intake ? "מסמכים ואפיונים" : "מסמכים"} right={<div className="bar">
       <input ref={fileRef} type="file" multiple hidden onChange={(e) => upload(e.target.files)} />

@@ -101,7 +101,6 @@ export function AccessBox({ clientId, contact, phone, onLog }: { clientId: strin
             load();
           }}><Icon n="list" s={15} />רשימת נכסים בסיסית</button>
         ) : null}
-        {phone ? <a className="btn sm wa" href={waLink(phone, msg)} target="_blank" rel="noreferrer"><Icon n="wa" s={15} />הוראות ללקוח בוואטסאפ</a> : null}
         <button className="btn sm ghost" onClick={() => { navigator.clipboard.writeText(msg); toast("ההוראות הועתקו"); }}><Icon n="copy" s={14} />העתקת ההוראות</button>
       </div>
       {!settings.agency?.meta_bm && !settings.agency?.google_mcc && !settings.agency?.tiktok_bc ? (

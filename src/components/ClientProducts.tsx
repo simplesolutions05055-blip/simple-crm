@@ -94,7 +94,7 @@ export default function ClientProducts({ clientId, client, svc, onDone }: { clie
                 </div>
               </div>
               <div className="prow-sub">
-                <span className="meta">מ-{fmtDate(s.start_date)}{s.end_date ? " עד " + fmtDate(s.end_date) : ""}</span>
+                <span className="meta">{isRetainer(s) ? "ריטיינר · " + (s.end_date ? fmtDate(s.start_date) + " עד " + fmtDate(s.end_date) : "מ-" + fmtDate(s.start_date)) : "חד פעמי · " + fmtDate(s.start_date)}</span>
                 {sup || cost ? (
                   <span className="meta">
                     <Icon n="user" s={13} />{sup?.name || "ספק"}{cost ? " · " + money(cost) + (s.supplier_billing === "חודשי" ? " לחודש" : " חד פעמי") : ""}
@@ -137,8 +137,8 @@ function ProductModal({ clientId, row, suppliers, reloadSuppliers, onClose, onDo
   const init = row ? {
     name: row.name || "", description: row.description || "", list_price: row.list_price ?? "", oneoff: oneoffOf(row) || "",
     retainer: isRetainer(row), monthly: monthlyOf(row) || "", supplier_id: row.supplier_id || "", supplier_cost: row.supplier_cost ?? "",
-    supplier_billing: row.supplier_billing || "חודשי", start_date: row.start_date || today(), pay: false,
-  } : { name: products[0] || "", description: "", list_price: "", oneoff: "", retainer: false, monthly: "", supplier_id: "", supplier_cost: "", supplier_billing: "חודשי", start_date: today(), pay: true };
+    supplier_billing: row.supplier_billing || "חודשי", start_date: row.start_date || today(), end_date: row.end_date || "", pay: false,
+  } : { name: products[0] || "", description: "", list_price: "", oneoff: "", retainer: false, monthly: "", supplier_id: "", supplier_cost: "", supplier_billing: "חודשי", start_date: today(), end_date: "", pay: true };
   const [f, setF] = useState<Row>(init);
   const [other, setOther] = useState(!!row && !products.includes(row.name));
   const [newSup, setNewSup] = useState(false);
@@ -149,6 +149,7 @@ function ProductModal({ clientId, row, suppliers, reloadSuppliers, onClose, onDo
   async function save() {
     if (!String(f.name).trim()) return toast("צריך לבחור מוצר", true);
     if (f.retainer && !num(f.monthly)) return toast("ריטיינר צריך מחיר חודשי", true);
+    if (f.end_date && f.end_date < f.start_date) return toast("תאריך הסיום לפני תאריך ההתחלה", true);
     setBusy(true);
     const oneoff = num(f.oneoff);
     const body: Row = {
@@ -160,6 +161,7 @@ function ProductModal({ clientId, row, suppliers, reloadSuppliers, onClose, onDo
       supplier_cost: f.supplier_id || num(f.supplier_cost) ? num(f.supplier_cost) : null,
       supplier_billing: f.supplier_id || num(f.supplier_cost) ? f.supplier_billing : null,
       start_date: f.start_date || today(),
+      end_date: f.retainer && f.end_date ? f.end_date : null,
     };
     const res = row
       ? await sb().from("crm_client_services").update(body).eq("id", row.id).select("id").single()
@@ -190,12 +192,17 @@ function ProductModal({ clientId, row, suppliers, reloadSuppliers, onClose, onDo
         {other ? <label className="field"><span>שם המוצר</span><input className="inp" autoFocus value={f.name} onChange={(e) => set({ name: e.target.value })} /></label> : <span />}
         <label className="field full"><span>תיאור</span><input className="inp" value={f.description} placeholder="מה בדיוק כלול (לא חובה)" onChange={(e) => set({ description: e.target.value })} /></label>
         <label className="field"><span>מחיר מקורי</span><input className="inp" type="number" min={0} value={f.list_price} placeholder="לפני הנחה" onChange={(e) => set({ list_price: e.target.value })} /></label>
-        <label className="field"><span>מחיר מכירה, חד פעמי</span><input className="inp" type="number" min={0} value={f.oneoff} placeholder="לפני מע&quot;מ" onChange={(e) => set({ oneoff: e.target.value })} /></label>
-        <label className={"pillck full" + (f.retainer ? " on" : "")} style={{ justifySelf: "start" }}>
-          <input type="checkbox" checked={!!f.retainer} onChange={(e) => set({ retainer: e.target.checked })} />ריטיינר: חיוב חודשי קבוע
-        </label>
+        <div className="field full"><span>סוג המוצר</span>
+          <div className="tabs" style={{ margin: 0 }}>
+            <button type="button" className={"btn sm" + (!f.retainer ? " on" : "")} onClick={() => set({ retainer: false })}>חד פעמי</button>
+            <button type="button" className={"btn sm" + (f.retainer ? " on" : "")} onClick={() => set({ retainer: true })}>ריטיינר חודשי</button>
+          </div>
+        </div>
         {f.retainer ? <label className="field"><span>מחיר חודשי, לפני מע&quot;מ</span><input className="inp" type="number" min={0} value={f.monthly} onChange={(e) => set({ monthly: e.target.value })} /></label> : null}
-        {f.retainer ? <span className="tiny" style={{ alignSelf: "end" }}>נכנס לחיוב החודשי האוטומטי של הלקוח, מהחודש שאחרי תאריך ההתחלה.</span> : null}
+        <label className="field"><span>{f.retainer ? "הקמה, חד פעמי (לא חובה)" : "מחיר, חד פעמי"}</span><input className="inp" type="number" min={0} value={f.oneoff} placeholder="לפני מע&quot;מ" onChange={(e) => set({ oneoff: e.target.value })} /></label>
+        <label className="field"><span>{f.retainer ? "חיוב ראשון בתאריך" : "תאריך"}</span><input className="inp" type="date" value={f.start_date} onChange={(e) => set({ start_date: e.target.value })} /></label>
+        {f.retainer ? <label className="field"><span>חיוב אחרון בתאריך (לא חובה)</span><input className="inp" type="date" value={f.end_date} min={f.start_date} onChange={(e) => set({ end_date: e.target.value })} /></label> : null}
+        {f.retainer ? <span className="tiny full">החיוב החודשי נוצר ב-1 לכל חודש, מהחודש של החיוב הראשון ועד החודש של החיוב האחרון. בלי תאריך אחרון הוא ממשיך עד שעוצרים.</span> : null}
 
         <div className="full cgroup" style={{ paddingBottom: 0 }}><b>ספק</b></div>
         <label className="field"><span>ספק</span>
@@ -215,7 +222,6 @@ function ProductModal({ clientId, row, suppliers, reloadSuppliers, onClose, onDo
             {SUP_BILLING.map((b) => <button key={b} type="button" disabled={!f.supplier_id} className={"btn sm" + (f.supplier_billing === b ? " on" : "")} onClick={() => set({ supplier_billing: b })}>{b === "חודשי" ? "חודשית" : "חד פעמית"}</button>)}
           </div>
         </div>
-        <label className="field"><span>תאריך התחלה</span><input className="inp" type="date" value={f.start_date} onChange={(e) => set({ start_date: e.target.value })} /></label>
         {!row && num(f.oneoff) ? <label className={"pillck" + (f.pay ? " on" : "")} style={{ alignSelf: "end", justifySelf: "start" }}>
           <input type="checkbox" checked={!!f.pay} onChange={(e) => set({ pay: e.target.checked })} />לפתוח תשלום לגבייה על החלק החד פעמי
         </label> : null}

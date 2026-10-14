@@ -24,7 +24,7 @@ export default function ClientPage() {
   const [tick, setTick] = useState(0);
   const [back, setBack] = useState(false);
   const [del, setDel] = useState(false);
-  const [counts, setCounts] = useState<{ quotes: number | null; signed: number; docs: number | null }>({ quotes: null, signed: 0, docs: null });
+  const [counts, setCounts] = useState<{ quotes: number | null; signed: number; docs: number | null; access?: number | null; accessOk?: number }>({ quotes: null, signed: 0, docs: null });
   const router = useRouter();
 
   const load = async () => {
@@ -36,11 +36,13 @@ export default function ClientPage() {
     ]);
     setC(a.data); setOnb(b.data || []); setSvc(s.data || []); setPays(p.data || []);
     const lead = a.data?.lead_id as string | undefined;
-    const [qs, ds] = await Promise.all([
+    const [qs, ds, ac] = await Promise.all([
       sb().from("crm_quotes").select("status").or("client_id.eq." + id + (lead ? ",lead_id.eq." + lead : "")),
-      sb().from("crm_documents").select("id", { count: "exact", head: true }).or("client_id.eq." + id + (lead ? ",lead_id.eq." + lead : "")),
+      sb().from("crm_documents").select("id", { count: "exact", head: true }).neq("kind", "quote_signed").or("client_id.eq." + id + (lead ? ",lead_id.eq." + lead : "")),
+      sb().from("crm_client_access").select("status").eq("client_id", id),
     ]);
-    setCounts({ quotes: (qs.data || []).length, signed: (qs.data || []).filter((q: Row) => q.status === "נחתמה").length, docs: ds.count ?? 0 });
+    setCounts({ quotes: (qs.data || []).length, signed: (qs.data || []).filter((q: Row) => q.status === "נחתמה").length, docs: ds.count ?? 0,
+      access: (ac.data || []).length, accessOk: (ac.data || []).filter((x: Row) => x.status === "יש גישה").length });
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [id]);
@@ -57,6 +59,8 @@ export default function ClientPage() {
   const done = onb.filter((o) => o.done).length;
   const monthly = svc.filter((s) => s.status === "פעיל").reduce((a, s) => a + monthlyOf(s), 0);
   const vat = settings.vat / 100;
+  const rets = svc.filter((x) => x.billing === "חודשי" && x.status !== "הסתיים");
+  const retainerUntil = rets.length && rets.every((x) => x.end_date) ? rets.map((x) => String(x.end_date).slice(0, 7)).sort().pop() : undefined;
   const paid = pays.reduce((t, p) => t + (p.paid_at ? Number(p.paid_amount ?? p.amount) : 0), 0);
   const open = pays.filter((p) => p.due <= today()).reduce((t, p) => t + owedOf(p), 0);
 
@@ -129,11 +133,13 @@ export default function ClientPage() {
 
         <div className="grid g2 even">
           <ClientProducts clientId={id} client={c} svc={svc} onDone={load} />
-          <AccessBox clientId={id} contact={c.contact} phone={c.phone} onLog={() => setTick((t) => t + 1)} />
+          <Collapse icon="key" title="גישה לחשבונות" summary={counts.access == null ? "" : counts.access ? counts.access + " נכסים · " + counts.accessOk + " עם גישה" : "אין נכסים"}>
+            <AccessBox clientId={id} contact={c.contact} phone={c.phone} onLog={() => { setTick((t) => t + 1); load(); }} />
+          </Collapse>
         </div>
 
         <Collapse icon="wallet" title="תשלומים" summary={"שולם " + money(paid) + " · פתוח " + money(open) + (c.retainer_amount ? " · ריטיינר " + money(Number(c.retainer_amount)) : "")}>
-          <ClientPayments client={c} pays={pays} onSave={save} onDone={load}
+          <ClientPayments client={c} pays={pays} onSave={save} onDone={load} until={retainerUntil}
             retainerDefault={Math.round(svc.filter((x) => x.status === "פעיל").reduce((t, x) => t + monthlyOf(x), 0) * (1 + vat))} />
         </Collapse>
         <Collapse icon="file" title="הצעות מחיר" summary={counts.quotes == null ? "" : counts.quotes ? counts.quotes + (counts.quotes === 1 ? " הצעה" : " הצעות") + (counts.signed ? " · " + counts.signed + " חתומות" : "") : "אין הצעות"}>

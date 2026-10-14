@@ -19,8 +19,8 @@ const mName = (k: string) => MONTHS[Number(k.slice(5, 7)) - 1] + " " + k.slice(0
 export const paidOf = (p: Row) => (p.paid_at ? Number(p.paid_amount ?? p.amount) : 0);
 export const owedOf = (p: Row) => Math.max(0, Number(p.amount || 0) - paidOf(p));
 
-export default function ClientPayments({ client, pays, retainerDefault, onSave, onDone }: {
-  client: Row; pays: Row[]; retainerDefault: number; onSave: (patch: Row, log?: string) => Promise<void> | void; onDone: () => void;
+export default function ClientPayments({ client, pays, retainerDefault, until, onSave, onDone }: {
+  client: Row; pays: Row[]; retainerDefault: number; until?: string; /* yyyy-mm: the last retainer month, when every retainer product has an end */ onSave: (patch: Row, log?: string) => Promise<void> | void; onDone: () => void;
 }) {
   const { org, toast } = useApp();
   const now = ym(today());
@@ -30,7 +30,8 @@ export default function ClientPayments({ client, pays, retainerDefault, onSave, 
   const retAmt = Number(client.retainer_amount ?? 0) || retainerDefault;
   const fromKey = client.retainer_from ? ym(client.retainer_from) : monthly.length ? monthly.map((p) => p.period || ym(p.due)).sort()[0] : "";
   const months: string[] = [];
-  if (fromKey && retAmt) for (let k = fromKey; k <= addM(now, 1) && months.length < 60; k = addM(k, 1)) months.push(k);
+  const last = until && until < addM(now, 1) ? until : addM(now, 1);
+  if (fromKey && retAmt) for (let k = fromKey; k <= last && months.length < 60; k = addM(k, 1)) months.push(k);
   // months that have a payment row but fall outside the range still show
   monthly.forEach((p) => { const k = p.period || ym(p.due); if (!months.includes(k)) months.push(k); });
   months.sort();
