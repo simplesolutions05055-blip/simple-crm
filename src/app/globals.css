@@ -631,3 +631,6 @@ b.bad{color:var(--bad)}
   .pool .pr .ph{grid-column:1;grid-row:2;text-align:right;justify-self:start}
   .pool .pr .ind{grid-column:2;grid-row:2;color:var(--muted);font-size:12.5px;justify-self:end}
 }
+/* two boxes side by side inside a column (lead card: quotes next to documents); stack when narrow */
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:20px;align-items:start}
+.pair>*{min-width:0}

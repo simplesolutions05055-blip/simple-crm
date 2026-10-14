@@ -136,9 +136,13 @@ export default function LeadPage() {
                 <CustomFields fields={custom.details || []} onChange={(f) => save({ custom: { ...custom, details: f } })} />
               </div>
             </Panel>
-            <ActivityLog leadId={id} reload={logTick} />
-          </div>
-          <div className="col">
+            <Panel icon="globe" title="נוכחות דיגיטלית">
+              <LinksBox links={l.links || {}} custom={custom.links || []} onLinks={(x) => save({ links: x })} onCustom={(c) => save({ custom: { ...custom, links: c } })} />
+            </Panel>
+            <div className="pair">
+              <QuotesBox leadId={id} clientId={l.client_id || undefined} />
+              <DocsBox leadId={id} clientId={l.client_id || undefined} who={l.biz || l.name} />
+            </div>
             <Panel icon="check" title="התאמה">
               <div className="checks">
                 {FIT.map(([k, lbl]) => (
@@ -152,12 +156,10 @@ export default function LeadPage() {
                 <EditArea value={l.pain} onSave={(v) => save({ pain: v })} />
               </div>
             </Panel>
-            <Panel icon="globe" title="נוכחות דיגיטלית">
-              <LinksBox links={l.links || {}} custom={custom.links || []} onLinks={(x) => save({ links: x })} onCustom={(c) => save({ custom: { ...custom, links: c } })} />
-            </Panel>
+          </div>
+          <div className="col">
+            <ActivityLog leadId={id} reload={logTick} />
             <WaBox leadId={id} phone={l.phone} name={l.name} onLog={() => setLogTick((t) => t + 1)} />
-            <QuotesBox leadId={id} clientId={l.client_id || undefined} />
-            <DocsBox leadId={id} clientId={l.client_id || undefined} who={l.biz || l.name} />
             <TasksBox leadId={id} />
           </div>
         </div>
