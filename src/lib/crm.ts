@@ -8,6 +8,10 @@ export const INDUSTRIES = ["רכב", "יופי וקוסמטיקה", "כושר ו
 export const SOURCES = ["אתר ישיר", "אינסטגרם", "פייסבוק", "טיקטוק", "גוגל", "קמפיין F", "קמפיין I", "קמפיין T", "קמפיין G", "דיוור וואטסאפ", "המלצה", "אחר"];
 export const BUDGETS = ["עד 1500", "1500 עד 3000", "3000 ומעלה", "לא אמר"];
 export const DISQ = ["לא בקהל היעד", "אין תקציב", "לא מקבל ההחלטות", "רק סקרנות", "מתחרה או ספק", "לא ענה", "ספאם"];
+/* task kinds and their chip colors (class tk-<n>) */
+export const TASK_KINDS = ["שיחה", "פגישה", "וואטסאפ", "מייל", "הצעת מחיר", "ביצוע עבודה", "גבייה", "אחר"];
+export const taskKindCls = (k?: string | null) => "tkind tk-" + Math.max(0, TASK_KINDS.indexOf(k || "אחר"));
+export type TaskAttachment = { t: "link"; name: string; url: string } | { t: "file"; name: string; path: string } | { t: "doc"; name: string; doc_id: string };
 export const TOUCH = ["שיחה", "וואטסאפ", "מייל", "פגישה", "הערה"];
 export const FIT: [string, string][] = [
   ["market", "בתוך שוק היעד"], ["active", "עסק פעיל עם לקוחות"], ["budget", "תקציב שמחזיק חבילה"],
