@@ -1,13 +1,26 @@
 /* Zernio (social posting and ads API), server side only. One Zernio profile per business (org); the
-   profile id is kept in crm_settings.social.zernio. The API key lives only in the ZERNIO_API_KEY env var. */
+   profile id is kept in crm_settings.social.zernio. The API key comes from the ZERNIO_API_KEY env var, or
+   from Supabase Vault ("zernio_api_key") through an RPC that also needs the server-only GCAL_SERVER_KEY. */
 import { sbServer } from "@/lib/supabase/server";
 
 const BASE = "https://zernio.com/api/v1";
 export const ZERNIO_TZ = "Asia/Jerusalem";
 export const ZERNIO_PLATFORMS = ["facebook", "instagram", "tiktok", "linkedin", "youtube"] as const;
 
-export function zernioConfigured() {
-  return !!process.env.ZERNIO_API_KEY;
+let cachedKey = "";
+async function apiKey(): Promise<string> {
+  if (process.env.ZERNIO_API_KEY) return process.env.ZERNIO_API_KEY;
+  if (cachedKey) return cachedKey;
+  if (!process.env.GCAL_SERVER_KEY) return "";
+  const supa = await sbServer();
+  const { data, error } = await supa.rpc("crm_zernio_key", { p_key: process.env.GCAL_SERVER_KEY });
+  if (error || !data) return "";
+  cachedKey = String(data);
+  return cachedKey;
+}
+
+export async function zernioConfigured() {
+  return !!(await apiKey());
 }
 
 type J = Record<string, unknown>;
@@ -15,7 +28,7 @@ type J = Record<string, unknown>;
 export async function zapi(path: string, init?: RequestInit): Promise<J> {
   const r = await fetch(BASE + path, {
     ...init,
-    headers: { authorization: "Bearer " + process.env.ZERNIO_API_KEY, "content-type": "application/json", ...(init?.headers || {}) },
+    headers: { authorization: "Bearer " + (await apiKey()), "content-type": "application/json", ...(init?.headers || {}) },
     cache: "no-store",
   });
   const text = await r.text();
