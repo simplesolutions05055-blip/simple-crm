@@ -1,17 +1,18 @@
 "use client";
 /* מודעות: the ad accounts of the business (through Zernio), its campaigns with spend and results,
-   and the graphics studio for creatives. Read only for now: creating campaigns and changing budgets
-   from here is the next stage. */
+   pause / resume / budget per campaign, the campaign builder (Meta) and the graphics studio. */
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Top, Panel, Empty, St } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
-import { type Row } from "@/lib/crm";
+import { fmtDate, type Row } from "@/lib/crm";
+import { sb } from "@/lib/supabase/browser";
+import { AdBuilder, CampaignActions } from "@/components/AdBuilder";
 import { GraphicsStudio } from "@/components/Graphics";
 import { CONNECT_HREF, n0, zName } from "@/components/SocialLive";
 
-const TABS = ["קמפיינים", "גרפיקות", "חיבור חשבון מודעות"] as const;
+const TABS = ["קמפיינים", "קמפיין חדש", "גרפיקות", "חיבור חשבון מודעות"] as const;
 type Tab = (typeof TABS)[number];
 const STATUS: Record<string, [string, string]> = {
   active: ["פעיל", "ok"], paused: ["מושהה", "warn"], pending_review: ["בבדיקה", "info"], rejected: ["נדחה", "bad"],
@@ -37,32 +38,36 @@ export default function Ads() {
       <Top title="מודעות" sub="קמפיינים ממומנים, תקציבים וקריאייטיב, ממקום אחד" />
       <div className="content">
         <div className="tabs">{TABS.map((t) => <button key={t} className={"btn sm" + (tab === t ? " on" : "")} onClick={() => setTab(t)}>{t}</button>)}</div>
-        {tab === "קמפיינים" ? <Campaigns goConnect={() => setTab("חיבור חשבון מודעות")} /> : tab === "גרפיקות" ? <GraphicsStudio /> : <ConnectAds />}
+        {tab === "קמפיינים" ? <Campaigns goConnect={() => setTab("חיבור חשבון מודעות")} goNew={() => setTab("קמפיין חדש")} />
+          : tab === "קמפיין חדש" ? <AdBuilder onDone={() => setTab("קמפיינים")} />
+          : tab === "גרפיקות" ? <GraphicsStudio /> : <ConnectAds />}
       </div>
     </>
   );
 }
 
-function useAds(days: number) {
+function useAds(days: number, tick = 0) {
   const { org } = useApp();
   const [d, setD] = useState<Row | null>(null);
   useEffect(() => {
-    setD(null);
+    if (!tick) setD(null);
     fetch("/api/zernio/ads?org=" + encodeURIComponent(org) + "&days=" + days).then((r) => r.json()).then(setD).catch(() => setD({ error: "load" }));
-  }, [org, days]);
+  }, [org, days, tick]);
   return d;
 }
 
-function Campaigns({ goConnect }: { goConnect: () => void }) {
+function Campaigns({ goConnect, goNew }: { goConnect: () => void; goNew: () => void }) {
   const [days, setDays] = useState(30);
-  const d = useAds(days);
+  const [tick, setTick] = useState(0);
+  const d = useAds(days, tick);
+  const reload = () => setTick((t) => t + 1);
   if (!d) return <div className="loading" style={{ minHeight: 200 }}>טוען קמפיינים…</div>;
   if (d.configured === false) return <Panel icon="link" title="קמפיינים"><p className="tiny">החיבור ל-Zernio עוד לא מוגדר בשרת.</p></Panel>;
   if (d.error && !d.adAccounts) return <Panel icon="alert" title="קמפיינים"><p className="tiny">לא נטען: {d.error}</p></Panel>;
-  if (!(d.adAccounts || []).length) return (
+  if (!d.hasAds && !d.error) return (
     <Panel icon="target" title="עוד לא חובר חשבון מודעות">
-      <p style={{ marginTop: 0 }}>אחרי החיבור יופיעו כאן כל הקמפיינים מהחשבון, גם אלה שנוצרו במנהל המודעות, עם הוצאה, חשיפות, קליקים ועלות לקליק.</p>
-      <button className="btn primary" onClick={goConnect}><Icon n="link" s={15} />לחיבור חשבון מודעות</button>
+      <p style={{ marginTop: 0 }}>אחרי החיבור יופיעו כאן כל הקמפיינים מהחשבון, גם אלה שנוצרו במנהל המודעות, עם הוצאה, חשיפות, קליקים ועלות לקליק. אם כבר חיברת ואין עדיין קמפיינים, אפשר ליצור את הראשון.</p>
+      <div className="bar"><button className="btn primary" onClick={goNew}><Icon n="plus" s={15} />קמפיין חדש</button><button className="btn" onClick={goConnect}><Icon n="link" s={15} />לחיבור חשבון מודעות</button></div>
     </Panel>
   );
   const list: Row[] = d.campaigns || [];
@@ -72,7 +77,8 @@ function Campaigns({ goConnect }: { goConnect: () => void }) {
   return (
     <>
       <div className="bar" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
-        <div className="bar">{RANGES.map(([n, l]) => <button key={n} className={"btn sm" + (days === n ? " on" : "")} onClick={() => setDays(n)}>{l}</button>)}</div>
+        <div className="bar">{RANGES.map(([n, l]) => <button key={n} className={"btn sm" + (days === n ? " on" : "")} onClick={() => setDays(n)}>{l}</button>)}
+          <button className="btn sm primary" onClick={goNew}><Icon n="plus" s={14} />קמפיין חדש</button></div>
         <span className="tiny">{(d.adAccounts as Row[]).map((a) => zName(a.platform) + (a.name ? " · " + a.name : "")).join("  |  ")}</span>
       </div>
       {d.error ? (
@@ -93,7 +99,7 @@ function Campaigns({ goConnect }: { goConnect: () => void }) {
             {!list.length ? <Empty>אין קמפיינים בתקופה הזאת</Empty> : (
               <div className="scroll">
                 <table className="tbl fin">
-                  <thead><tr><th>קמפיין</th><th>רשת</th><th>מצב</th><th>תקציב</th><th>הוצאה</th><th>חשיפות</th><th>קליקים</th><th>CTR</th><th>עלות לקליק</th><th>המרות</th></tr></thead>
+                  <thead><tr><th>קמפיין</th><th>רשת</th><th>מצב</th><th>תקציב</th><th>הוצאה</th><th>חשיפות</th><th>קליקים</th><th>CTR</th><th>עלות לקליק</th><th>המרות</th><th></th></tr></thead>
                   <tbody>{list.map((c) => {
                     const s = STATUS[c.status] || [c.status || "-", ""];
                     return (
@@ -108,6 +114,7 @@ function Campaigns({ goConnect }: { goConnect: () => void }) {
                         <td>{typeof c.m?.ctr === "number" ? c.m.ctr.toFixed(2) + "%" : "-"}</td>
                         <td>{money(c.m?.cpc, c.currency)}</td>
                         <td>{n0(c.m?.conversions)}</td>
+                        <td><CampaignActions c={c} onDone={reload} /></td>
                       </tr>
                     );
                   })}</tbody>
@@ -117,13 +124,7 @@ function Campaigns({ goConnect }: { goConnect: () => void }) {
           </Panel>
         </>
       )}
-      <Panel icon="flag" title="מה מגיע בשלב הבא">
-        <ul className="socrules" style={{ margin: 0 }}>
-          <li>קידום פוסט קיים בלחיצה: תקציב יומי, משך וקהל.</li>
-          <li>יצירת קמפיין חדש עם גרפיקה מהגלריה וטקסט המודעה.</li>
-          <li>השהיה, הפעלה ושינוי תקציב לקמפיין קיים, עם אישור לפני כל פעולה שעולה כסף.</li>
-        </ul>
-      </Panel>
+      <History tick={tick} />
     </>
   );
 }
@@ -176,5 +177,27 @@ function ConnectAds() {
         <p className="tiny" style={{ marginBottom: 0 }}>החיבור עובר דרך Zernio. ההרשאה היא לקריאת הקמפיינים ולניהול מודעות; שום כסף לא יוצא בלי פעולה שאתה מאשר כאן.</p>
       </Panel>
     </div>
+  );
+}
+
+const ACTIONS: Record<string, string> = { boost: "קידום פוסט", create: "מודעה חדשה", "create:validate": "בדיקה", status: "הפעלה / השהיה", budget: "שינוי תקציב" };
+function History({ tick }: { tick: number }) {
+  const { org } = useApp();
+  const [rows, setRows] = useState<Row[] | null>(null);
+  useEffect(() => {
+    sb().from("crm_ad_launches").select("id,action,name,ok,result,request,created_at").eq("org_id", org).order("created_at", { ascending: false }).limit(15)
+      .then(({ data }: { data: Row[] | null }) => setRows(data || []));
+  }, [org, tick]);
+  if (!rows?.length) return null;
+  return (
+    <Panel icon="list" title="פעולות אחרונות מה-CRM">
+      {rows.map((r) => (
+        <div key={r.id} className="lrow">
+          <St cls={r.ok ? "ok" : "bad"}>{r.ok ? "בוצע" : "נכשל"}</St>
+          <span className="grow"><b dir="auto">{r.name || "-"}</b>
+            <span className="meta">{ACTIONS[r.action] || r.action} · {fmtDate(r.created_at)}{r.action === "status" && r.request?.status ? " · " + (r.request.status === "active" ? "הופעל" : "הושהה") : ""}{r.action === "budget" && r.request?.budget ? " · " + r.request.budget.amount : ""}{!r.ok && r.result?.error ? " · " + String(r.result.error).slice(0, 160) : ""}</span></span>
+        </div>
+      ))}
+    </Panel>
   );
 }

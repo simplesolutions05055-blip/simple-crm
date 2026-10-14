@@ -17,7 +17,8 @@ export async function GET(req: NextRequest) {
     const all = await accountsFor(profileId);
     const adAccounts = all.filter((a) => ADS_PLATFORMS.includes(a.platform));
     let campaigns: J[] = [], error = "", addon = false;
-    if (adAccounts.length) {
+    /* on Meta the ads permission can sit on the facebook / instagram account itself, without a separate ads account */
+    if (adAccounts.length || all.some((a) => ["facebook", "instagram", "tiktok"].includes(a.platform))) {
       try {
         const to = new Date();
         const q = new URLSearchParams({ profileId, fromDate: day(new Date(to.getTime() - (days - 1) * 86400000)), toDate: day(to), limit: "100" });
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest) {
       }
     }
     return NextResponse.json({
-      configured: true, days, adAccounts, error, addon,
+      configured: true, days, adAccounts, error, addon, hasAds: adAccounts.length > 0 || campaigns.length > 0,
       campaigns: campaigns.map((c) => {
         const b = (c.budget || c.campaignBudget || null) as J | null;
         return {
@@ -38,6 +39,7 @@ export async function GET(req: NextRequest) {
           status: String(c.status || ""), adAccount: String(c.platformAdAccountName || c.platformAdAccountId || ""),
           currency: String(c.currency || ""), budget: b ? { amount: Number(b.amount) || 0, type: String(b.type || "") } : null,
           objective: String(c.platformObjective || ""), m: c.metrics || {}, ads: Number(c.adCount) || 0,
+          budgetLevel: String(c.budgetLevel || ""),
         };
       }),
     });
