@@ -634,3 +634,9 @@ b.bad{color:var(--bad)}
 /* two boxes side by side inside a column (lead card: quotes next to documents); stack when narrow */
 .pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:20px;align-items:start}
 .pair>*{min-width:0}
+/* next step: what, date, optional hour */
+.next-f{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 170px 120px;gap:10px;min-width:0}
+@media (max-width:620px){.next-f{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.next-f>:first-child{grid-column:1/-1}}
+/* quick task add: title, date, optional hour */
+.taskadd{display:grid;grid-template-columns:minmax(0,1fr) 140px 104px auto;gap:8px;margin-top:10px}
+@media (max-width:520px){.taskadd{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto}.taskadd>:first-child{grid-column:1/-1}}

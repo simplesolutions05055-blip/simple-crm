@@ -38,6 +38,7 @@ export const FIELDS: Record<Kind, Field[]> = {
     { key: "pain", label: "כאב", kind: "text", aliases: ["pain", "כאב הלקוח", "מה הכאב", "הערות", "הערה", "notes"], width: 30 },
     { key: "next_step", label: "הצעד הבא", kind: "text", aliases: ["next step", "צעד הבא", "משימה הבאה"], width: 22 },
     { key: "next_at", label: "תאריך הצעד הבא", kind: "date", aliases: ["next_at", "תאריך צעד הבא", "תאריך מעקב"], width: 14 },
+    { key: "next_time", label: "שעת הצעד הבא", kind: "text", aliases: ["next_time", "שעת צעד הבא", "שעה"], width: 10 },
     { key: "reason", label: "סיבת פסילה", kind: "text", aliases: ["reason", "סיבה"], width: 16 },
     { key: "marketing_consent", label: "הסכמה לדיוור", kind: "bool", aliases: ["consent", "marketing consent", "אישור דיוור", "מאשר דיוור"], width: 12 },
     ...FIT.map(([k, l]): Field => ({ key: "fit." + k, label: "התאמה: " + l, kind: "bool", width: 14 })),
@@ -58,6 +59,7 @@ export const FIELDS: Record<Kind, Field[]> = {
     { key: "wa_group", label: "קבוצת וואטסאפ", kind: "text", aliases: ["whatsapp group", "קבוצה"], width: 20 },
     { key: "next_step", label: "הצעד הבא", kind: "text", aliases: ["next step", "צעד הבא"], width: 22 },
     { key: "next_at", label: "תאריך הצעד הבא", kind: "date", aliases: ["תאריך צעד הבא"], width: 14 },
+    { key: "next_time", label: "שעת הצעד הבא", kind: "text", aliases: ["שעת צעד הבא"], width: 10 },
     { key: "churn_reason", label: "סיבת עזיבה", kind: "text", aliases: ["churn reason"], width: 16 },
     ...LINKS.map(([k, l]): Field => ({ key: "links." + k, label: l, kind: "text", aliases: k === "site" ? ["website", "site", "כתובת אתר"] : [k], width: 22 })),
     { key: "monthly", label: "חודשי פעיל, לפני מע\"מ", kind: "money", ro: true, width: 14 },
@@ -249,6 +251,15 @@ function mergeCustom(list: Row[] = [], add: { label: string; value: string }[]) 
 }
 
 /** DB payload for a planned row. For updates only the filled-in cells change. */
+/* an hour from a cell: "14:30", an Excel time (a fraction of a day) or a date-time; anything else is empty */
+function hhmm(v: unknown): string | null {
+  if (v == null || v === "") return null;
+  if (v instanceof Date) return String(v.getUTCHours()).padStart(2, "0") + ":" + String(v.getUTCMinutes()).padStart(2, "0");
+  const n = typeof v === "number" ? v : /^0?\.\d+$/.test(String(v).trim()) ? Number(v) : NaN;
+  if (!isNaN(n) && n >= 0 && n < 1) { const m = Math.round(n * 1440); return String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"); }
+  const m = String(v).match(/(\d{1,2}):(\d{2})/);
+  return m && Number(m[1]) < 24 ? m[1].padStart(2, "0") + ":" + m[2] : null;
+}
 export function payload(kind: Kind, pl: Plan, org: string): Row {
   const { data, custom } = pl.p;
   const t = pl.target;
@@ -261,6 +272,7 @@ export function payload(kind: Kind, pl: Plan, org: string): Row {
   });
   const ck = NAMES[kind].customKey;
   const out: Row = { ...flat };
+  if ("next_time" in out) out.next_time = hhmm(out.next_time);
   if (!t) out.org_id = org;
   if (kind === "leads") {
     if (Object.keys(fit).length || !t) out.fit = { ...(t?.fit || { market: false, active: false, budget: false, decider: false, pain: false }), ...fit };
@@ -308,6 +320,7 @@ export function exportValue(kind: Kind, f: Field, r: Row): unknown {
   if (f.key.startsWith("links.")) return (kind === "leads" ? r.links : r.info?.links)?.[f.key.slice(6)] || null;
   const v = r[f.key];
   if (v == null || v === "") return null;
+  if (f.key === "next_time") return String(v).slice(0, 5);
   if (f.kind === "bool") return v ? "כן" : "לא";
   if (f.kind === "date") { const [y, m, d] = String(v).slice(0, 10).split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); }
   if (f.kind === "datetime") { const d = new Date(v); return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes())); }

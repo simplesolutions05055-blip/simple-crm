@@ -17,7 +17,7 @@ export const LINKS: [string, string, string][] = [
   ["site", "אתר", "globe"], ["landing", "דף נחיתה", "layout"], ["facebook", "פייסבוק", "link"],
   ["instagram", "אינסטגרם", "link"], ["tiktok", "טיקטוק", "link"], ["google", "גוגל עסקים", "pin"],
 ];
-export const FTYPES: [string, string][] = [["text", "טקסט"], ["url", "קישור"], ["number", "מספר"], ["date", "תאריך"]];
+export const FTYPES: [string, string][] = [["text", "טקסט"], ["url", "קישור"], ["number", "מספר"], ["date", "תאריך"], ["datetime-local", "תאריך ושעה"]];
 export const CLIENT_STATUS = ["בקליטה", "פעיל", "בסיכון", "הסתיים", "עזב"];
 export const QUOTE_STATUS_CLS: Record<string, string> = {
   "טיוטה": "", "נשלחה": "info", "נצפתה": "gold", "נחתמה": "ok", "נדחתה": "bad", "פגה": "warn",

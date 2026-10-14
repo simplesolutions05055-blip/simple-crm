@@ -16,7 +16,7 @@ export default function Dashboard() {
       const t = today();
       const since = new Date(Date.now() - 7 * 86400000).toISOString();
       const [leads, tasks, quotes, pays, services, sup] = await Promise.all([
-        sb().from("crm_leads").select("id,name,biz,stage,created_at,next_step,next_at,last_contact_at").is("archived_at", null),
+        sb().from("crm_leads").select("id,name,biz,stage,created_at,next_step,next_at,next_time,last_contact_at").is("archived_at", null),
         sb().from("crm_tasks").select("id,title,due_date,lead_id,client_id").eq("done", false).lte("due_date", t).order("due_date"),
         sb().from("crm_quotes").select("id,no,status,views,sent_at,totals,lead:crm_leads(name,biz),client:crm_clients(biz)").in("status", ["נשלחה", "נצפתה"]).order("sent_at", { ascending: false }),
         sb().from("crm_payments").select("id,what,amount,due,client:crm_clients(id,biz)").is("paid_at", null).lte("due", t).order("due"),
@@ -83,7 +83,7 @@ export default function Dashboard() {
               {d.next.map((l: Row) => (
                 <Link key={"n" + l.id} href={"/leads/" + l.id} className="lrow link" style={{ textDecoration: "none", color: "inherit" }}>
                   <Icon n="flag" />
-                  <span className="grow"><b>{l.next_step || "צעד הבא"}</b><span className="meta">{l.name} · {fmtDate(l.next_at)}</span></span>
+                  <span className="grow"><b>{l.next_step || "צעד הבא"}</b><span className="meta">{l.name} · {fmtDate(l.next_at)}{l.next_time ? " · " + String(l.next_time).slice(0, 5) : ""}</span></span>
                   {l.next_at < today() ? <St cls="bad">באיחור</St> : <St cls="gold">היום</St>}
                 </Link>
               ))}

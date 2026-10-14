@@ -75,9 +75,10 @@ export default function ClientPage() {
 
         <div className={"next" + (c.next_at && c.next_at < today() ? " miss" : "")}>
           <span className="ic"><Icon n="flag" /></span>
-          <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 170px", gap: 10 }}>
+          <div className="next-f">
             <div><small>הצעד הבא</small><EditField value={c.next_step} placeholder="מה הצעד הבא מול הלקוח?" onSave={(v) => save({ next_step: v })} /></div>
             <div><small>מתי</small><EditField type="date" value={c.next_at} onSave={(v) => save({ next_at: v || null })} /></div>
+            <div><small>שעה (לא חובה)</small><EditField type="time" value={c.next_time ? String(c.next_time).slice(0, 5) : ""} onSave={(v) => save({ next_time: v || null })} /></div>
           </div>
         </div>
 

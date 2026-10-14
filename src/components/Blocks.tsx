@@ -174,6 +174,7 @@ export function TasksBox({ leadId, clientId }: { leadId?: string; clientId?: str
   const [rows, setRows] = useState<Row[]>([]);
   const [title, setTitle] = useState("");
   const [due, setDue] = useState(today());
+  const [time, setTime] = useState("");
   const load = async () => {
     let q = sb().from("crm_tasks").select("*").order("done").order("due_date");
     q = leadId ? q.eq("lead_id", leadId) : q.eq("client_id", clientId!);
@@ -184,9 +185,9 @@ export function TasksBox({ leadId, clientId }: { leadId?: string; clientId?: str
   useEffect(() => { load(); }, [leadId, clientId]);
   async function add() {
     if (!title.trim()) return;
-    const { error } = await sb().from("crm_tasks").insert({ org_id: org, title: title.trim(), start_date: today() > due ? due : today(), due_date: due, lead_id: leadId || null, client_id: clientId || null });
+    const { error } = await sb().from("crm_tasks").insert({ org_id: org, title: title.trim(), start_date: today() > due ? due : today(), due_date: due, start_time: time || null, duration_min: time ? 30 : null, lead_id: leadId || null, client_id: clientId || null });
     if (error) return toast(error.message, true);
-    setTitle(""); load(); refreshCounts();
+    setTitle(""); setTime(""); load(); refreshCounts();
   }
   async function toggle(t: Row) {
     await sb().from("crm_tasks").update({ done: !t.done }).eq("id", t.id);
@@ -197,13 +198,14 @@ export function TasksBox({ leadId, clientId }: { leadId?: string; clientId?: str
       {rows.map((t) => (
         <div className={"task" + (t.done ? " done" : "")} key={t.id}>
           <input type="checkbox" checked={t.done} onChange={() => toggle(t)} />
-          <div className="grow"><b>{t.title}</b><span className={"meta" + (!t.done && t.due_date < today() ? " bad" : "")}><Icon n="cal" s={13} />{fmtDate(t.due_date)}</span>
+          <div className="grow"><b>{t.title}</b><span className={"meta" + (!t.done && t.due_date < today() ? " bad" : "")}><Icon n="cal" s={13} />{fmtDate(t.due_date)}{t.start_time ? " · " + String(t.start_time).slice(0, 5) : ""}</span>
             {t.description ? <div className="tdesc">{t.description}</div> : null}</div>
         </div>
       ))}
-      <div className="f3" style={{ gridTemplateColumns: "1fr 150px auto", marginTop: 10 }}>
+      <div className="taskadd">
         <input className="inp sm" placeholder="משימה חדשה" value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
-        <input className="inp sm" type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+        <input className="inp sm" type="date" value={due} onChange={(e) => setDue(e.target.value)} aria-label="תאריך" />
+        <input className="inp sm" type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-label="שעה (לא חובה)" title="שעה (לא חובה)" />
         <button className="btn sm" onClick={add}><Icon n="plus" s={15} /></button>
       </div>
     </Panel>
