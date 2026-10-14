@@ -18,6 +18,7 @@ const NAV = [
   { href: "/finance", label: "כספים", icon: "wallet" },
   { href: "/calendar", label: "יומן", icon: "cal" },
   { href: "/social", label: "סושיאל", icon: "pulse" },
+  { href: "/ads", label: "מודעות", icon: "flag" },
   { href: "/settings", label: "הגדרות", icon: "sliders" },
 ];
 
