@@ -10,6 +10,7 @@ import { Panel, Modal, St, Empty } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
 import { fmtDate, money, today, type Row, pastePhone } from "@/lib/crm";
+import { productCatalog } from "@/lib/products";
 
 export const SUP_BILLING = ["חודשי", "חד-פעמי"] as const;
 
@@ -133,12 +134,19 @@ function ProductModal({ clientId, row, suppliers, reloadSuppliers, onClose, onDo
   clientId: string; row: Row | null; suppliers: Row[]; reloadSuppliers: () => Promise<void>; onClose: () => void; onDone: () => void;
 }) {
   const { org, settings, toast } = useApp();
-  const products = settings.products;
+  const catalog = useMemo(() => productCatalog(settings.pricing, settings.products), [settings.pricing, settings.products]);
+  const products = catalog.map((x) => x.name);
+  // picking a catalog product on a new product fills its type and prices
+  const pick = (name: string) => {
+    const it = catalog.find((x) => x.name === name);
+    if (row || !it || !it.price) return set({ name });
+    set(it.kind === "monthly" ? { name, retainer: true, monthly: it.price, oneoff: "" } : { name, retainer: false, oneoff: it.price, monthly: "" });
+  };
   const init = row ? {
     name: row.name || "", description: row.description || "", list_price: row.list_price ?? "", oneoff: oneoffOf(row) || "",
     retainer: isRetainer(row), monthly: monthlyOf(row) || "", supplier_id: row.supplier_id || "", supplier_cost: row.supplier_cost ?? "",
     supplier_billing: row.supplier_billing || "חודשי", start_date: row.start_date || today(), end_date: row.end_date || "", pay: false,
-  } : { name: products[0] || "", description: "", list_price: "", oneoff: "", retainer: false, monthly: "", supplier_id: "", supplier_cost: "", supplier_billing: "חודשי", start_date: today(), end_date: "", pay: true };
+  } : { name: "", description: "", list_price: "", oneoff: "", retainer: false, monthly: "", supplier_id: "", supplier_cost: "", supplier_billing: "חודשי", start_date: today(), end_date: "", pay: true };
   const [f, setF] = useState<Row>(init);
   const [other, setOther] = useState(!!row && !products.includes(row.name));
   const [newSup, setNewSup] = useState(false);
@@ -184,7 +192,8 @@ function ProductModal({ clientId, row, suppliers, reloadSuppliers, onClose, onDo
     <Modal title={row ? "עריכת מוצר" : "שיוך מוצר"} icon="pkg" onClose={onClose}>
       <div className="form">
         <label className="field"><span>מוצר</span>
-          <select className="inp" value={other ? "__other" : f.name} onChange={(e) => { if (e.target.value === "__other") { setOther(true); set({ name: "" }); } else { setOther(false); set({ name: e.target.value }); } }}>
+          <select className="inp" value={other ? "__other" : f.name} onChange={(e) => { if (e.target.value === "__other") { setOther(true); set({ name: "" }); } else { setOther(false); pick(e.target.value); } }}>
+            {!row && !f.name && !other ? <option value="">בחירת מוצר…</option> : null}
             {products.map((p) => <option key={p} value={p}>{p}</option>)}
             <option value="__other">אחר…</option>
           </select>

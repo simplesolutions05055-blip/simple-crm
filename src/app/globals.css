@@ -475,6 +475,7 @@ b.bad{color:var(--bad)}
 .ptog button{background:var(--surface);border:0;padding:5px 10px;cursor:pointer;color:var(--muted);font:inherit;font-size:12px}
 .ptog button.y{background:var(--ok);color:#fff}.ptog button.n{background:var(--bad);color:#fff}
 .addpay{display:grid;grid-template-columns:minmax(0,1fr) 120px 140px 120px;gap:8px;margin-top:10px}
+.addpay>select:first-child{grid-column:1/-1}
 .addpay .bar{grid-column:1/-1}
 @media (max-width:700px){
 .psum{gap:6px}.psum div{padding:8px}.psum b{font-size:14px}.psum small{font-size:11px}

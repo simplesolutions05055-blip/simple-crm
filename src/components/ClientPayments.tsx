@@ -2,10 +2,11 @@
 /* Payments on a client card, all amounts incl. VAT:
    first payment · monthly retainer (one row per month) · other payments.
    Each row: paid / not paid, how much was actually paid, and how it was paid. */
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { sb } from "@/lib/supabase/browser";
 import { Panel, Empty } from "@/components/Shell";
 import Icon from "@/components/Icon";
+import { productCatalog } from "@/lib/products";
 import { useApp } from "@/components/AppCtx";
 import { EditField } from "@/components/Blocks";
 import { fmtDate, money, today, type Row } from "@/lib/crm";
@@ -139,12 +140,25 @@ function PayRow({ p, title, onPaid, onUpd }: { p: Row; title?: string; onPaid: (
 }
 
 function AddPayment({ clientId, kind, label, method, onDone }: { clientId: string; kind: "first" | "other"; label: string; method?: string | null; onDone: () => void }) {
-  const { org, toast } = useApp();
+  const { org, toast, settings } = useApp();
   const [open, setOpen] = useState(false);
   const [f, setF] = useState({ what: kind === "first" ? "תשלום ראשון" : "", amount: "", due: today(), method: method || "" });
+  const [prod, setProd] = useState("");
+  const catalog = useMemo(() => productCatalog(settings.pricing, settings.products), [settings.pricing, settings.products]);
+  const g = (n: number) => Math.round(n * (1 + settings.vat / 100));
   if (!open) return <button className="add" onClick={() => setOpen(true)}><Icon n="plus" s={15} />{label}</button>;
   return (
     <div className="addpay">
+      <select className="inp sm" aria-label="מוצר" value={prod} onChange={(e) => {
+        const v = e.target.value; setProd(v);
+        const it = catalog.find((x) => x.name === v);
+        if (it) setF({ ...f, what: it.name + (it.kind === "monthly" ? ", חודש ראשון" : ""), amount: it.price ? String(g(it.price)) : f.amount });
+        else if (v === "__other") setF({ ...f, what: "" });
+      }}>
+        <option value="">בחירת מוצר…</option>
+        {catalog.map((x) => <option key={x.name} value={x.name}>{x.name}{x.price ? " · " + x.price.toLocaleString("he-IL") + " ₪" + (x.kind === "monthly" ? " לחודש" : "") : ""}</option>)}
+        <option value="__other">אחר, הקלדה ידנית</option>
+      </select>
       <input className="inp sm" placeholder="על מה" value={f.what} onChange={(e) => setF({ ...f, what: e.target.value })} />
       <input className="inp sm" type="number" placeholder="סכום כולל מע&quot;מ" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} />
       <input className="inp sm" type="date" value={f.due} onChange={(e) => setF({ ...f, due: e.target.value })} />

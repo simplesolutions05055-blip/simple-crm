@@ -418,3 +418,23 @@ export function packView(input: Record<string, unknown> | null | undefined, pric
   return { P, I, m, to: inp.client || "", biz: inp.biz || "", date, until };
 }
 export const isPack = (input: unknown) => !!input && typeof input === "object" && (input as { product?: string }).product === "pack";
+
+/* every product the quotes sell, for picking a product on a client card or a payment:
+   the AI campaign and its add-ons, the products catalog and its add-ons, plus the names in settings */
+export type CatalogItem = { name: string; kind: "monthly" | "oneoff"; price: number; setup?: number };
+export function productCatalog(pricing: { ai?: unknown; pack?: unknown } | null | undefined, names: string[] = []): CatalogItem[] {
+  const ai = (pricing?.ai || {}) as { price?: number; addons?: { label: string; price: number }[] };
+  const P = withPack(pricing?.pack);
+  const out: CatalogItem[] = [
+    { name: "קמפיין AI", kind: "monthly", price: typeof ai.price === "number" ? ai.price : 600 },
+    ...P.products.map((p) => ({ name: p.label, kind: p.kind, price: p.price, setup: p.kind === "monthly" ? p.setup : undefined })),
+    ...P.products.filter((p) => p.fee).map((p) => ({ name: "אחסון ותחזוקה, " + p.short, kind: "monthly" as const, price: p.fee })),
+    ...P.addons.map((a) => ({ name: a.label, kind: "oneoff" as const, price: a.price })),
+    ...(Array.isArray(ai.addons) ? ai.addons : []).map((a) => ({ name: a.label, kind: "oneoff" as const, price: a.price })),
+    { name: "דף נוסף באתר", kind: "oneoff", price: P.extraPage },
+    ...P.packs.map((x) => ({ name: "חבילת " + x.n.toLocaleString("he-IL") + " הודעות", kind: "oneoff" as const, price: x.price })),
+    ...names.map((n) => ({ name: n, kind: "oneoff" as const, price: 0 })),
+  ];
+  const seen = new Set<string>();
+  return out.filter((x) => x.name && !seen.has(x.name) && !!seen.add(x.name));
+}
