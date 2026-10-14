@@ -32,7 +32,8 @@ async function openStored(f: { path: string; name: string }) {
 
 /* documents of a lead or a client: intake forms and signed quotes.
    A lead's documents stay visible on the client card after the lead becomes a client. */
-export function DocsBox({ leadId, clientId, who }: { leadId?: string; clientId?: string; who: string }) {
+/* intake=false (a lead): only files and signed quotes; intake forms live on the client card */
+export function DocsBox({ leadId, clientId, who, intake = true }: { leadId?: string; clientId?: string; who: string; intake?: boolean }) {
   const { org, toast, settings } = useApp();
   const [rows, setRows] = useState<Row[]>([]);
   const [pick, setPick] = useState(false);
@@ -162,14 +163,17 @@ export function DocsBox({ leadId, clientId, who }: { leadId?: string; clientId?:
     return (d.data?.form?.sections ? (d.data.form as IntakeForm) : undefined) || clientFormByKind(k, settings.intake_templates) || formByKind(k);
   }
 
+  const shown = intake ? rows : rows.filter((d) => !String(d.kind || "").startsWith("intake:"));
   return (
-    <Panel icon="note" title="מסמכים ואפיונים" right={<div className="bar">
+    <Panel icon="note" title={intake ? "מסמכים ואפיונים" : "מסמכים"} right={<div className="bar">
       <input ref={fileRef} type="file" multiple hidden onChange={(e) => upload(e.target.files)} />
       <button className="btn sm" disabled={!!upl} onClick={() => fileRef.current?.click()}><Icon n="upload" s={15} />{upl || "העלאת קובץ"}</button>
-      <button className="btn sm" onClick={() => setPick(true)}><Icon n="plus" s={15} />אפיון חדש</button>
-      <button className="btn sm primary" onClick={() => setSendPick(true)}><Icon n="send" s={15} />שליחת אפיון ללקוח</button>
+      {intake ? <>
+        <button className="btn sm" onClick={() => setPick(true)}><Icon n="plus" s={15} />אפיון חדש</button>
+        <button className="btn sm primary" onClick={() => setSendPick(true)}><Icon n="send" s={15} />שליחת אפיון ללקוח</button>
+      </> : null}
     </div>}>
-      {!rows.length ? <Empty>אין מסמכים</Empty> : rows.map((d) => {
+      {!shown.length ? <Empty>אין מסמכים</Empty> : shown.map((d) => {
         if (d.kind === "file" && d.path) return (
           <div key={d.id} className="lrow">
             <button className="grow linkish" onClick={() => openFile(d)} title="פתיחה">

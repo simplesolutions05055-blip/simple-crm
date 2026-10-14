@@ -211,3 +211,20 @@ export function TasksBox({ leadId, clientId }: { leadId?: string; clientId?: str
     </Panel>
   );
 }
+
+/* a box that starts closed: one line with a short summary and an open button; open shows the full box */
+export function Collapse({ icon, title, summary, children }: { icon: string; title: string; summary?: React.ReactNode; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={"collapse" + (open ? " open" : "")}>
+      <button type="button" className="collapse-h" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span className="ic"><Icon n={icon} s={16} /></span>
+        <b>{title}</b>
+        {summary ? <span className="meta">{summary}</span> : null}
+        <span className="grow" />
+        <span className="btn sm">{open ? "סגירה ▴" : "פתיחה ▾"}</span>
+      </button>
+      {open ? <div className="collapse-b">{children}</div> : null}
+    </div>
+  );
+}

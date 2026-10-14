@@ -6,8 +6,8 @@ import { sb } from "@/lib/supabase/browser";
 import { Top, Panel, St, Empty, Modal } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
-import { EditField, FieldRow, CustomFields, LinksBox, ActivityLog, QuotesBox, TasksBox, type CField } from "@/components/Blocks";
-import { AccessBox, VaultBox } from "@/components/ClientAccess";
+import { EditField, FieldRow, CustomFields, LinksBox, ActivityLog, QuotesBox, TasksBox, Collapse, type CField } from "@/components/Blocks";
+import { AccessBox } from "@/components/ClientAccess";
 import WaBox from "@/components/WaBox";
 import { DocsBox } from "@/components/DocsBox";
 import ClientProducts, { monthlyOf } from "@/components/ClientProducts";
@@ -24,6 +24,7 @@ export default function ClientPage() {
   const [tick, setTick] = useState(0);
   const [back, setBack] = useState(false);
   const [del, setDel] = useState(false);
+  const [counts, setCounts] = useState<{ quotes: number | null; signed: number; docs: number | null }>({ quotes: null, signed: 0, docs: null });
   const router = useRouter();
 
   const load = async () => {
@@ -34,6 +35,12 @@ export default function ClientPage() {
       sb().from("crm_payments").select("*").eq("client_id", id).order("due", { ascending: false }),
     ]);
     setC(a.data); setOnb(b.data || []); setSvc(s.data || []); setPays(p.data || []);
+    const lead = a.data?.lead_id as string | undefined;
+    const [qs, ds] = await Promise.all([
+      sb().from("crm_quotes").select("status").or("client_id.eq." + id + (lead ? ",lead_id.eq." + lead : "")),
+      sb().from("crm_documents").select("id", { count: "exact", head: true }).or("client_id.eq." + id + (lead ? ",lead_id.eq." + lead : "")),
+    ]);
+    setCounts({ quotes: (qs.data || []).length, signed: (qs.data || []).filter((q: Row) => q.status === "נחתמה").length, docs: ds.count ?? 0 });
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [id]);
@@ -50,6 +57,8 @@ export default function ClientPage() {
   const done = onb.filter((o) => o.done).length;
   const monthly = svc.filter((s) => s.status === "פעיל").reduce((a, s) => a + monthlyOf(s), 0);
   const vat = settings.vat / 100;
+  const paid = pays.reduce((t, p) => t + (p.paid_at ? Number(p.paid_amount ?? p.amount) : 0), 0);
+  const open = pays.filter((p) => p.due <= today()).reduce((t, p) => t + owedOf(p), 0);
 
   return (
     <>
@@ -73,19 +82,20 @@ export default function ClientPage() {
           <div className="panel stat"><span className="hi"><Icon n="pkg" s={18} /></span><div><b>{svc.filter((s) => s.status === "פעיל").length}</b><span className="sub">שירותים פעילים</span></div></div>
         </div>
 
-        <div className={"next" + (c.next_at && c.next_at < today() ? " miss" : "")}>
-          <span className="ic"><Icon n="flag" /></span>
-          <div className="next-f">
-            <div><small>הצעד הבא</small><EditField value={c.next_step} placeholder="מה הצעד הבא מול הלקוח?" onSave={(v) => save({ next_step: v })} /></div>
-            <div><small>מתי</small><EditField type="date" value={c.next_at} onSave={(v) => save({ next_at: v || null })} /></div>
-            <div><small>שעה (לא חובה)</small><EditField type="time" value={c.next_time ? String(c.next_time).slice(0, 5) : ""} onSave={(v) => save({ next_time: v || null })} /></div>
+        <div className="pair nextwa">
+          <div className={"next" + (c.next_at && c.next_at < today() ? " miss" : "")}>
+            <span className="ic"><Icon n="flag" /></span>
+            <div className="next-f">
+              <div><small>הצעד הבא</small><EditField value={c.next_step} placeholder="מה הצעד הבא מול הלקוח?" onSave={(v) => save({ next_step: v })} /></div>
+              <div><small>מתי</small><EditField type="date" value={c.next_at} onSave={(v) => save({ next_at: v || null })} /></div>
+              <div><small>שעה (לא חובה)</small><EditField type="time" value={c.next_time ? String(c.next_time).slice(0, 5) : ""} onSave={(v) => save({ next_time: v || null })} /></div>
+            </div>
           </div>
+          <WaBox clientId={id} leadId={c.lead_id || undefined} phone={c.phone} name={c.contact} onLog={() => setTick((t) => t + 1)} />
         </div>
 
-        <div className="grid g2">
-          <div className="col">
-            <Panel icon="list" title="קליטה">
-              <div className="checks">
+        <Panel icon="list" title="קליטה" right={onb.length ? <span className="tiny">{done}/{onb.length}</span> : null}>
+                <div className="onb-grid">
                 {onb.map((o) => (
                   <label key={o.id} className={"check" + (o.done ? " on" : "")}>
                     <input type="checkbox" checked={o.done} onChange={async (e) => {
@@ -99,16 +109,10 @@ export default function ClientPage() {
                 await sb().from("crm_onboarding_items").insert(settings.onboarding.map((t, i) => ({ org_id: org, client_id: id, title: t, sort: i + 1 })));
                 load();
               }}><Icon n="plus" s={15} />יצירת רשימת קליטה</button> : null}
-            </Panel>
+        </Panel>
 
-            <ClientProducts clientId={id} client={c} svc={svc} onDone={load} />
-
-            <ClientPayments client={c} pays={pays} onSave={save} onDone={load}
-              retainerDefault={Math.round(svc.filter((x) => x.status === "פעיל").reduce((t, x) => t + monthlyOf(x), 0) * (1 + vat))} />
-            <ActivityLog clientId={id} leadId={c.lead_id || undefined} reload={tick} />
-          </div>
-          <div className="col">
-            <Panel icon="user" title="פרטים">
+        <div className="grid g2 even">
+              <Panel icon="user" title="פרטים">
               <FieldRow icon="build" label="שם העסק"><EditField value={c.biz} onSave={(v) => v.trim() && save({ biz: v.trim() })} /></FieldRow>
               <FieldRow icon="user" label="איש קשר"><EditField value={c.contact} onSave={(v) => save({ contact: v })} /></FieldRow>
               <FieldRow icon="phone" label="טלפון"><EditField className="fi ltr" phone value={c.phone} onSave={(v) => save({ phone: v.replace(/[^0-9+]/g, "") || null })} /></FieldRow>
@@ -118,16 +122,32 @@ export default function ClientPage() {
               <datalist id="industries">{INDUSTRIES.map((i) => <option key={i} value={i} />)}</datalist>
               <div style={{ marginTop: 8 }}><CustomFields fields={custom.info || []} onChange={(f) => save({ custom: { ...custom, info: f } })} /></div>
             </Panel>
-            <Panel icon="globe" title="נוכחות דיגיטלית">
+              <Panel icon="globe" title="נוכחות דיגיטלית">
               <LinksBox links={c.info?.links || {}} custom={custom.links || []} onLinks={(x) => save({ info: { ...(c.info || {}), links: x } })} onCustom={(l) => save({ custom: { ...custom, links: l } })} />
             </Panel>
-            <WaBox clientId={id} leadId={c.lead_id || undefined} phone={c.phone} name={c.contact} onLog={() => setTick((t) => t + 1)} />
-            <AccessBox clientId={id} contact={c.contact} phone={c.phone} onLog={() => setTick((t) => t + 1)} />
-            <VaultBox clientId={id} onLog={() => setTick((t) => t + 1)} />
-            <QuotesBox clientId={id} leadId={c.lead_id || undefined} />
-            <DocsBox clientId={id} leadId={c.lead_id || undefined} who={c.biz} />
+        </div>
+
+        <div className="grid g2 even">
+          <ClientProducts clientId={id} client={c} svc={svc} onDone={load} />
+          <AccessBox clientId={id} contact={c.contact} phone={c.phone} onLog={() => setTick((t) => t + 1)} />
+        </div>
+
+        <Collapse icon="wallet" title="תשלומים" summary={"שולם " + money(paid) + " · פתוח " + money(open) + (c.retainer_amount ? " · ריטיינר " + money(Number(c.retainer_amount)) : "")}>
+          <ClientPayments client={c} pays={pays} onSave={save} onDone={load}
+            retainerDefault={Math.round(svc.filter((x) => x.status === "פעיל").reduce((t, x) => t + monthlyOf(x), 0) * (1 + vat))} />
+        </Collapse>
+        <Collapse icon="file" title="הצעות מחיר" summary={counts.quotes == null ? "" : counts.quotes ? counts.quotes + (counts.quotes === 1 ? " הצעה" : " הצעות") + (counts.signed ? " · " + counts.signed + " חתומות" : "") : "אין הצעות"}>
+          <QuotesBox clientId={id} leadId={c.lead_id || undefined} />
+        </Collapse>
+        <Collapse icon="note" title="מסמכים ואפיונים" summary={counts.docs == null ? "" : counts.docs ? counts.docs + " מסמכים" : "אין מסמכים"}>
+          <DocsBox clientId={id} leadId={c.lead_id || undefined} who={c.biz} />
+        </Collapse>
+
+        <div className="grid g2 even">
+          <ActivityLog clientId={id} leadId={c.lead_id || undefined} reload={tick} />
+          <div className="col">
             <TasksBox clientId={id} />
-            {c.status === "עזב" ? (
+              {c.status === "עזב" ? (
               <Panel icon="alert" title="למה עזב">
                 <EditField className="inp" value={c.churn_reason} placeholder="סיבת העזיבה" onSave={(v) => save({ churn_reason: v })} />
               </Panel>

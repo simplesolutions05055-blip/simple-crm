@@ -142,7 +142,7 @@ export default function LeadPage() {
             </Panel>
             <div className="pair">
               <QuotesBox leadId={id} clientId={l.client_id || undefined} />
-              <DocsBox leadId={id} clientId={l.client_id || undefined} who={l.biz || l.name} />
+              <DocsBox leadId={id} clientId={l.client_id || undefined} who={l.biz || l.name} intake={false} />
             </div>
             <Panel icon="check" title="התאמה">
               <div className="checks">
