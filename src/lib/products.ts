@@ -368,21 +368,26 @@ export function computePack(P: PackPricing, I: PackInput, vat: number, T: Templa
   const title = defs.length ? joinHe(shorts) : "הצעת מחיר";
   const sub = defs.length === 1 ? defs[0].d.sub : defs.length ? "הצעה משולבת של " + defs.length + " מוצרים, במסמך אחד" : "בחרו מוצר אחד או יותר";
 
-  // price card: the monthly total when there is one, and next to it everything paid at signing
-  // (setups, one-off products, add-ons); with no monthly product, the one-off total including add-ons
-  let price: AiModel["price"];
-  const priceLines: { a: string; was?: string; b: string }[] = [];
-  const mWas = sum(monthly, "o") !== mNet ? nis(sum(monthly, "o")) : "";
-  const oWas = sum(oneoff, "o") !== oNet ? nis(sum(oneoff, "o")) : "";
-  if (monthly.length) {
-    price = { title: "מחיר חודשי", desc: "", was: mWas, num: nis(mNet), sub: 'לחודש, לפני מע"מ',
-      ...(oneoff.length ? { was2: oWas, num2: nis(oNet), sub2: 'בהצטרפות, חד פעמי, לפני מע"מ' } : {}) };
-    if (monthly.length > 1) monthly.forEach((x) => priceLines.push({ a: x.a + ", לחודש", was: wasOf(x), b: shown(x) }));
-  } else {
-    price = { title: "מחיר כולל", desc: "", was: oWas, num: nis(oNet), sub: 'חד פעמי, לפני מע"מ' };
+  // price card: every line the client pays (name, monthly or one-off, price with the original struck),
+  // and on the other side the monthly total on top and the one-off total under it, before VAT.
+  // The AI campaign promo shows as its monthly price after the discount.
+  const price: AiModel["price"] = { title: "", desc: "", was: "", num: "", sub: "" };
+  type Card = { a: string; k: string; o: number; eff: number; was: number | null };
+  const cardM: Card[] = [], cardO: Card[] = [];
+  for (const { l, d } of defs) {
+    const p = priceOf(l.price, l.sale, basePrice(P, I, d.id));
+    const first = d.id === "ai" && l.promo ? Math.round(p.eff * (100 - P.aiPct) / 100) : null;
+    const row = first != null ? { o: p.o, eff: first, was: p.o } : p;
+    (d.kind === "monthly" ? cardM : cardO).push({ a: d.short, k: d.kind === "monthly" ? "חודשי" : "חד פעמי", ...row });
   }
-  if (monthly.length || oneoff.length > 1) oneoff.forEach((x) => priceLines.push({ a: x.a + (!monthly.length || x.a.startsWith("הקמה") || x.a.includes("החודש הראשון") ? "" : ", חד פעמי"), was: wasOf(x), b: shown(x) }));
-  hosting.forEach((x) => priceLines.push({ a: x.a + ", לחודש", was: wasOf(x), b: shown(x) }));
+  oneoff.filter((x) => !x.a.includes("החודש הראשון") && !defs.some((d) => d.d.label === x.a)).forEach((x) => cardO.push({ ...x, k: "חד פעמי" }));
+  const cardH: Card[] = hosting.map((x) => ({ ...x, k: "חודשי" }));  // listed last, counted in the monthly total
+  const priceLines = [...cardM, ...cardO, ...cardH].map((x) => ({ a: x.a, k: x.k, was: wasOf(x), b: shown(x) }));
+  const fig = (xs: Card[], label: string) => {
+    const e = sum(xs as Ln[], "eff"), o = sum(xs as Ln[], "o");
+    return { label, num: nis(e), was: o !== e ? nis(o) : undefined };
+  };
+  const figs = [...(cardM.length || cardH.length ? [fig([...cardM, ...cardH], "חודשי")] : []), ...(cardO.length ? [fig(cardO, "חד פעמי")] : [])];
 
   const incGroups = defs.map(({ d }) => ({
     title: d.label,
@@ -434,7 +439,7 @@ export function computePack(P: PackPricing, I: PackInput, vat: number, T: Templa
     timelinesNote: "לוחות הזמנים נספרים מרגע שכל החומרים אצלי: טקסטים, תמונות, לוגו וגישות למערכות. עיכוב בקבלת חומר דוחה את הלוח באותו מספר ימים.",
     terms: termGroups.flatMap((t) => t.items),
     notice: I.promo ? { text: I.promoText || PROMO_TEXT_DEFAULT, chip: "לזמן מוגבל" } : null,
-    priceLines, incGroups, termGroups, payNow,
+    priceLines, figs, incGroups, termGroups, payNow,
     totals: {
       product: "pack", title: defs.length ? shorts.join(" + ") : "הצעת מחיר",
       monthly: mNet + hNet, oneoff: oNet,

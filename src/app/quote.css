@@ -210,3 +210,19 @@
 .qd .aq-group+.aq-group{margin-top:16px}
 .qd .aq-group h4{font-size:14.5px;font-weight:900;color:var(--deep);margin:0 0 8px}
 .qd .aq-plines s,.qd .aq-plines bdi,.qd .summary s.aq-was,.qd .summary bdi{display:inline-block;unicode-bidi:isolate}
+
+/* price card: lines on the right (name, monthly or one-off, price), totals on the left */
+.qd .aq-plines div{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px 12px;align-items:baseline}
+.qd .aq-plines .nm{min-width:0;overflow-wrap:anywhere}
+.qd .aq-plines .k{font-size:11px;font-weight:700;color:#b9ade0;background:rgba(255,255,255,.08);border-radius:999px;padding:1px 9px;white-space:nowrap}
+.qd .aq-plines{font-size:14px;gap:8px;margin-top:0}
+.qd .aq-figs{position:relative;z-index:2;display:flex;flex-direction:column;gap:14px;align-items:flex-start;min-width:0}
+.qd .aq-f small{display:block;font-size:12px;font-weight:700;color:#b9ade0;margin-bottom:2px}
+.qd .aq-f .v{display:flex;align-items:baseline;gap:10px;white-space:nowrap}
+.qd .aq-f b{font-size:40px;font-weight:900;color:var(--gold);line-height:1}
+.qd .aq-f + .aq-f b{font-size:30px;color:#fff}
+.qd .aq-f s{font-size:17px;font-weight:700;color:#b9ade0;text-decoration-color:var(--red);text-decoration-thickness:2px}
+.qd .aq-f s,.qd .aq-f bdi{unicode-bidi:isolate}
+.qd .aq-vat{font-size:11.5px;color:#b9ade0}
+@media (max-width:680px){.qd .aq-f b{font-size:34px}.qd .aq-f + .aq-f b{font-size:26px}}
+.qd .pricecard .what{flex:1;min-width:0}

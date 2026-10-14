@@ -55,34 +55,26 @@ export default function AiQuoteDoc({ m, T, to, biz, date, until, signed, childre
 
           <div className="pricecard">
             <div className="what">
-              <h2>{m.price.title}</h2>
-              {m.price.desc ? <p>{m.price.desc}</p> : null}
+              {m.price.title && !m.figs ? <h2>{m.price.title}</h2> : null}
+              {m.price.desc && !m.figs ? <p>{m.price.desc}</p> : null}
               {m.priceLines?.length ? (
                 <div className="aq-plines">
                   {m.priceLines.map((r, i) => (
-                    <div key={i}><span>{r.a}</span><span className="money">{r.was ? <s>{r.was}</s> : null}<bdi>{r.b}</bdi></span></div>
+                    <div key={i}><span className="nm">{r.a}</span>{r.k ? <span className="k">{r.k}</span> : null}<span className="money">{r.was ? <s>{r.was}</s> : null}<bdi>{r.b}</bdi></span></div>
                   ))}
                 </div>
               ) : null}
             </div>
-            <div className="aq-amount">
-              {m.promo ? <div className="aq-badge">{m.promoPct}%<br />הנחה</div> : null}
-              <div className="aq-fig">
-                {m.price.was ? <div className="was">{m.price.was}</div> : null}
-                <div className="num">{m.price.num}</div>
-                <div className="sub">{m.price.sub}</div>
-              </div>
-              {m.price.num2 ? (
-                <div className="aq-fig second">
-                  {m.price.was2 ? <div className="was">{m.price.was2}</div> : null}
-                  <div className="num">{m.price.num2}</div>
-                  <div className="sub">{m.price.sub2}</div>
+            <div className="aq-figs">
+              {(m.figs || [{ label: m.price.title, was: m.price.was, num: m.price.num }]).map((f, i) => (
+                <div className="aq-f" key={i}>
+                  <small>{f.label}</small>
+                  <span className="v">{f.was ? <s><bdi>{f.was}</bdi></s> : null}<b><bdi>{f.num}</bdi></b></span>
                 </div>
-              ) : null}
+              ))}
+              <span className="aq-vat">לפני מע&quot;מ</span>
             </div>
-          </div>
-
-          <Fold badge="✓" title="מה כלול">
+          </div>          <Fold badge="✓" title="מה כלול">
           {m.incGroups ? m.incGroups.map((g, n) => (
             <div className="aq-group" key={n}>
               {m.incGroups!.length > 1 ? <h4>{g.title}</h4> : null}

@@ -67,7 +67,7 @@ export type AiModel = {
   sub: string;
   promo: boolean;
   promoPct: number;
-  price: { title: string; desc: string; was: string; num: string; sub: string; was2?: string; num2?: string; sub2?: string };
+  price: { title: string; desc: string; was: string; num: string; sub: string };
   inc: { t: string; s: string; no?: boolean }[];
   summary: AiRow[];
   summaryNote: string;
@@ -78,7 +78,8 @@ export type AiModel = {
   terms: string[];
   // used by the products quote (lib/products.ts); the AI campaign leaves them empty
   notice?: { text: string; chip: string } | null;
-  priceLines?: { a: string; was?: string; b: string }[];
+  priceLines?: { a: string; was?: string; b: string; k?: string }[];  // k = "חודשי" / "חד פעמי"
+  figs?: { label: string; was?: string; num: string }[];             // the price card totals: monthly on top, one-off below
   incGroups?: { title: string; items: { t: string; s: string; no?: boolean }[] }[];
   termGroups?: { title: string; items: string[] }[];
   payNow?: string;
@@ -145,8 +146,18 @@ export function computeAi(A: AiPricing, I: AiInput, vat: number, T: Template): A
     ...((T.extraTerms || []) as string[]).map((x) => x.trim()).filter(Boolean),
   ];
 
+  // price card: every line the client pays, and the totals before VAT
+  const priceLines = [
+    { a: "קמפיין AI", k: "חודשי", was: I.promo ? nis(price) : undefined, b: nis(first) },
+    ...picked.map((x) => ({ a: x.label, k: "חד פעמי", b: nis(x.price) })),
+  ];
+  const figs = [
+    { label: "חודשי", was: I.promo ? nis(price) : undefined, num: nis(first) },
+    ...(picked.length ? [{ label: "חד פעמי", num: nis(oneoff) }] : []),
+  ];
+
   return {
-    title, sub, promo: I.promo, promoPct: pct, price: priceCard, inc,
+    title, sub, promo: I.promo, promoPct: pct, price: priceCard, inc, priceLines, figs,
     summary: S, summaryNote, addons,
     addonsNote: "תשלום חד פעמי, מחוץ לחיוב החודשי. בחירת תוספת אינה חובה, וניתן להוסיף אותה גם בהמשך.",
     timelines: [
