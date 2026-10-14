@@ -60,7 +60,7 @@ export default function AiQuoteDoc({ m, T, to, biz, date, until, signed, childre
               {m.priceLines?.length ? (
                 <div className="aq-plines">
                   {m.priceLines.map((r, i) => (
-                    <div key={i}><span className="nm">{r.a}</span>{r.k ? <span className="k">{r.k}</span> : null}<span className="money">{r.was ? <s>{r.was}</s> : null}<bdi>{r.b}</bdi></span></div>
+                    <div key={i}><span className="nm">{r.a}</span><span className="k">{r.k ? <i>{r.k}</i> : null}</span><span className="money">{r.was ? <s>{r.was}</s> : null}<bdi>{r.b}</bdi></span></div>
                   ))}
                 </div>
               ) : null}

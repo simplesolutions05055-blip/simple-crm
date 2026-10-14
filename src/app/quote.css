@@ -211,18 +211,23 @@
 .qd .aq-group h4{font-size:14.5px;font-weight:900;color:var(--deep);margin:0 0 8px}
 .qd .aq-plines s,.qd .aq-plines bdi,.qd .summary s.aq-was,.qd .summary bdi{display:inline-block;unicode-bidi:isolate}
 
-/* price card: lines on the right (name, monthly or one-off, price), totals on the left */
-.qd .aq-plines div{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px 12px;align-items:baseline}
-.qd .aq-plines .nm{min-width:0;overflow-wrap:anywhere}
-.qd .aq-plines .k{font-size:11px;font-weight:700;color:#b9ade0;background:rgba(255,255,255,.08);border-radius:999px;padding:1px 9px;white-space:nowrap}
-.qd .aq-plines{font-size:14px;gap:8px;margin-top:0}
-.qd .aq-figs{position:relative;z-index:2;display:flex;flex-direction:column;gap:14px;align-items:flex-start;min-width:0}
+/* price card: lines on the right as an aligned table (name | monthly or one-off | price), totals on the left */
+.qd .pricecard .what{flex:1 1 auto;min-width:0;max-width:460px}
+.qd .aq-plines{display:flex;flex-direction:column;gap:0;margin-top:0;font-size:14.5px}
+.qd .aq-plines > div{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"nm money" "k money";column-gap:16px;row-gap:3px;align-items:center;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.1)}
+.qd .aq-plines > div:last-child{border-bottom:0}
+.qd .aq-plines .nm{grid-area:nm;color:#fff;font-weight:700}
+.qd .aq-plines .k{grid-area:k;line-height:1}
+.qd .aq-plines .k i{font-style:normal;font-size:11px;font-weight:700;color:#d6ccf3;background:rgba(255,255,255,.1);border-radius:999px;padding:2px 10px;white-space:nowrap}
+.qd .aq-plines .money{grid-area:money;display:flex;justify-content:flex-end;align-items:baseline;gap:8px;font-variant-numeric:tabular-nums}
+.qd .aq-plines .money s{margin:0}
+.qd .aq-figs{position:relative;z-index:2;display:flex;flex-direction:column;gap:14px;align-items:flex-start;min-width:0;flex:none;border-inline-start:1px solid rgba(255,255,255,.15);padding-inline-start:28px}
 .qd .aq-f small{display:block;font-size:12px;font-weight:700;color:#b9ade0;margin-bottom:2px}
-.qd .aq-f .v{display:flex;align-items:baseline;gap:10px;white-space:nowrap}
+.qd .aq-f .v{display:flex;align-items:baseline;gap:10px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .qd .aq-f b{font-size:40px;font-weight:900;color:var(--gold);line-height:1}
 .qd .aq-f + .aq-f b{font-size:30px;color:#fff}
 .qd .aq-f s{font-size:17px;font-weight:700;color:#b9ade0;text-decoration-color:var(--red);text-decoration-thickness:2px}
 .qd .aq-f s,.qd .aq-f bdi{unicode-bidi:isolate}
 .qd .aq-vat{font-size:11.5px;color:#b9ade0}
-@media (max-width:680px){.qd .aq-f b{font-size:34px}.qd .aq-f + .aq-f b{font-size:26px}}
-.qd .pricecard .what{flex:1;min-width:0}
+@media (max-width:680px){.qd .aq-f b{font-size:34px}.qd .aq-f + .aq-f b{font-size:26px}.qd .aq-figs{border-inline-start:0;padding-inline-start:0;border-top:1px solid rgba(255,255,255,.15);padding-top:16px;width:100%}.qd .pricecard .what{width:100%;max-width:none}}
+@container (max-width:620px){.qd .pricecard{flex-direction:column;align-items:stretch}.qd .pricecard .what{max-width:none}.qd .aq-figs{border-inline-start:0;padding-inline-start:0;border-top:1px solid rgba(255,255,255,.15);padding-top:16px}}
