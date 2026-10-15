@@ -8,6 +8,7 @@ import { Top, Modal, St } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
 import ExcelIO from "@/components/ExcelIO";
+import { useAdLeadsSync } from "@/components/AdLeadsSync";
 import { STAGES, OFF_STAGES, SOURCES, INDUSTRIES, BUDGETS, fmtDate, today, type Row, pastePhone } from "@/lib/crm";
 
 export default function Leads() {
@@ -27,6 +28,7 @@ export default function Leads() {
     setRows(data || []);
   };
   useEffect(() => { load(); }, []);
+  useAdLeadsSync(org, load);
 
   const filtered = useMemo(() => {
     const t = q.trim();
