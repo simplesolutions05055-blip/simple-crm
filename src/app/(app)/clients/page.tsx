@@ -5,6 +5,7 @@ import { sb } from "@/lib/supabase/browser";
 import { Top, Panel, Modal, St, Empty } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
+import { purgeClient } from "@/lib/purge";
 import ExcelIO from "@/components/ExcelIO";
 import { CLIENT_STATUS, CLIENT_STATUS_CLS, INDUSTRIES, fmtDate, money, ago, type Row, pastePhone } from "@/lib/crm";
 
@@ -13,6 +14,10 @@ export default function Clients() {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [status, setStatus] = useState("פעילים");
   const [adding, setAdding] = useState(false);
+  // permanent delete of several clients at once (test entries, for example)
+  const [pick, setPick] = useState<Set<string> | null>(null);
+  const [confirm, setConfirm] = useState(false);
+  const toggle = (id: string) => setPick((p) => { const n = new Set(p || []); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const load = async () => {
     const { data } = await sb().from("crm_clients")
@@ -28,25 +33,31 @@ export default function Clients() {
 
   return (
     <>
-      <Top title="לקוחות" sub={rows ? list.length + " לקוחות" : ""} right={<div className="bar"><ExcelIO kind="clients" onDone={load} /><button className="btn primary" onClick={() => setAdding(true)}><Icon n="plus" s={16} />לקוח חדש</button></div>} />
+      <Top title="לקוחות" sub={rows ? list.length + " לקוחות" : ""} right={<div className="bar">{pick ? <>
+          <button className="btn danger" disabled={!pick.size} onClick={() => setConfirm(true)}><Icon n="trash" s={15} />מחיקה לצמיתות{pick.size ? " (" + pick.size + ")" : ""}</button>
+          <button className="btn ghost" onClick={() => setPick(null)}>ביטול</button>
+        </> : <button className="btn ghost" onClick={() => setPick(new Set())}><Icon n="trash" s={15} />מחיקת לקוחות</button>}<ExcelIO kind="clients" onDone={load} /><button className="btn primary" onClick={() => setAdding(true)}><Icon n="plus" s={16} />לקוח חדש</button></div>} />
       <div className="content">
         <div className="tabs">
           {["פעילים", ...CLIENT_STATUS, "הכל"].map((s) => (
             <button key={s} className={"btn sm" + (status === s ? " on" : "")} onClick={() => setStatus(s)}>{s}</button>
           ))}
         </div>
+        {pick ? <div className="bar"><span className="tiny">סמן את הלקוחות שרוצים למחוק לצמיתות, ואז &quot;מחיקה לצמיתות&quot; למעלה.</span>
+          {list.length ? <button className="btn sm ghost" onClick={() => setPick(pick.size === list.length ? new Set() : new Set(list.map((c) => c.id)))}>{pick.size === list.length ? "ניקוי הבחירה" : "סימון כל המוצגים"}</button> : null}</div> : null}
         <Panel>
           {!rows ? <div className="loading" style={{ minHeight: 120 }}>טוען…</div> : !list.length ? <Empty>אין לקוחות בתצוגה הזו</Empty> : (
             <div className="scroll">
               <table className="tbl">
-                <thead><tr><th>לקוח</th><th>סטטוס</th><th>חודשי, לפני מע&quot;מ</th><th>פתוח לגבייה</th><th>נגיעה אחרונה</th><th>מאז</th></tr></thead>
+                <thead><tr>{pick ? <th style={{ width: 36 }} /> : null}<th>לקוח</th><th>סטטוס</th><th>חודשי, לפני מע&quot;מ</th><th>פתוח לגבייה</th><th>נגיעה אחרונה</th><th>מאז</th></tr></thead>
                 <tbody>
                   {list.map((c) => {
                     const monthly = (c.services || []).filter((s: Row) => s.billing === "חודשי" && s.status === "פעיל").reduce((a: number, s: Row) => a + Number(s.price), 0);
                     const open = (c.payments || []).filter((p: Row) => !p.paid_at);
                     const late = open.some((p: Row) => p.due < t);
                     return (
-                      <tr key={c.id} className="click" onClick={() => router.push("/clients/" + c.id)}>
+                      <tr key={c.id} className={"click" + (pick?.has(c.id) ? " picked" : "")} onClick={() => (pick ? toggle(c.id) : router.push("/clients/" + c.id))}>
+                        {pick ? <td onClick={(e) => e.stopPropagation()}><input type="checkbox" aria-label={"בחירת " + c.biz} checked={pick.has(c.id)} onChange={() => toggle(c.id)} /></td> : null}
                         <td><b>{c.biz}</b><div className="sub">{c.contact}{c.industry ? " · " + c.industry : ""}</div></td>
                         <td><St cls={CLIENT_STATUS_CLS[c.status]}>{c.status}</St>{c.left_at ? <div className="sub">עזב {fmtDate(c.left_at)}</div> : null}</td>
                         <td>{monthly ? money(monthly) : "-"}</td>
@@ -62,6 +73,7 @@ export default function Clients() {
           )}
         </Panel>
       </div>
+      {confirm && pick ? <PurgeMany rows={(rows || []).filter((c) => pick.has(c.id))} onClose={() => setConfirm(false)} onDone={() => { setConfirm(false); setPick(null); load(); }} /> : null}
       {adding ? <NewClient onClose={() => setAdding(false)} onDone={(id) => router.push("/clients/" + id)} /> : null}
     </>
   );
@@ -90,6 +102,40 @@ function NewClient({ onClose, onDone }: { onClose: () => void; onDone: (id: stri
         <datalist id="industries">{INDUSTRIES.map((i) => <option key={i} value={i} />)}</datalist>
         <div className="full bar"><button className="btn primary">שמירה</button><button type="button" className="btn ghost" onClick={onClose}>ביטול</button></div>
       </form>
+    </Modal>
+  );
+}
+
+function PurgeMany({ rows, onClose, onDone }: { rows: Row[]; onClose: () => void; onDone: () => void }) {
+  const { org, toast } = useApp();
+  const [withLead, setWithLead] = useState(true);
+  const [busy, setBusy] = useState("");
+  async function run() {
+    let done = 0;
+    for (const c of rows) {
+      setBusy("מוחק " + (done + 1) + " מתוך " + rows.length + "…");
+      const err = await purgeClient(c, withLead, org);
+      if (err) { setBusy(""); toast((c.biz || c.contact) + ": " + err, true); if (done) onDone(); return; }
+      done++;
+    }
+    setBusy("");
+    toast(done === 1 ? (rows[0].biz || "הלקוח") + " נמחק לצמיתות" : done + " לקוחות נמחקו לצמיתות");
+    onDone();
+  }
+  return (
+    <Modal title="מחיקה לצמיתות" icon="x" onClose={() => !busy && onClose()}>
+      <p style={{ margin: 0 }}>{rows.length === 1 ? "הלקוח הזה יימחק" : rows.length + " הלקוחות האלה יימחקו"} לגמרי, יחד עם המוצרים, התשלומים, הצעות המחיר, המסמכים, הכספת, המשימות וההיסטוריה:</p>
+      <ul className="purge-list">{rows.map((c) => <li key={c.id}><b>{c.biz}</b>{c.contact ? <span className="meta"> · {c.contact}</span> : null}</li>)}</ul>
+      {rows.some((c) => c.lead_id) ? (
+        <label className={"pillck" + (withLead ? " on" : "")} style={{ alignSelf: "flex-start" }}>
+          <input type="checkbox" checked={withLead} onChange={(e) => setWithLead(e.target.checked)} />למחוק גם את הלידים שמהם הלקוחות נוצרו
+        </label>
+      ) : null}
+      <p style={{ margin: "8px 0 0", color: "var(--soft)" }}>אי אפשר לשחזר את זה.</p>
+      <div className="bar" style={{ marginTop: 14 }}>
+        <button className="btn danger" disabled={!!busy} onClick={run}>{busy || "כן, למחוק לצמיתות"}</button>
+        <button className="btn ghost" disabled={!!busy} onClick={onClose}>ביטול</button>
+      </div>
     </Modal>
   );
 }

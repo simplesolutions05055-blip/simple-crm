@@ -725,3 +725,8 @@ b.bad{color:var(--bad)}
 .galmini button.on{border-color:var(--gold-2)}
 .galmini img{width:100%;height:100%;object-fit:cover;display:block}
 .adacc{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+
+/* clients list: picking clients for a permanent delete */
+.tbl tr.picked td{background:#fdecec}
+.tbl td input[type=checkbox]{width:18px;height:18px;accent-color:var(--navy);cursor:pointer}
+.purge-list{margin:10px 0;padding-inline-start:20px;max-height:220px;overflow:auto;display:flex;flex-direction:column;gap:4px}
