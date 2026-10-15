@@ -10,6 +10,7 @@ import { fmtDate, type Row } from "@/lib/crm";
 import { sb } from "@/lib/supabase/browser";
 import { AdBuilder, CampaignActions } from "@/components/AdBuilder";
 import { GraphicsStudio } from "@/components/Graphics";
+import { AdLeadsButton } from "@/components/AdLeadsSync";
 import { CONNECT_HREF, n0, zName } from "@/components/SocialLive";
 
 const TABS = ["קמפיינים", "קמפיין חדש", "גרפיקות", "חיבור חשבון מודעות"] as const;
@@ -78,7 +79,7 @@ function Campaigns({ goConnect, goNew }: { goConnect: () => void; goNew: () => v
     <>
       <div className="bar" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
         <div className="bar">{RANGES.map(([n, l]) => <button key={n} className={"btn sm" + (days === n ? " on" : "")} onClick={() => setDays(n)}>{l}</button>)}
-          <button className="btn sm primary" onClick={goNew}><Icon n="plus" s={14} />קמפיין חדש</button></div>
+          <button className="btn sm primary" onClick={goNew}><Icon n="plus" s={14} />קמפיין חדש</button><AdLeadsButton /></div>
         <span className="tiny">{(d.adAccounts as Row[]).map((a) => zName(a.platform) + (a.name ? " · " + a.name : "")).join("  |  ")}</span>
       </div>
       {d.error ? (

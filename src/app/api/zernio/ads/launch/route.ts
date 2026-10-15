@@ -13,7 +13,8 @@ const str = (v: unknown, max = 500) => String(v ?? "").trim().slice(0, max);
      paused?: boolean,
      audience: { cities?: [{ id, name, radius }], ageMin?, ageMax?, gender?, interests?: [{ id, name }] },
      postId? (boost), ad?: { headline, body, description?, imageUrl, linkUrl, cta } (create), cta?, linkUrl? (boost),
-     TikTok: ad.videoUrl instead of imageUrl (TikTok ads are video only), no headline, identityId?/identityType? }
+     TikTok: ad.videoUrl instead of imageUrl (TikTok ads are video only), no headline, identityId?/identityType?,
+     Meta only: goal "lead_generation" + leadFormId; goal "whatsapp" (click-to-WhatsApp via /ads/ctwa) + waPhone?/waText?/waGreeting? }
    Every call, ok or not, is logged in crm_ad_launches. */
 export async function POST(req: NextRequest) {
   const b = (await req.json().catch(() => ({}))) as J;
@@ -24,7 +25,13 @@ export async function POST(req: NextRequest) {
   if (!org) return bad("missing org");
 
   const goal = str(b.goal, 40);
-  if (!AD_GOALS.some((g) => g[0] === goal)) return bad("מטרה לא נתמכת");
+  const goalDef = AD_GOALS.find((g) => g[0] === goal);
+  if (!goalDef) return bad("מטרה לא נתמכת");
+  const leadFormId = str(b.leadFormId, 64);
+  if (goal === "lead_generation" && !/^\d+$/.test(leadFormId)) return bad("לקמפיין לידים צריך לבחור טופס");
+  const waPhone = str(b.waPhone, 20).replace(/[^\d+]/g, "");
+  if (waPhone && !/^\+\d{9,15}$/.test(waPhone)) return bad("מספר הוואטסאפ צריך להיות בפורמט בינלאומי, לדוגמה +972501234567");
+  const waText = str(b.waText, 300), waGreeting = str(b.waGreeting, 300);
   if (kind === "create" && goal === "video_views") return bad("צפיות בסרטון רק בקידום פוסט עם סרטון");
   const budgetType = b.budgetType === "lifetime" ? "lifetime" : "daily";
   const budgetAmount = Number(b.budgetAmount);
@@ -62,6 +69,7 @@ export async function POST(req: NextRequest) {
     const acc = mine.find((a) => a.id === str(b.accountId, 64));
     if (!acc || !["facebook", "instagram", "tiktok", "tiktokads"].includes(acc.platform)) return NextResponse.json({ error: "החשבון לא שייך לעסק הזה" }, { status: 403 });
     const tiktok = acc.platform === "tiktok" || acc.platform === "tiktokads";
+    if (!goalDef[3].includes(tiktok ? "tiktok" : "meta")) return bad("המטרה הזו לא זמינה ב" + (tiktok ? "טיקטוק" : "מטא"));
     /* TikTok takes location ids without a radius; Meta takes cities with a radius */
     const geoT: J = tiktok
       ? (cities.length || regions.length ? { ...(cities.length ? { cities: cities.map((c) => ({ key: c.key, name: c.name })) } : {}), ...(regions.length ? { regions } : {}) } : { countries: ["IL"] })
@@ -76,6 +84,36 @@ export async function POST(req: NextRequest) {
       ...(b.paused === true ? { status: "PAUSED" } : {}),
     };
     let body: J, path: string;
+    if (goal === "whatsapp") {
+      /* click-to-WhatsApp (Meta only): an existing post, or a new image ad. The chat button replaces link and CTA */
+      if (validate) return NextResponse.json({ ok: true, validated: false, note: "בקמפיין וואטסאפ אין בדיקה מוקדמת. אפשר ליצור במצב מושהה ולבדוק במנהל המודעות" });
+      const cityList = cities.map((c) => ({ key: c.key, radius: c.radius, distance_unit: "kilometer" }));
+      const geoW: J = cityList.length || regions.length ? { ...(cityList.length ? { cities: cityList } : {}), ...(regions.length ? { regions: regions.map((r) => ({ key: r.key })) } : {}) } : { countries: ["IL"] };
+      const base: J = {
+        accountId: acc.id, adAccountId, name, campaignName: name, budgetAmount, budgetType, ...geoW,
+        ageMin, ageMax, gender, ...(interests.length ? { interests } : {}),
+        ...(start ? { startDate: start + ":00" } : {}), ...(end ? { endDate: end + ":00" } : {}),
+        ...(b.paused === true ? { status: "PAUSED" } : {}),
+        ...(waPhone ? { whatsappPhoneNumber: waPhone } : {}),
+        ...(waText ? { welcomeMessage: { text: waGreeting || "היי, איך אפשר לעזור?", prefillText: waText } } : {}),
+      };
+      if (kind === "boost") {
+        const postId = str(b.postId, 120);
+        if (!postId) return bad("לא נבחר פוסט לקידום");
+        body = { ...base, platformPostId: postId };
+      } else {
+        const ad = (b.ad || {}) as J;
+        const headline = str(ad.headline, 255), text = str(ad.body, 2000), imageUrl = str(ad.imageUrl, 1000);
+        if (!text || !headline) return bad("חסרים כותרת או טקסט למודעה");
+        if (!/^https:\/\//.test(imageUrl)) return bad("חסרה תמונה למודעה");
+        body = { ...base, headline, body: text, imageUrl, ...(str(ad.description, 255) ? { description: str(ad.description, 255) } : {}) };
+      }
+      const j = await zapi("/ads/ctwa", { method: "POST", body: JSON.stringify(body) });
+      await log(true, body, j);
+      const w = (j.ad || {}) as J;
+      return NextResponse.json({ ok: true, validated: false, message: [str(j.message, 300), ...((j.warnings as string[]) || []).map((x) => str(x, 300))].filter(Boolean).join(" · "), campaignId: str(w.platformCampaignId, 80), status: str(w.status, 40) });
+    }
+    const lead = goal === "lead_generation" ? { leadGenFormId: leadFormId } : {};
     const identityId = str(b.identityId, 80), identityType = str(b.identityType, 20);
     const tiktokIdentity = tiktok && kind === "create" && identityId && ["TT_USER", "BC_AUTH_TT", "CUSTOMIZED_USER"].includes(identityType) ? { identityId, identityType } : {};
     if (kind === "boost") {
@@ -85,7 +123,7 @@ export async function POST(req: NextRequest) {
       const linkUrl = str(b.linkUrl, 1000), cta = str(b.cta, 40);
       if (goal === "traffic" && (!linkUrl || !cta)) return bad("לתנועה לאתר צריך קישור וכפתור");
       if (linkUrl && !/^https?:\/\//.test(linkUrl)) return bad("קישור לא תקין");
-      body = { ...common, platformPostId: postId, ...(linkUrl && cta && AD_CTAS.some((c) => c[0] === cta) ? { linkUrl, callToAction: cta } : {}) };
+      body = { ...common, ...lead, platformPostId: postId, ...(linkUrl && cta && AD_CTAS.some((c) => c[0] === cta) ? { linkUrl, callToAction: cta } : {}) };
       path = "/ads/boost";
       if (validate) return NextResponse.json({ ok: true, validated: false, note: "בקידום פוסט אין בדיקה מוקדמת. הבדיקה נעשית ביצירה" });
     } else {
@@ -95,12 +133,13 @@ export async function POST(req: NextRequest) {
       const imageUrl = tiktok ? str(ad.videoUrl, 1000) : str(ad.imageUrl, 1000);
       if (!text || (!tiktok && !headline)) return bad(tiktok ? "חסר טקסט למודעה" : "חסרים כותרת או טקסט למודעה");
       if (!/^https:\/\//.test(imageUrl)) return bad(tiktok ? "חסר סרטון למודעה" : "חסרה תמונה למודעה");
-      if (!/^https?:\/\//.test(linkUrl)) return bad("חסר קישור למודעה");
+      /* a lead ad opens the form on tap; its link (the business site) is optional */
+      if (linkUrl ? !/^https?:\/\//.test(linkUrl) : goal !== "lead_generation") return bad("חסר קישור למודעה");
       if (!AD_CTAS.some((c) => c[0] === cta)) return bad("כפתור לא תקין");
       if (validate && tiktok) return NextResponse.json({ ok: true, validated: false, note: "בטיקטוק אין בדיקה מוקדמת. אפשר ליצור במצב מושהה ולבדוק במנהל המודעות" });
       body = tiktok
         ? { ...common, body: text, imageUrl, linkUrl, callToAction: cta, ...tiktokIdentity }
-        : { ...common, headline, body: text, imageUrl, linkUrl, callToAction: cta, ...(str(ad.description, 255) ? { description: str(ad.description, 255) } : {}), ...(validate ? { validateOnly: true } : {}) };
+        : { ...common, ...lead, headline, body: text, imageUrl, ...(linkUrl ? { linkUrl } : {}), callToAction: cta, ...(str(ad.description, 255) ? { description: str(ad.description, 255) } : {}), ...(validate ? { validateOnly: true } : {}) };
       path = "/ads/create";
     }
     const j = await zapi(path, { method: "POST", body: JSON.stringify(body) });

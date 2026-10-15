@@ -10,7 +10,7 @@ import { useApp } from "@/components/AppCtx";
 import { fmtDate, type Row } from "@/lib/crm";
 import { GraphicPicker } from "@/components/Graphics";
 import { CONNECT_HREF, zName } from "@/components/SocialLive";
-import { AD_CTAS, AD_GENDERS, AD_GOALS } from "@/lib/ads";
+import { AD_CTAS, AD_GENDERS, AD_GOALS, LEAD_QUESTIONS, waLink } from "@/lib/ads";
 
 type Pick = { id: string; name: string; radius?: number; type?: string };
 type Net = "meta" | "tiktok";
@@ -46,6 +46,8 @@ export function AdBuilder({ onDone }: { onDone: () => void }) {
   const [paused, setPaused] = useState(false);
   const [busy, setBusy] = useState("");
   const [check, setCheck] = useState<Row | null>(null);
+  const [leadFormId, setLeadFormId] = useState("");
+  const [wa, setWa] = useState({ phone: "", text: "", greeting: "" });
 
   useEffect(() => {
     fetch("/api/zernio/accounts?org=" + encodeURIComponent(org)).then((r) => r.json()).then((j) => {
@@ -57,7 +59,8 @@ export function AdBuilder({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     const first = shown.find((a) => a.platform === "facebook" || a.platform === "tiktok") || shown[0];
     setAccountId(first ? first.id : "");
-    setCities([]); setInterests([]); setPostId(""); setCheck(null);
+    setCities([]); setInterests([]); setPostId(""); setCheck(null); setLeadFormId("");
+    if (!AD_GOALS.find((g) => g[0] === goal)?.[3].includes(net)) setGoal("engagement");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [net, accs]);
   useEffect(() => {
@@ -92,7 +95,10 @@ export function AdBuilder({ onDone }: { onDone: () => void }) {
   if (kind === "create" && (!ad.body.trim() || (!tk && !ad.headline.trim()))) problems.push(tk ? "טקסט למודעה" : "כותרת וטקסט למודעה");
   if (kind === "create" && !tk && !ad.imageUrl) problems.push("תמונה למודעה");
   if (kind === "create" && tk && !ad.videoUrl) problems.push("סרטון למודעה");
-  if (kind === "create" && !/^https?:\/\//.test(ad.linkUrl)) problems.push("קישור למודעה");
+  const noLink = goal === "whatsapp" || goal === "lead_generation";
+  if (kind === "create" && !noLink && !/^https?:\/\//.test(ad.linkUrl)) problems.push("קישור למודעה");
+  if (goal === "lead_generation" && !leadFormId) problems.push("טופס לידים");
+  if (goal === "whatsapp" && wa.phone.trim() && !/^\+\d{9,15}$/.test(wa.phone.replace(/[^\d+]/g, ""))) problems.push("מספר וואטסאפ בפורמט +972...");
   if (!(amount > 0)) problems.push("תקציב");
   if (adAcc?.minDaily && budgetType === "daily" && amount > 0 && amount < adAcc.minDaily) problems.push("תקציב יומי מינימלי בחשבון: " + adAcc.minDaily + " " + cur);
   if (budgetType === "lifetime" && !end) problems.push("תאריך סיום לתקציב כולל");
@@ -103,6 +109,8 @@ export function AdBuilder({ onDone }: { onDone: () => void }) {
     audience: { cities, interests, ageMin, ageMax, gender },
     ...(kind === "boost" ? { postId, linkUrl: boostLink.linkUrl.trim(), cta: boostLink.cta } : { ad: { ...ad, headline: ad.headline.trim(), body: ad.body.trim(), linkUrl: ad.linkUrl.trim() } }),
     ...(tk && identity ? { identityId: identity, identityType: identities.find((i) => i.id === identity)?.type || "" } : {}),
+    ...(goal === "lead_generation" ? { leadFormId } : {}),
+    ...(goal === "whatsapp" ? { waPhone: wa.phone.trim(), waText: wa.text.trim(), waGreeting: wa.greeting.trim() } : {}),
   });
   async function uploadVideo(f: File | undefined) {
     if (!f) return;
@@ -192,6 +200,7 @@ export function AdBuilder({ onDone }: { onDone: () => void }) {
               {ad.videoUrl ? <video className="full" src={ad.videoUrl} controls muted style={{ maxHeight: 260, borderRadius: 10 }} /> : null}
               <label className="field"><span>לאן לוחצים</span><input className="inp ltr" value={ad.linkUrl} onChange={(e) => setAd({ ...ad, linkUrl: e.target.value })} placeholder="https://" /></label>
               <label className="field"><span>כפתור</span><select className="inp" value={ad.cta} onChange={(e) => setAd({ ...ad, cta: e.target.value })}>{AD_CTAS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+              <WaLinkHelper onLink={(u) => setAd({ ...ad, linkUrl: u, cta: "CONTACT_US" })} />
               {identities.length ? (
                 <label className="field full"><span>המודעה תוצג בשם</span>
                   <select className="inp" value={identity} onChange={(e) => setIdentity(e.target.value)}>
@@ -207,14 +216,16 @@ export function AdBuilder({ onDone }: { onDone: () => void }) {
               <label className="field full"><span>תיאור קצר (לא חובה)</span><input className="inp" dir="auto" value={ad.description} onChange={(e) => setAd({ ...ad, description: e.target.value })} /></label>
               <label className="field full"><span>קישור לתמונה</span><input className="inp ltr" value={ad.imageUrl} onChange={(e) => setAd({ ...ad, imageUrl: e.target.value })} placeholder="https://" /></label>
               <GraphicPicker value={ad.imageUrl} onPick={(u) => setAd({ ...ad, imageUrl: u })} />
-              <label className="field"><span>לאן לוחצים</span><input className="inp ltr" value={ad.linkUrl} onChange={(e) => setAd({ ...ad, linkUrl: e.target.value })} placeholder="https://" /></label>
-              <label className="field"><span>כפתור</span><select className="inp" value={ad.cta} onChange={(e) => setAd({ ...ad, cta: e.target.value })}>{AD_CTAS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+              {goal === "whatsapp" ? <p className="tiny full" style={{ margin: 0 }}>במודעת וואטסאפ הכפתור הוא &quot;שליחת הודעה בוואטסאפ&quot;, ולכן אין צורך בקישור.</p> : <>
+                <label className="field"><span>{goal === "lead_generation" ? "קישור לאתר (לא חובה)" : "לאן לוחצים"}</span><input className="inp ltr" value={ad.linkUrl} onChange={(e) => setAd({ ...ad, linkUrl: e.target.value })} placeholder="https://" /></label>
+                <label className="field"><span>כפתור</span><select className="inp" value={ad.cta} onChange={(e) => setAd({ ...ad, cta: e.target.value })}>{AD_CTAS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+              </>}
             </div>
           )}
         </Panel>
 
         <Panel icon="flag" title="2. מטרה">
-          {AD_GOALS.filter((g) => kind === "boost" || g[0] !== "video_views").map(([k, l, d]) => (
+          {AD_GOALS.filter((g) => g[3].includes(net) && (kind === "boost" || g[0] !== "video_views")).map(([k, l, d]) => (
             <label key={k} className="set-card" style={{ cursor: "pointer", display: "flex", gap: 10, alignItems: "flex-start" }}>
               <input type="radio" name="goal" checked={goal === k} onChange={() => setGoal(k)} />
               <span><b>{l}</b><span className="tiny" style={{ display: "block" }}>{d}</span></span>
@@ -224,6 +235,16 @@ export function AdBuilder({ onDone }: { onDone: () => void }) {
             <div className="form" style={{ marginTop: 8 }}>
               <label className="field"><span>קישור</span><input className="inp ltr" value={boostLink.linkUrl} onChange={(e) => setBoostLink({ ...boostLink, linkUrl: e.target.value })} placeholder="https://" /></label>
               <label className="field"><span>כפתור</span><select className="inp" value={boostLink.cta} onChange={(e) => setBoostLink({ ...boostLink, cta: e.target.value })}><option value="">בחירה…</option>{AD_CTAS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+              {tk ? <WaLinkHelper onLink={(u) => setBoostLink({ linkUrl: u, cta: "CONTACT_US" })} /> : null}
+            </div>
+          ) : null}
+          {goal === "lead_generation" && accountId ? <LeadFormPicker org={org} accountId={accountId} value={leadFormId} onChange={setLeadFormId} /> : null}
+          {goal === "whatsapp" ? (
+            <div className="form" style={{ marginTop: 8 }}>
+              <label className="field"><span>מספר הוואטסאפ (לא חובה)</span><input className="inp ltr" value={wa.phone} onChange={(e) => setWa({ ...wa, phone: e.target.value })} placeholder="+972501234567" /></label>
+              <label className="field"><span>הודעת פתיחה מהעסק (לא חובה)</span><input className="inp" dir="auto" value={wa.greeting} onChange={(e) => setWa({ ...wa, greeting: e.target.value })} placeholder="היי, איך אפשר לעזור?" /></label>
+              <label className="field full"><span>ההודעה שתופיע מוכנה לשליחה אצל הלקוח (לא חובה)</span><input className="inp" dir="auto" value={wa.text} onChange={(e) => setWa({ ...wa, text: e.target.value })} placeholder="היי, ראיתי את המודעה ואשמח לפרטים" /></label>
+              <p className="tiny full" style={{ margin: 0 }}>המספר חייב להיות מחובר לעמוד הפייסבוק (בהגדרות העמוד, תחת WhatsApp). אם משאירים ריק, מטא בוחרת את המספר שמחובר לעמוד.</p>
             </div>
           ) : null}
         </Panel>
@@ -274,6 +295,101 @@ export function AdBuilder({ onDone }: { onDone: () => void }) {
     </div>
     )}
     </>
+  );
+}
+
+/* pick one of the page's Meta lead forms, or create a new one in place */
+function LeadFormPicker({ org, accountId, value, onChange }: { org: string; accountId: string; value: string; onChange: (id: string) => void }) {
+  const { toast } = useApp();
+  const [forms, setForms] = useState<Row[] | null>(null);
+  const [err, setErr] = useState("");
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [f, setF] = useState({ name: "", privacyPolicyUrl: "", websiteUrl: "", thankYouBody: "", questions: ["FULL_NAME", "PHONE", "EMAIL"] });
+  const load = async (pickId = "") => {
+    setErr("");
+    const r = await fetch("/api/zernio/ads/leadforms?" + new URLSearchParams({ org, accountId })).catch(() => null);
+    const j = r ? await r.json().catch(() => ({})) : {};
+    if (!r || !r.ok) { setForms([]); setErr(j.error || "הטפסים לא נטענו"); return; }
+    const list = (j.forms || []) as Row[];
+    setForms(list);
+    if (pickId) onChange(pickId);
+    else if (!list.some((x) => x.id === value)) onChange(list.length === 1 ? list[0].id : "");
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setForms(null); load(); }, [org, accountId]);
+  async function create() {
+    if (!f.name.trim()) return toast("כותבים שם לטופס", true);
+    if (!/^https:\/\//.test(f.privacyPolicyUrl.trim())) return toast("מטא דורשת קישור למדיניות פרטיות שמתחיל ב-https", true);
+    setBusy(true);
+    const r = await fetch("/api/zernio/ads/leadforms", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ org, accountId, ...f, name: f.name.trim(), privacyPolicyUrl: f.privacyPolicyUrl.trim(), websiteUrl: f.websiteUrl.trim() }) }).catch(() => null);
+    const j = r ? await r.json().catch(() => ({})) : {};
+    setBusy(false);
+    if (!r || !r.ok) return toast("הטופס לא נוצר: " + (j.error || (r ? r.status : "")), true);
+    toast("הטופס נוצר"); setOpen(false);
+    load(j.form?.id || "");
+  }
+  const toggleQ = (q: string) => setF({ ...f, questions: f.questions.includes(q) ? f.questions.filter((x) => x !== q) : [...f.questions, q] });
+  return (
+    <div className="set-card" style={{ marginTop: 8 }}>
+      <b>טופס הלידים</b>
+      {!forms ? <span className="tiny">טוען טפסים…</span> : (
+        <div className="bar" style={{ flexWrap: "wrap", marginTop: 6 }}>
+          {forms.length ? (
+            <select className="inp" style={{ flex: 1, minWidth: 200 }} value={value} onChange={(e) => onChange(e.target.value)}>
+              <option value="">בחירת טופס…</option>
+              {forms.map((x) => <option key={x.id} value={x.id}>{x.name || x.id}{x.status && x.status !== "ACTIVE" ? " (" + x.status + ")" : ""}</option>)}
+            </select>
+          ) : <span className="tiny">{err || "עוד אין טפסים בעמוד הזה."}</span>}
+          <button className="btn sm" onClick={() => setOpen(!open)}><Icon n="plus" s={14} />טופס חדש</button>
+        </div>
+      )}
+      {open ? (
+        <div className="form" style={{ marginTop: 10 }}>
+          <label className="field"><span>שם הטופס (רק לך)</span><input className="inp" dir="auto" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="לדוגמה: ניהול קמפיין 50%" /></label>
+          <label className="field"><span>קישור למדיניות הפרטיות (חובה)</span><input className="inp ltr" value={f.privacyPolicyUrl} onChange={(e) => setF({ ...f, privacyPolicyUrl: e.target.value })} placeholder="https://" /></label>
+          <div className="field full"><span>מה שואלים (מטא ממלאת מהפרופיל, הלקוח רק מאשר)</span>
+            <div className="bar" style={{ flexWrap: "wrap" }}>
+              {LEAD_QUESTIONS.map(([k, l]) => <label key={k} className="bar tiny" style={{ cursor: "pointer" }}><input type="checkbox" checked={f.questions.includes(k)} onChange={() => toggleQ(k)} />{l}</label>)}
+            </div>
+          </div>
+          <label className="field"><span>הודעת תודה (לא חובה)</span><input className="inp" dir="auto" value={f.thankYouBody} onChange={(e) => setF({ ...f, thankYouBody: e.target.value })} placeholder="נחזור אליך בהקדם." /></label>
+          <label className="field"><span>כפתור לאתר בסוף (לא חובה)</span><input className="inp ltr" value={f.websiteUrl} onChange={(e) => setF({ ...f, websiteUrl: e.target.value })} placeholder="https://" /></label>
+          <div className="full bar">
+            <button className="btn primary" disabled={busy} onClick={create}>{busy ? "יוצר…" : "יצירת הטופס"}</button>
+            <button className="btn ghost" onClick={() => setOpen(false)}>ביטול</button>
+          </div>
+        </div>
+      ) : null}
+      <span className="tiny" style={{ display: "block", marginTop: 6 }}>הלידים מהטופס נכנסים ללשונית &quot;לידים&quot; ב-CRM עם המקור &quot;קמפיין F&quot;.</span>
+    </div>
+  );
+}
+
+/* builds a wa.me link (TikTok has no WhatsApp ad type, so the link goes in the regular destination) */
+function WaLinkHelper({ onLink }: { onLink: (url: string) => void }) {
+  const { toast } = useApp();
+  const [open, setOpen] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [text, setText] = useState("");
+  if (!open) return <button type="button" className="btn sm ghost full" style={{ justifySelf: "start" }} onClick={() => setOpen(true)}><Icon n="send" s={14} />קישור לוואטסאפ במקום אתר</button>;
+  const apply = () => {
+    const u = waLink(phone, text);
+    if (!u) return toast("מספר טלפון לא תקין", true);
+    onLink(u); setOpen(false); toast("הקישור לוואטסאפ הוכנס");
+  };
+  return (
+    <div className="set-card full">
+      <div className="form">
+        <label className="field"><span>מספר וואטסאפ</span><input className="inp ltr" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="050-1234567" /></label>
+        <label className="field"><span>הודעה מוכנה (לא חובה)</span><input className="inp" dir="auto" value={text} onChange={(e) => setText(e.target.value)} placeholder="היי, ראיתי את המודעה" /></label>
+      </div>
+      <div className="bar" style={{ marginTop: 8 }}>
+        <button type="button" className="btn sm primary" onClick={apply}>הכנסת הקישור</button>
+        <button type="button" className="btn sm ghost" onClick={() => setOpen(false)}>ביטול</button>
+      </div>
+      <span className="tiny" style={{ display: "block", marginTop: 6 }}>טיקטוק עלולה לדחות מודעה שמובילה ישר לוואטסאפ. אם היא נדחית, מפנים לדף באתר עם כפתור וואטסאפ.</span>
+    </div>
   );
 }
 
