@@ -365,8 +365,12 @@ export function computePack(P: PackPricing, I: PackInput, vat: number, T: Templa
   const wasOf = (x: Ln) => (x.was != null ? nis(x.was) : undefined);
 
   const shorts = defs.map((x) => x.d.short);
-  const title = defs.length ? joinHe(shorts) : "הצעת מחיר";
-  const sub = defs.length === 1 ? defs[0].d.sub : defs.length ? "הצעה משולבת של " + defs.length + " מוצרים, במסמך אחד" : "בחרו מוצר אחד או יותר";
+  // the AI campaign on its own keeps the campaign header (with the promo when it is on)
+  const aiOnly = defs.length === 1 && defs[0].d.id === "ai";
+  const aiPromo = aiOnly && defs[0].l.promo;
+  const title = aiOnly ? "קמפיין ממומן" + (aiPromo ? ` · ${P.aiPct}% הנחה על החודש הראשון` : "") : defs.length ? joinHe(shorts) : "הצעת מחיר";
+  const sub = aiOnly ? `ניהול קמפיין ממומן בפלטפורמה אחת, דרך מערכת AI ש-${T.name || "Simple Solution"} מפתחת`
+    : defs.length === 1 ? defs[0].d.sub : defs.length ? "הצעה משולבת של " + defs.length + " מוצרים, במסמך אחד" : "בחרו מוצר אחד או יותר";
 
   // price card: every line the client pays (name, monthly or one-off, price with the original struck),
   // and on the other side the monthly total on top and the one-off total under it, before VAT.
