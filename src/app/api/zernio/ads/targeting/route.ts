@@ -8,13 +8,15 @@ export async function GET(req: NextRequest) {
   const kind = p.get("kind") === "interest" ? "interest" : "city";
   if (!org || !accountId || q.length < 2) return NextResponse.json({ results: [] });
   try {
-    if (!(await ownAccount(org, accountId))) return NextResponse.json({ error: "no_access" }, { status: 403 });
+    const acc = await ownAccount(org, accountId);
+    if (!acc) return NextResponse.json({ error: "no_access" }, { status: 403 });
     const s = new URLSearchParams({ accountId, q, limit: "12", dimension: kind === "city" ? "geo" : "interest" });
-    if (kind === "city") { s.set("geoType", "city"); s.set("countryCode", "IL"); }
+    const tiktok = acc?.platform === "tiktok" || acc?.platform === "tiktokads";
+    if (kind === "city") { s.set("countryCode", "IL"); if (!tiktok) s.set("geoType", "city"); }
     if (p.get("adAccountId")) s.set("adAccountId", p.get("adAccountId")!);
     const j = await zapi("/ads/targeting/search?" + s);
     const list = (Array.isArray(j.results) ? j.results : []) as Record<string, unknown>[];
-    return NextResponse.json({ results: list.map((r) => ({ id: String(r.id || ""), name: String(r.name || ""), path: Array.isArray(r.path) ? (r.path as string[]).join(" > ") : "", size: typeof r.audienceSize === "number" ? r.audienceSize : null })) });
+    return NextResponse.json({ results: list.map((r) => ({ id: String(r.id || ""), name: String(r.name || ""), type: String(r.type || ""), path: Array.isArray(r.path) ? (r.path as string[]).join(" > ") : "", size: typeof r.audienceSize === "number" ? r.audienceSize : null })) });
   } catch (e) {
     const f = zfail(e);
     return NextResponse.json({ results: [], ...f.body }, { status: f.status });

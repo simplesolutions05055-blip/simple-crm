@@ -1,7 +1,8 @@
 "use client";
-/* campaign builder for Meta (Facebook and Instagram) through Zernio: boost an existing post or
-   create a new ad with an image from the gallery. Nothing is sent without an explicit confirm. */
+/* campaign builder for Meta (Facebook and Instagram) and TikTok through Zernio: boost an existing post or
+   create a new ad (Meta: image from the gallery; TikTok: a video). Nothing is sent without an explicit confirm. */
 import { useEffect, useMemo, useRef, useState } from "react";
+import { sb } from "@/lib/supabase/browser";
 import Link from "next/link";
 import { Panel, Empty, St } from "@/components/Shell";
 import Icon from "@/components/Icon";
@@ -11,20 +12,26 @@ import { GraphicPicker } from "@/components/Graphics";
 import { CONNECT_HREF, zName } from "@/components/SocialLive";
 import { AD_CTAS, AD_GENDERS, AD_GOALS } from "@/lib/ads";
 
-type Pick = { id: string; name: string; radius?: number };
+type Pick = { id: string; name: string; radius?: number; type?: string };
+type Net = "meta" | "tiktok";
+const NET_PLATS: Record<Net, string[]> = { meta: ["facebook", "instagram"], tiktok: ["tiktok", "tiktokads"] };
 const pad = (n: number) => String(n).padStart(2, "0");
 const local = (d: Date) => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
 
 export function AdBuilder({ onDone }: { onDone: () => void }) {
   const { org, toast } = useApp();
+  const [net, setNet] = useState<Net>("meta");
   const [kind, setKind] = useState<"boost" | "create">("boost");
+  const [identities, setIdentities] = useState<Row[]>([]);
+  const [identity, setIdentity] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [accs, setAccs] = useState<Row[] | null>(null);
   const [accountId, setAccountId] = useState("");
   const [setup, setSetup] = useState<Row | null>(null);
   const [adAccountId, setAdAccountId] = useState("");
   const [postId, setPostId] = useState("");
   const [goal, setGoal] = useState("engagement");
-  const [ad, setAd] = useState({ headline: "", body: "", description: "", imageUrl: "", linkUrl: "", cta: "LEARN_MORE" });
+  const [ad, setAd] = useState({ headline: "", body: "", description: "", imageUrl: "", videoUrl: "", linkUrl: "", cta: "LEARN_MORE" });
   const [boostLink, setBoostLink] = useState({ linkUrl: "", cta: "" });
   const [cities, setCities] = useState<Pick[]>([]);
   const [interests, setInterests] = useState<Pick[]>([]);
@@ -42,13 +49,25 @@ export function AdBuilder({ onDone }: { onDone: () => void }) {
 
   useEffect(() => {
     fetch("/api/zernio/accounts?org=" + encodeURIComponent(org)).then((r) => r.json()).then((j) => {
-      const list = ((j.accounts || []) as Row[]).filter((a) => a.platform === "facebook" || a.platform === "instagram");
-      setAccs(list);
-      if (list.length) setAccountId((list.find((a) => a.platform === "facebook") || list[0]).id);
+      setAccs(((j.accounts || []) as Row[]).filter((a) => [...NET_PLATS.meta, ...NET_PLATS.tiktok].includes(a.platform)));
     }).catch(() => setAccs([]));
   }, [org]);
+  const shown = (accs || []).filter((a) => NET_PLATS[net].includes(a.platform));
+  /* switching network picks its first account (the posting one before the ads-only one) */
   useEffect(() => {
-    if (!accountId) return;
+    const first = shown.find((a) => a.platform === "facebook" || a.platform === "tiktok") || shown[0];
+    setAccountId(first ? first.id : "");
+    setCities([]); setInterests([]); setPostId(""); setCheck(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [net, accs]);
+  useEffect(() => {
+    setIdentities([]); setIdentity("");
+    if (net !== "tiktok" || !accountId || !adAccountId) return;
+    fetch("/api/zernio/ads/setup?" + new URLSearchParams({ org, accountId, adAccountId })).then((r) => r.json())
+      .then((j) => setIdentities(j.identities || [])).catch(() => {});
+  }, [net, org, accountId, adAccountId]);
+  useEffect(() => {
+    if (!accountId) { setSetup(null); return; }
     setSetup(null); setPostId(""); setAdAccountId("");
     fetch("/api/zernio/ads/setup?org=" + encodeURIComponent(org) + "&accountId=" + encodeURIComponent(accountId)).then((r) => r.json()).then((j) => {
       setSetup(j);
@@ -57,7 +76,8 @@ export function AdBuilder({ onDone }: { onDone: () => void }) {
     }).catch(() => setSetup({ error: "load" }));
   }, [org, accountId]);
 
-  const acc = accs?.find((a) => a.id === accountId);
+  const acc = shown.find((a) => a.id === accountId);
+  const tk = net === "tiktok";
   const adAcc: Row | undefined = (setup?.adAccounts || []).find((a: Row) => a.id === adAccountId);
   const cur = adAcc?.currency || "";
   const post: Row | undefined = (setup?.posts || []).find((p: Row) => p.id === postId);
@@ -69,8 +89,9 @@ export function AdBuilder({ onDone }: { onDone: () => void }) {
   if (!adAccountId) problems.push("בוחרים חשבון מודעות");
   if (kind === "boost" && !postId) problems.push("בוחרים פוסט לקידום");
   if (kind === "boost" && goal === "traffic" && (!boostLink.linkUrl || !boostLink.cta)) problems.push("לתנועה לאתר: קישור וכפתור");
-  if (kind === "create" && (!ad.headline.trim() || !ad.body.trim())) problems.push("כותרת וטקסט למודעה");
-  if (kind === "create" && !ad.imageUrl) problems.push("תמונה למודעה");
+  if (kind === "create" && (!ad.body.trim() || (!tk && !ad.headline.trim()))) problems.push(tk ? "טקסט למודעה" : "כותרת וטקסט למודעה");
+  if (kind === "create" && !tk && !ad.imageUrl) problems.push("תמונה למודעה");
+  if (kind === "create" && tk && !ad.videoUrl) problems.push("סרטון למודעה");
   if (kind === "create" && !/^https?:\/\//.test(ad.linkUrl)) problems.push("קישור למודעה");
   if (!(amount > 0)) problems.push("תקציב");
   if (adAcc?.minDaily && budgetType === "daily" && amount > 0 && amount < adAcc.minDaily) problems.push("תקציב יומי מינימלי בחשבון: " + adAcc.minDaily + " " + cur);
@@ -81,12 +102,25 @@ export function AdBuilder({ onDone }: { onDone: () => void }) {
     budgetAmount: amount, budgetType, start, end, paused,
     audience: { cities, interests, ageMin, ageMax, gender },
     ...(kind === "boost" ? { postId, linkUrl: boostLink.linkUrl.trim(), cta: boostLink.cta } : { ad: { ...ad, headline: ad.headline.trim(), body: ad.body.trim(), linkUrl: ad.linkUrl.trim() } }),
+    ...(tk && identity ? { identityId: identity, identityType: identities.find((i) => i.id === identity)?.type || "" } : {}),
   });
+  async function uploadVideo(f: File | undefined) {
+    if (!f) return;
+    if (!/^video\/(mp4|quicktime)$/.test(f.type)) return toast("רק קובץ MP4 או MOV", true);
+    if (f.size > 50 * 1024 * 1024) return toast("עד 50MB. קובץ גדול יותר מעלים לאחסון אחר ומדביקים קישור", true);
+    setUploading(true);
+    const path = org + "/video-" + crypto.randomUUID() + (f.type === "video/quicktime" ? ".mov" : ".mp4");
+    const { error } = await sb().storage.from("crm-graphics").upload(path, f, { contentType: f.type, upsert: false });
+    setUploading(false);
+    if (error) return toast("ההעלאה נכשלה: " + error.message, true);
+    setAd((x) => ({ ...x, videoUrl: sb().storage.from("crm-graphics").getPublicUrl(path).data.publicUrl }));
+    toast("הסרטון הועלה");
+  }
   async function send(validate: boolean) {
     if (problems.length) return toast("חסר: " + problems.join(", "), true);
     if (!validate) {
       const sum = (budgetType === "daily" ? amount + " " + cur + " ליום" : amount + " " + cur + " לכל התקופה") + (end ? " עד " + fmtDate(end) : " בלי תאריך סיום");
-      if (!confirm((paused ? "ליצור את הקמפיין במצב מושהה?" : "להעלות את הקמפיין לאוויר עכשיו?") + "\n\nתקציב: " + sum + "\nחשבון מודעות: " + (adAcc?.name || adAccountId) + "\n\nהחיוב הוא בחשבון המודעות שלך במטא.")) return;
+      if (!confirm((paused ? "ליצור את הקמפיין במצב מושהה?" : "להעלות את הקמפיין לאוויר עכשיו?") + "\n\nתקציב: " + sum + "\nחשבון מודעות: " + (adAcc?.name || adAccountId) + "\n\nהחיוב הוא בחשבון המודעות שלך ב" + (tk ? "טיקטוק" : "מטא") + ".")) return;
     }
     setBusy(validate ? "בודק…" : "שולח…"); setCheck(null);
     const r = await fetch("/api/zernio/ads/launch", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload(validate)) }).catch(() => null);
@@ -94,24 +128,35 @@ export function AdBuilder({ onDone }: { onDone: () => void }) {
     setBusy("");
     if (!r || !r.ok) { setCheck({ ok: false, error: j.error || (r ? r.status : "אין חיבור") }); return toast("לא עבר: " + (j.error || (r ? r.status : "")), true); }
     if (validate) { setCheck({ ok: true, ...j }); return toast(j.note || "הבדיקה עברה"); }
-    toast(paused ? "הקמפיין נוצר במצב מושהה" : "הקמפיין נשלח למטא ועובר בדיקה שלהם");
+    toast(paused ? "הקמפיין נוצר במצב מושהה" : "הקמפיין נשלח ל" + (tk ? "טיקטוק" : "מטא") + " ועובר בדיקה שלהם");
     onDone();
   }
 
   if (!accs) return <div className="loading" style={{ minHeight: 200 }}>טוען…</div>;
-  if (!accs.length) return <Panel icon="link" title="קמפיין חדש"><Empty>צריך קודם לחבר עמוד פייסבוק או אינסטגרם. <Link href={CONNECT_HREF}>לחיבור</Link></Empty></Panel>;
-
   return (
+    <>
+    <div className="bar" style={{ flexWrap: "wrap" }}>
+      <span className="tiny">רשת:</span>
+      <button className={"btn sm" + (net === "meta" ? " on" : "")} onClick={() => setNet("meta")}>מטא (פייסבוק ואינסטגרם)</button>
+      <button className={"btn sm" + (net === "tiktok" ? " on" : "")} onClick={() => setNet("tiktok")}>טיקטוק</button>
+    </div>
+    {!shown.length ? (
+      <Panel icon="link" title="קמפיין חדש">
+        <Empty>{tk
+          ? <>לא מחובר חשבון טיקטוק. מחברים את <Link href={CONNECT_HREF}>חשבון הטיקטוק</Link> (לקידום סרטונים קיימים) ואת חשבון המודעות בלשונית &quot;חיבור חשבון מודעות&quot;.</>
+          : <>צריך קודם לחבר עמוד פייסבוק או אינסטגרם. <Link href={CONNECT_HREF}>לחיבור</Link></>}</Empty>
+      </Panel>
+    ) : (
     <div className="grid g2b">
       <div className="col">
         <Panel icon="target" title="1. מה מקדמים">
           <div className="bar" style={{ flexWrap: "wrap" }}>
-            <button className={"btn" + (kind === "boost" ? " on" : "")} onClick={() => setKind("boost")}><Icon n="repeat" s={15} />קידום פוסט קיים</button>
+            <button className={"btn" + (kind === "boost" ? " on" : "")} onClick={() => setKind("boost")}><Icon n="repeat" s={15} />{tk ? "קידום סרטון קיים (Spark)" : "קידום פוסט קיים"}</button>
             <button className={"btn" + (kind === "create" ? " on" : "")} onClick={() => { setKind("create"); if (goal === "video_views") setGoal("traffic"); }}><Icon n="plus" s={15} />מודעה חדשה</button>
           </div>
           <div className="form" style={{ marginTop: 12 }}>
             <label className="field"><span>עמוד</span>
-              <select className="inp" value={accountId} onChange={(e) => setAccountId(e.target.value)}>{accs.map((a) => <option key={a.id} value={a.id}>{zName(a.platform)} · {a.name || a.username}</option>)}</select></label>
+              <select className="inp" value={accountId} onChange={(e) => setAccountId(e.target.value)}>{shown.map((a) => <option key={a.id} value={a.id}>{zName(a.platform)} · {a.name || a.username}</option>)}</select></label>
             <label className="field"><span>חשבון מודעות</span>
               {!setup ? <span className="tiny">טוען…</span> : !(setup.adAccounts || []).length
                 ? <span className="tiny" style={{ color: "var(--bad)" }}>לא נמצא חשבון מודעות. מחברים בלשונית &quot;חיבור חשבון מודעות&quot;{setup.adsError ? " (" + setup.adsError + ")" : ""}</span>
@@ -120,7 +165,7 @@ export function AdBuilder({ onDone }: { onDone: () => void }) {
                     {(setup.adAccounts as Row[]).map((a) => <option key={a.id} value={a.id} disabled={!a.selectable}>{a.name || a.id} · {a.currency}{!a.selectable ? " (לא זמין)" : ""}</option>)}
                   </select>}
             </label>
-            {adAcc && adAcc.billing === "missing" ? <p className="tiny full" style={{ color: "var(--bad)", margin: 0 }}>לחשבון המודעות אין אמצעי תשלום. מוסיפים אותו במנהל המודעות של מטא, אחרת המודעה לא תרוץ.</p> : null}
+            {adAcc && adAcc.billing === "missing" ? <p className="tiny full" style={{ color: "var(--bad)", margin: 0 }}>לחשבון המודעות אין אמצעי תשלום. מוסיפים אותו במנהל המודעות של {tk ? "טיקטוק" : "מטא"}, אחרת המודעה לא תרוץ.</p> : null}
           </div>
 
           {kind === "boost" ? (
@@ -138,6 +183,23 @@ export function AdBuilder({ onDone }: { onDone: () => void }) {
               )}
               {post ? <p className="tiny" dir="auto" style={{ marginBottom: 0 }}>{post.text}{post.url ? <> · <a href={post.url} target="_blank" rel="noopener noreferrer">לפוסט</a></> : null}</p> : null}
             </>
+          ) : tk ? (
+            <div className="form" style={{ marginTop: 12 }}>
+              <label className="field full"><span>טקסט המודעה (מופיע על הסרטון)</span><textarea className="inp" rows={3} dir="auto" maxLength={100} value={ad.body} onChange={(e) => setAd({ ...ad, body: e.target.value })} /></label>
+              <label className="field full"><span>קישור לסרטון (MP4, אנכי 9:16 מומלץ)</span><input className="inp ltr" value={ad.videoUrl} onChange={(e) => setAd({ ...ad, videoUrl: e.target.value })} placeholder="https://" /></label>
+              <label className="field full"><span>או העלאת סרטון מהמחשב (עד 50MB)</span><input type="file" accept="video/mp4,video/quicktime" disabled={uploading} onChange={(e) => uploadVideo(e.target.files?.[0])} /></label>
+              {uploading ? <span className="tiny full">מעלה…</span> : null}
+              {ad.videoUrl ? <video className="full" src={ad.videoUrl} controls muted style={{ maxHeight: 260, borderRadius: 10 }} /> : null}
+              <label className="field"><span>לאן לוחצים</span><input className="inp ltr" value={ad.linkUrl} onChange={(e) => setAd({ ...ad, linkUrl: e.target.value })} placeholder="https://" /></label>
+              <label className="field"><span>כפתור</span><select className="inp" value={ad.cta} onChange={(e) => setAd({ ...ad, cta: e.target.value })}>{AD_CTAS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+              {identities.length ? (
+                <label className="field full"><span>המודעה תוצג בשם</span>
+                  <select className="inp" value={identity} onChange={(e) => setIdentity(e.target.value)}>
+                    <option value="">החשבון המחובר (ברירת מחדל)</option>
+                    {identities.map((i) => <option key={i.id} value={i.id}>{i.name || i.username || i.id}{i.username ? " @" + i.username : ""}</option>)}
+                  </select></label>
+              ) : null}
+            </div>
           ) : (
             <div className="form" style={{ marginTop: 12 }}>
               <label className="field full"><span>טקסט המודעה (מעל התמונה)</span><textarea className="inp" rows={4} dir="auto" value={ad.body} onChange={(e) => setAd({ ...ad, body: e.target.value })} /></label>
@@ -169,14 +231,14 @@ export function AdBuilder({ onDone }: { onDone: () => void }) {
 
       <div className="col">
         <Panel icon="user" title="3. קהל">
-          <AudienceSearch kind="city" label="ערים (ריק = כל ישראל)" org={org} accountId={setup?.adsVia || accountId} adAccountId={adAccountId} picks={cities} setPicks={setCities} radius />
+          <AudienceSearch kind="city" label={tk ? "אזורים וערים (ריק = כל ישראל)" : "ערים (ריק = כל ישראל)"} org={org} accountId={setup?.adsVia || accountId} adAccountId={adAccountId} picks={cities} setPicks={setCities} radius={!tk} />
           <AudienceSearch kind="interest" label="תחומי עניין (לא חובה)" org={org} accountId={setup?.adsVia || accountId} adAccountId={adAccountId} picks={interests} setPicks={setInterests} />
           <div className="form" style={{ marginTop: 10 }}>
             <label className="field"><span>גיל מ-</span><input className="inp" type="number" min={18} max={65} value={ageMin} onChange={(e) => setAgeMin(Number(e.target.value))} /></label>
             <label className="field"><span>עד</span><input className="inp" type="number" min={18} max={65} value={ageMax} onChange={(e) => setAgeMax(Number(e.target.value))} /></label>
             <label className="field"><span>מגדר</span><select className="inp" value={gender} onChange={(e) => setGender(e.target.value)}>{AD_GENDERS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
           </div>
-          <p className="tiny" style={{ marginBottom: 0 }}>65 בשדה &quot;עד&quot; כולל גם את מי שמעל 65. המיקום, המיקומים ברשתות והשפה נשארים אוטומטיים של מטא.</p>
+          <p className="tiny" style={{ marginBottom: 0 }}>65 בשדה &quot;עד&quot; כולל גם את מי שמעל 65. המיקומים ברשת והשפה נשארים אוטומטיים של {tk ? "טיקטוק" : "מטא"}.</p>
         </Panel>
 
         <Panel icon="money" title="4. תקציב וזמנים">
@@ -187,7 +249,8 @@ export function AdBuilder({ onDone }: { onDone: () => void }) {
             <label className="field"><span>סיום{budgetType === "lifetime" ? " (חובה)" : " (לא חובה)"}</span><input className="inp" type="datetime-local" min={start || local(new Date())} value={end} onChange={(e) => setEnd(e.target.value)} /></label>
             <label className="field full"><span>שם הקמפיין</span><input className="inp" dir="auto" value={name} onChange={(e) => setName(e.target.value)} placeholder={autoName} /></label>
           </div>
-          {adAcc?.minDaily ? <p className="tiny" style={{ marginBottom: 0 }}>תקציב יומי מינימלי בחשבון הזה: {adAcc.minDaily} {cur}.</p> : null}
+          {adAcc?.minDaily ? <p className="tiny" style={{ marginBottom: 0 }}>תקציב יומי מינימלי בחשבון הזה: {adAcc.minDaily} {cur}.</p>
+            : tk ? <p className="tiny" style={{ marginBottom: 0 }}>בטיקטוק יש תקציב מינימלי לקבוצת מודעות (לפי התיעוד של Zernio, 20 דולר או הסכום המקביל במטבע החשבון). סכום נמוך יותר יחזור עם שגיאה.</p> : null}
           {adAcc?.tz ? <p className="tiny" style={{ marginBottom: 0 }}>השעות לפי אזור הזמן של חשבון המודעות: {adAcc.tz}.</p> : null}
         </Panel>
 
@@ -195,20 +258,22 @@ export function AdBuilder({ onDone }: { onDone: () => void }) {
           {problems.length ? <p className="tiny" style={{ marginTop: 0 }}>חסר: {problems.join(" · ")}</p> : <p className="tiny" style={{ marginTop: 0, color: "var(--ok)" }}>הכל מוכן.</p>}
           <label className="bar" style={{ cursor: "pointer" }}><input type="checkbox" checked={paused} onChange={(e) => setPaused(e.target.checked)} /><span>ליצור במצב מושהה, ולהפעיל אחר כך מרשימת הקמפיינים</span></label>
           <div className="bar" style={{ marginTop: 12, flexWrap: "wrap" }}>
-            {kind === "create" ? <button className="btn" disabled={!!busy} onClick={() => send(true)}><Icon n="check" s={15} />בדיקה מול מטא בלי ליצור</button> : null}
+            {kind === "create" && !tk ? <button className="btn" disabled={!!busy} onClick={() => send(true)}><Icon n="check" s={15} />בדיקה מול מטא בלי ליצור</button> : null}
             <button className="btn primary" disabled={!!busy} onClick={() => send(false)}><Icon n="send" s={15} />{busy || (paused ? "יצירה במצב מושהה" : "העלאה לאוויר")}</button>
           </div>
           {check ? (
             <div className="set-card" style={{ marginTop: 12 }}>
-              <b style={{ color: check.ok ? "var(--ok)" : "var(--bad)" }}>{check.ok ? "הבדיקה עברה" : "מטא החזירה שגיאה"}</b>
+              <b style={{ color: check.ok ? "var(--ok)" : "var(--bad)" }}>{check.ok ? "הבדיקה עברה" : (tk ? "טיקטוק החזירה שגיאה" : "מטא החזירה שגיאה")}</b>
               <span className="tiny" dir="auto">{check.ok ? (check.message || check.note || "") : String(check.error)}</span>
               {Array.isArray(check.results) ? <span className="tiny">{(check.results as Row[]).map((r) => r.node + ": " + r.status + (r.reason ? " (" + r.reason + ")" : "")).join(" · ")}</span> : null}
             </div>
           ) : null}
-          <p className="tiny" style={{ marginBottom: 0 }}>אחרי השליחה מטא בודקת את המודעה, לרוב תוך זמן קצר. החיוב הוא בחשבון המודעות שלך במטא, וכל פעולה נשמרת בהיסטוריה.</p>
+          <p className="tiny" style={{ marginBottom: 0 }}>אחרי השליחה {tk ? "טיקטוק בודקת" : "מטא בודקת"} את המודעה. החיוב הוא בחשבון המודעות שלך שם, וכל פעולה נשמרת בהיסטוריה.</p>
         </Panel>
       </div>
     </div>
+    )}
+    </>
   );
 }
 
@@ -236,7 +301,7 @@ function AudienceSearch({ kind, label, org, accountId, adAccountId, picks, setPi
       {res.length ? (
         <div className="pills" style={{ marginTop: 6 }}>
           {res.filter((r) => !picks.some((p) => p.id === r.id)).map((r) => (
-            <button key={r.id} className="pillck" onClick={() => { setPicks([...picks, { id: r.id, name: r.name, ...(radius ? { radius: 17 } : {}) }]); setQ(""); setRes([]); }} title={r.path}>
+            <button key={r.id} className="pillck" onClick={() => { setPicks([...picks, { id: r.id, name: r.name, type: r.type, ...(radius ? { radius: 17 } : {}) }]); setQ(""); setRes([]); }} title={r.path}>
               <Icon n="plus" s={12} /> {r.name}{r.size ? <span className="tiny"> · {Number(r.size).toLocaleString("he-IL")}</span> : null}
             </button>
           ))}
