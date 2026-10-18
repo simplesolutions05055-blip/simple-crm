@@ -1,5 +1,5 @@
 "use client";
-/* one project: status, client, dates, value and description, with its own task list */
+/* one project: status, the checklist that sets its progress %, details, and its dated tasks */
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -9,6 +9,7 @@ import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
 import { TasksBox } from "@/components/Blocks";
 import ProjectForm from "@/components/ProjectForm";
+import { Checklist } from "@/components/ProjectBits";
 import { PROJECT_STATUSES, PROJECT_ST_CLS, fmtDate, money, projectWho, today, type Row } from "@/lib/crm";
 
 export default function ProjectPage() {
@@ -20,7 +21,7 @@ export default function ProjectPage() {
 
   const load = async () => {
     const { data } = await sb().from("crm_projects")
-      .select("*,client:crm_clients(id,biz,contact,phone),lead:crm_leads(id,name,biz,phone),tasks:crm_tasks(id,done)").eq("id", id).single();
+      .select("*,client:crm_clients(id,biz,contact,phone),lead:crm_leads(id,name,biz,phone)").eq("id", id).single();
     setP(data || { missing: true });
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -43,8 +44,6 @@ export default function ProjectPage() {
   if (!p) return <><Top title="פרויקט" crumb={{ href: "/projects", label: "פרויקטים" }} /><div className="loading" style={{ minHeight: 200 }}>טוען…</div></>;
   if (p.missing) return <><Top title="פרויקט" crumb={{ href: "/projects", label: "פרויקטים" }} /><div className="content"><Panel><p>הפרויקט לא נמצא.</p></Panel></div></>;
 
-  const tasks = (p.tasks || []) as Row[];
-  const done = tasks.filter((t) => t.done).length;
   const late = p.due_date && p.due_date < today() && p.status !== "הושלם";
   const who = projectWho(p);
   const whoHref = p.client ? "/clients/" + p.client.id : p.lead ? "/leads/" + p.lead.id : "";
@@ -60,6 +59,9 @@ export default function ProjectPage() {
       <div className="content">
         <div className="split">
           <div className="col">
+            <Panel icon="check" title="צ'קליסט">
+              <Checklist project={p} onChange={(x) => { if (x.status !== p.status) setP({ ...p, status: x.status }); }} />
+            </Panel>
             <Panel icon="flag" title="סטטוס">
               <div className="pills">{PROJECT_STATUSES.map((s) => <button key={s} type="button" className={"pillck" + (p.status === s ? " on" : "")} onClick={() => setStatus(s)}>{s}</button>)}</div>
             </Panel>
@@ -68,8 +70,7 @@ export default function ProjectPage() {
               <div className="lrow"><span className="grow">התחלה</span><b>{p.start_date ? fmtDate(p.start_date) : "-"}</b></div>
               <div className="lrow"><span className="grow">תאריך יעד</span><b style={late ? { color: "var(--bad)" } : undefined}>{p.due_date ? (late ? "באיחור · " : "") + fmtDate(p.due_date) : "-"}</b></div>
               <div className="lrow"><span className="grow">שווי</span><b>{p.value ? money(Number(p.value)) : "-"}</b></div>
-              <div className="lrow"><span className="grow">משימות</span><b>{tasks.length ? done + " מתוך " + tasks.length + " בוצעו" : "אין עדיין"}</b></div>
-              {tasks.length ? <div className="pbar" style={{ marginTop: 8 }}><span style={{ width: Math.round((done / tasks.length) * 100) + "%" }} /></div> : null}
+              {p.kind ? <div className="lrow"><span className="grow">סוג</span><b>{p.kind}</b></div> : null}
               {p.description ? <p style={{ whiteSpace: "pre-wrap", marginBottom: 0 }} dir="auto">{p.description}</p> : null}
             </Panel>
           </div>

@@ -1,6 +1,6 @@
 "use client";
 /* פרויקטים: a board of the business's projects by status. Each card shows the client, the target date
-   and how many of its tasks are done. Drag a card between columns to change its status. */
+   and the checklist progress %. Drag a card between columns to change its status. */
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -10,6 +10,7 @@ import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
 import ProjectForm from "@/components/ProjectForm";
 import { PROJECT_STATUSES, fmtDate, money, projectWho, today, type Row } from "@/lib/crm";
+import { progress } from "@/lib/projects";
 
 export default function Projects() {
   const { toast } = useApp();
@@ -22,7 +23,7 @@ export default function Projects() {
 
   const load = async () => {
     const { data } = await sb().from("crm_projects")
-      .select("*,client:crm_clients(id,biz),lead:crm_leads(id,name,biz),tasks:crm_tasks(id,done)")
+      .select("*,client:crm_clients(id,biz),lead:crm_leads(id,name,biz),items:crm_project_items(id,done)")
       .is("archived_at", null).order("due_date", { ascending: true, nullsFirst: false });
     setRows(data || []);
   };
@@ -62,8 +63,7 @@ export default function Projects() {
                   <h3>{s}<span className="n">{list.length}</span></h3>
                   {!list.length && s === cols[0] && !(rows || []).length ? <div className="kdrop">עוד אין פרויקטים.<br />לוחצים &quot;פרויקט חדש&quot; למעלה.</div> : null}
                   {list.map((p) => {
-                    const tasks = (p.tasks || []) as Row[];
-                    const done = tasks.filter((t) => t.done).length;
+                    const pr = progress(p);
                     const late = p.due_date && p.due_date < today() && p.status !== "הושלם";
                     const who = projectWho(p);
                     return (
@@ -77,12 +77,12 @@ export default function Projects() {
                           </span>
                           {p.value ? <span className="meta">{money(Number(p.value))}</span> : null}
                         </div>
-                        {tasks.length ? (
-                          <div className="pbar" title={done + " מתוך " + tasks.length + " משימות בוצעו"}>
-                            <span style={{ width: Math.round((done / tasks.length) * 100) + "%" }} />
-                            <em>{done}/{tasks.length} משימות</em>
+                        {pr.total ? (
+                          <div className="pbar" title={pr.done + " מתוך " + pr.total + " שלבים"}>
+                            <span style={{ width: pr.pct + "%" }} />
+                            <em>{pr.pct}% · {pr.done}/{pr.total} שלבים</em>
                           </div>
-                        ) : <span className="meta faint">אין משימות</span>}
+                        ) : <span className="meta faint">אין שלבים</span>}
                       </Link>
                     );
                   })}
