@@ -730,3 +730,35 @@ b.bad{color:var(--bad)}
 .tbl tr.picked td{background:#fdecec}
 .tbl td input[type=checkbox]{width:18px;height:18px;accent-color:var(--navy);cursor:pointer}
 .purge-list{margin:10px 0;padding-inline-start:20px;max-height:220px;overflow:auto;display:flex;flex-direction:column;gap:4px}
+/* project progress: share of its checklist steps done */
+.pbar{position:relative;height:6px;border-radius:99px;background:var(--line);overflow:visible;margin-top:2px}
+.pbar span{position:absolute;inset-block:0;inset-inline-start:0;border-radius:99px;background:var(--ok)}
+.pbar em{position:absolute;top:8px;inset-inline-start:0;font-style:normal;font-size:11px;color:var(--muted)}
+.kcard .pbar{margin-bottom:14px}
+.pbar.big{height:10px}
+.pbar.big em{top:14px;font-size:12.5px;font-weight:600;color:var(--ink,inherit)}
+/* project checklist */
+.chk-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+.chk-row:first-of-type{border-top:0}
+.chk-row .grip{cursor:grab;color:var(--faint);font-size:12px;letter-spacing:-2px;user-select:none}
+.chk-row label{display:flex;align-items:center;gap:10px;cursor:pointer;min-width:0}
+.chk-row label input{width:18px;height:18px;flex:none;accent-color:var(--ok);cursor:pointer}
+.chk-row label span{overflow-wrap:anywhere}
+.chk-row.done label span{text-decoration:line-through;color:var(--faint)}
+.chk-row.drag{opacity:.4}
+.chk-row .btn.icon{opacity:.35}
+.chk-row:hover .btn.icon{opacity:1}
+.chk.compact .chk-row{padding:6px 0}
+.chk .taskadd{margin-top:8px}
+/* projects box in client and lead cards */
+.prow{border-top:1px solid var(--line);padding:10px 0}
+.prow:first-of-type{border-top:0}
+.prow.fin{opacity:.55}
+.prow-h{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;padding:0 0 8px;font:inherit;color:inherit;text-align:inherit;cursor:pointer}
+.prow-h .grow{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.prow-h .grow b{font-weight:600;overflow-wrap:anywhere}
+.prow-h:hover .grow b{color:var(--gold)}
+.prow-pct{font-weight:700;font-size:14px;min-width:42px;text-align:end}
+.prow-b{margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--hover)}
+.tplrow{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid var(--line)}
+.tplrow:first-of-type{border-top:0}

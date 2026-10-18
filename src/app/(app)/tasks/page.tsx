@@ -19,7 +19,7 @@ export default function Tasks() {
   const [assign, setAssign] = useState<string | null>(null);
 
   const load = async () => {
-    const { data } = await sb().from("crm_tasks").select("*,lead:crm_leads(id,name,biz),client:crm_clients(id,biz)").order("due_date");
+    const { data } = await sb().from("crm_tasks").select("*,lead:crm_leads(id,name,biz),client:crm_clients(id,biz),project:crm_projects(id,name)").order("due_date");
     setRows(data || []);
     refreshCounts();
   };
@@ -80,6 +80,7 @@ export default function Tasks() {
                           : r.lead ? <Link className="tlink l" href={"/leads/" + r.lead.id}><Icon n="target" s={12} />ליד · {r.lead.name}</Link>
                           : assign === r.id ? <div className="tlink-pick"><LinkPicker value="" autoFocus onPick={(v) => v ? link(r, v) : setAssign(null)} /></div>
                           : <button type="button" className="tlink add" onClick={() => setAssign(r.id)}>+ שיוך ללקוח או ליד</button>}
+                        {r.project ? <Link className="tlink" href={"/projects/" + r.project.id}><Icon n="layout" s={12} />פרויקט · {r.project.name}</Link> : null}
                         <span className={"tdate" + (late ? " bad" : "")}><Icon n="cal" s={12} />{late ? "באיחור · " : ""}{r.start_date !== r.due_date ? fmtDate(r.start_date) + " עד " : ""}{fmtDate(r.due_date)}{r.start_time ? " · " + String(r.start_time).slice(0, 5) : ""}</span>
                         {r.auto ? <span className="st cus">אוטומטית</span> : null}
                         {r.source === "AI" ? <span className="st info">מהתוכנית</span> : null}

@@ -8,6 +8,7 @@ import Icon from "@/components/Icon";
 import { purgeClient } from "@/lib/purge";
 import { useApp } from "@/components/AppCtx";
 import { EditField, FieldRow, CustomFields, LinksBox, ActivityLog, QuotesBox, TasksBox, Collapse, type CField } from "@/components/Blocks";
+import { ProjectsBox } from "@/components/ProjectBits";
 import { AccessBox } from "@/components/ClientAccess";
 import WaBox from "@/components/WaBox";
 import { DocsBox } from "@/components/DocsBox";
@@ -153,6 +154,7 @@ export default function ClientPage() {
         <div className="grid g2 even">
           <ActivityLog clientId={id} leadId={c.lead_id || undefined} reload={tick} />
           <div className="col">
+            <ProjectsBox clientId={id} />
             <TasksBox clientId={id} />
               {c.status === "עזב" ? (
               <Panel icon="alert" title="למה עזב">

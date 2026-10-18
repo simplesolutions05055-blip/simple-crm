@@ -13,6 +13,13 @@ export const TASK_KINDS = ["שיחה", "פגישה", "וואטסאפ", "מייל
 export const taskKindCls = (k?: string | null) => "tkind tk-" + Math.max(0, TASK_KINDS.indexOf(k || "אחר"));
 export type TaskAttachment = { t: "link"; name: string; url: string } | { t: "file"; name: string; path: string } | { t: "doc"; name: string; doc_id: string };
 export const TOUCH = ["שיחה", "וואטסאפ", "מייל", "פגישה", "הערה"];
+/* project board columns, in order; "מוקפא" sits last and is hidden unless asked for */
+export const PROJECT_STATUSES = ["בתכנון", "בעבודה", "ממתין ללקוח", "הושלם", "מוקפא"] as const;
+export const PROJECT_ST_CLS: Record<string, string> = { "בתכנון": "info", "בעבודה": "warn", "ממתין ללקוח": "cus", "הושלם": "ok", "מוקפא": "" };
+/* the client (or lead) a project row was loaded with: client:crm_clients(biz), lead:crm_leads(name,biz) */
+export function projectWho(p: Row) {
+  return p.client ? p.client.biz : p.lead ? p.lead.name + (p.lead.biz ? " · " + p.lead.biz : "") : "";
+}
 export const FIT: [string, string][] = [
   ["market", "בתוך שוק היעד"], ["active", "עסק פעיל עם לקוחות"], ["budget", "תקציב שמחזיק חבילה"],
   ["decider", "מקבל ההחלטות"], ["pain", "כאב אמיתי"],

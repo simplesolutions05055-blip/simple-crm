@@ -25,14 +25,12 @@ export default function PublicQuote({ token, data }: { token: string; data: Data
   return (
     <div className="qpub">
       {signed ? <div className="state"><b>✓ ההצעה נחתמה.</b><span>{T.thanks}</span>
-          {av ? <a className="btn sm pay" href={av.I.payUrl} target="_blank" rel="noopener noreferrer">מעבר לתשלום</a> : null}
           <button className="btn sm" onClick={() => window.print()}>שמירה כ-PDF</button></div>
         : status === "פגה" ? <div className="state">תוקף ההצעה הסתיים. אפשר לפנות ל{T.owner} ב-{T.phone} לקבלת הצעה מעודכנת.</div>
         : status === "נדחתה" ? <div className="state">ההצעה סומנה כלא רלוונטית. אם משהו השתנה, אפשר לפנות ל{T.owner} ב-{T.phone}.</div>
         : null}
       {av ? (
-        <AiQuoteDoc m={av.m} T={T} to={av.to} biz={av.biz} date={av.date} until={av.until} signed={signed ? { name: signed.name, biz: signed.biz, signed_at: signed.signed_at, png: signed.png, doc_hash: signed.doc_hash } : null}
-          pay={<PayBox url={av.I.payUrl} amount={av.m.payNow || av.m.summary[av.m.summary.length - 1]?.b} />}>
+        <AiQuoteDoc m={av.m} T={T} to={av.to} biz={av.biz} date={av.date} until={av.until} signed={signed ? { name: signed.name, biz: signed.biz, signed_at: signed.signed_at, png: signed.png, doc_hash: signed.doc_hash } : null}>
         {open ? <SignForm token={token} T={T} toName={data.to_name || ""} toBiz={data.to_biz || ""} toEmail={data.to_email || ""}
           onSigned={(s) => { setSigned(s); setStatus("נחתמה"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
           onRejected={() => setStatus("נדחתה")} /> : undefined}
@@ -44,15 +42,6 @@ export default function PublicQuote({ token, data }: { token: string; data: Data
           onRejected={() => setStatus("נדחתה")} /> : undefined}
         </QuoteDoc>
       ) : null}
-    </div>
-  );
-}
-
-function PayBox({ url, amount }: { url: string; amount?: string }) {
-  return (
-    <div className="aq-pay">
-      <div><b>השלב הבא: תשלום</b><span>{amount ? "לתשלום עכשיו: " + amount + ". " : ""}התשלום בכרטיס אשראי.</span></div>
-      <a href={url} target="_blank" rel="noopener noreferrer">מעבר לתשלום</a>
     </div>
   );
 }

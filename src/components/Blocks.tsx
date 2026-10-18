@@ -169,7 +169,7 @@ export function QuotesBox({ leadId, clientId }: { leadId?: string; clientId?: st
 }
 
 /* tasks linked to a lead/client */
-export function TasksBox({ leadId, clientId }: { leadId?: string; clientId?: string }) {
+export function TasksBox({ leadId, clientId, projectId, onChange }: { leadId?: string; clientId?: string; projectId?: string; onChange?: () => void }) {
   const { org, toast, refreshCounts } = useApp();
   const [rows, setRows] = useState<Row[]>([]);
   const [title, setTitle] = useState("");
@@ -177,21 +177,21 @@ export function TasksBox({ leadId, clientId }: { leadId?: string; clientId?: str
   const [time, setTime] = useState("");
   const load = async () => {
     let q = sb().from("crm_tasks").select("*").order("done").order("due_date");
-    q = leadId ? q.eq("lead_id", leadId) : q.eq("client_id", clientId!);
+    q = projectId ? q.eq("project_id", projectId) : leadId ? q.eq("lead_id", leadId) : q.eq("client_id", clientId!);
     const { data } = await q;
     setRows(data || []);
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(); }, [leadId, clientId]);
+  useEffect(() => { load(); }, [leadId, clientId, projectId]);
   async function add() {
     if (!title.trim()) return;
-    const { error } = await sb().from("crm_tasks").insert({ org_id: org, title: title.trim(), start_date: today() > due ? due : today(), due_date: due, start_time: time || null, duration_min: time ? 30 : null, lead_id: leadId || null, client_id: clientId || null });
+    const { error } = await sb().from("crm_tasks").insert({ org_id: org, title: title.trim(), start_date: today() > due ? due : today(), due_date: due, start_time: time || null, duration_min: time ? 30 : null, lead_id: leadId || null, client_id: clientId || null, project_id: projectId || null });
     if (error) return toast(error.message, true);
-    setTitle(""); setTime(""); load(); refreshCounts();
+    setTitle(""); setTime(""); load(); refreshCounts(); onChange?.();
   }
   async function toggle(t: Row) {
     await sb().from("crm_tasks").update({ done: !t.done }).eq("id", t.id);
-    load(); refreshCounts();
+    load(); refreshCounts(); onChange?.();
   }
   return (
     <Panel icon="tasks" title="משימות" right={<Link className="btn sm" href="/tasks">כל המשימות</Link>}>

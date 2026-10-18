@@ -59,7 +59,6 @@ export default function QuoteEditor() {
   const pkv = useMemo(() => (I && pk ? packView(I as unknown as Record<string, unknown>, P, vat, T) : null), [P, I, vat, T, pk]);
   // a sent quote in the retired packages format can be viewed, not edited
   const locked = signed || (!ai && !pk && !!q?.sent_at && I?.track !== "custom");
-  const payUrl = aiv?.I.payUrl || pkv?.I.payUrl || "";
 
   const persist = useCallback(async (inp: QuoteInput, extra?: Row) => {
     if (!q || signed) return false;
@@ -112,16 +111,6 @@ export default function QuoteEditor() {
       if (l && ["חדש", "נוצר קשר", "כשיר", "פגישה נקבעה"].includes(l.stage)) await sb().from("crm_leads").update({ stage: "הצעה נשלחה" }).eq("id", q.lead_id);
     }
     if (!auto) window.open(waLink(who?.phone, text), "_blank");
-  }
-
-  async function sendPay() {
-    if (!q || !payUrl) return;
-    const url = payUrl;
-    const first = (I?.client || who?.name || "").split(" ")[0];
-    const text = (first ? "היי " + first + ", " : "") + "זה הקישור לתשלום עבור הצעת המחיר " + q.no + ":\n" + url;
-    await sb().from("crm_activities").insert({ org_id: org, lead_id: q.lead_id, client_id: q.client_id, type: "וואטסאפ", text: "נשלח קישור לתשלום, הצעה " + q.no, by: "מאור" });
-    if (!who?.phone) toast("אין טלפון לליד או ללקוח. הקישור נפתח בוואטסאפ בלי מספר.", true);
-    window.open(waLink(who?.phone, text), "_blank");
   }
 
   async function duplicate() {
@@ -187,10 +176,6 @@ export default function QuoteEditor() {
             <button className="btn" onClick={() => { navigator.clipboard.writeText(link); toast("הקישור הועתק"); }}><Icon n="copy" s={16} />העתקת קישור</button>
             <a className="btn" href={"/q/" + q.token} target="_blank" rel="noreferrer"><Icon n="eye" s={16} />כמו שהלקוח רואה</a>
           </> : <span className="tiny">הקישור ללקוח נפתח עם השליחה הראשונה.</span>}
-          {payUrl ? <>
-            <button className="btn" onClick={sendPay}><Icon n="wallet" s={16} />שליחת קישור לתשלום</button>
-            <button className="btn" onClick={() => { navigator.clipboard.writeText(payUrl); toast("קישור התשלום הועתק"); }}><Icon n="link" s={16} />העתקת קישור לתשלום</button>
-          </> : null}
           <button className="btn" onClick={() => window.print()}><Icon n="file" s={16} />PDF</button>
           <button className="btn" onClick={duplicate}><Icon n="copy" s={16} />שכפול</button>
           {q.sent_at && !signed && q.status !== "נדחתה" ? <button className="btn danger" onClick={async () => {
@@ -448,11 +433,6 @@ function AiControls({ I, ai, A, vat, upd, top }: { I: QuoteInput; ai: AiInput; A
         <span className="tiny">תוספת שלא סומנה מופיעה בהצעה בטבלת &quot;תוספות אפשריות&quot;. מה שסומן נכנס לסיכום לתשלום.</span>
       </div>
 
-      <div className="cgroup">
-        <b>קישור לתשלום</b>
-        <input className="inp sm ltr" value={ai.payUrl} onChange={(e) => set({ payUrl: e.target.value.trim() })} />
-        <span className="tiny">אחרי החתימה הלקוח רואה כפתור &quot;מעבר לתשלום&quot; עם הקישור הזה. אפשר גם לשלוח אותו ישירות בוואטסאפ מהכפתור למעלה.</span>
-      </div>
     </div>
   );
 }
@@ -556,11 +536,6 @@ function PackControls({ I, pi, P, vat, upd, top }: { I: QuoteInput; pi: PackInpu
         {pi.promo ? <input className="inp sm" value={pi.promoText} onChange={(e) => set({ promoText: e.target.value })} /> : <span className="tiny">כבוי. ההצעה מוצגת בלי באנר.</span>}
       </div>
 
-      <div className="cgroup">
-        <b>קישור לתשלום</b>
-        <input className="inp sm ltr" value={pi.payUrl} onChange={(e) => set({ payUrl: e.target.value.trim() })} />
-        <span className="tiny">אחרי החתימה הלקוח רואה כפתור &quot;מעבר לתשלום&quot; עם הקישור הזה.</span>
-      </div>
     </div>
   );
 }

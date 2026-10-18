@@ -12,6 +12,7 @@ import { GraphicPicker } from "@/components/Graphics";
 import { computeQuote, emptyInput, DEFAULT_PRICING, isoToday, type Pricing, type Template, type Pair, type QuoteInput } from "@/lib/quote-engine";
 import { aiView, emptyAi, withAi, DEFAULT_AI, type AiPricing, type AiAddon } from "@/lib/ai-campaign";
 import { DEFAULT_PACK, withPack, packView, emptyPack, type PackPricing, type ProdDef, type ProdId } from "@/lib/products";
+import { PROJECT_TEMPLATES_DEFAULT, type ProjectTemplate } from "@/lib/projects";
 import { fmtDate, appUrl, accessMessage, ACCESS_MSG_DEFAULT, waTemplates, type Row } from "@/lib/crm";
 
 /* settings sub-pages: tabs at the top of the settings screen */
@@ -75,6 +76,7 @@ function BusinessSection() {
         </div>
       </Panel>
       <ProductsPanel />
+      <ProjectTemplatesPanel />
       <AgencyTab />
     </div>
   );
@@ -91,6 +93,39 @@ function ProductsPanel() {
       <textarea className="inp" rows={7} value={t} onChange={(e) => setT(e.target.value)} />
       <div className="bar" style={{ marginTop: 10 }}>
         <button className="btn primary" disabled={!dirty || !list.length} onClick={async () => { if (await saveSettings({ products: [...new Set(list)] })) toast("רשימת המוצרים נשמרה"); }}><Icon n="check" s={16} />שמירה</button>
+      </div>
+    </Panel>
+  );
+}
+
+/* project types: picking one when opening a project fills its checklist with these steps */
+function ProjectTemplatesPanel() {
+  const { settings, saveSettings, toast } = useApp();
+  const [list, setList] = useState<{ name: string; steps: string }[]>(() => settings.project_templates.map((t) => ({ name: t.name, steps: t.steps.join("\n") })));
+  const clean: ProjectTemplate[] = list.map((t) => ({ name: t.name.trim(), steps: t.steps.split("\n").map((x) => x.trim()).filter(Boolean) })).filter((t) => t.name);
+  const dirty = JSON.stringify(clean) !== JSON.stringify(settings.project_templates);
+  const names = clean.map((t) => t.name);
+  const dup = names.find((n, i) => names.indexOf(n) !== i);
+  const set = (i: number, k: "name" | "steps", v: string) => setList(list.map((t, j) => (j === i ? { ...t, [k]: v } : t)));
+  return (
+    <Panel icon="layout" title="תבניות פרויקטים">
+      <p className="tiny lead">כשפותחים פרויקט בוחרים סוג, והצ&apos;קליסט שלו נמלא מהשלבים כאן. שורה לכל שלב. שינוי כאן לא משנה פרויקטים שכבר נפתחו.</p>
+      {list.map((t, i) => (
+        <div key={i} className="tplrow">
+          <div className="bar">
+            <input className="inp" style={{ maxWidth: 260 }} placeholder="שם הסוג" value={t.name} onChange={(e) => set(i, "name", e.target.value)} />
+            <span className="grow" />
+            <button type="button" className="btn sm ghost" onClick={() => setList(list.filter((_, j) => j !== i))}><Icon n="trash" s={15} />מחיקה</button>
+          </div>
+          <textarea className="inp" rows={Math.max(3, t.steps.split("\n").length)} value={t.steps} onChange={(e) => set(i, "steps", e.target.value)} placeholder="שלב בכל שורה" style={{ fontSize: 13 }} />
+        </div>
+      ))}
+      {dup ? <p className="tiny" style={{ color: "var(--bad)" }}>יש שני סוגים בשם &quot;{dup}&quot;.</p> : null}
+      <div className="bar" style={{ marginTop: 10, flexWrap: "wrap" }}>
+        <button type="button" className="btn sm" onClick={() => setList([...list, { name: "", steps: "" }])}><Icon n="plus" s={15} />סוג חדש</button>
+        <button type="button" className="btn sm ghost" onClick={() => setList(PROJECT_TEMPLATES_DEFAULT.map((t) => ({ name: t.name, steps: t.steps.join("\n") })))}>חזרה לברירת המחדל</button>
+        <span className="grow" />
+        <button className="btn primary" disabled={!dirty || !!dup} onClick={async () => { if (await saveSettings({ project_templates: clean })) toast("תבניות הפרויקטים נשמרו"); }}><Icon n="check" s={16} />שמירה</button>
       </div>
     </Panel>
   );
@@ -390,13 +425,12 @@ function AiPricingTab() {
   const dirty = JSON.stringify(A) !== JSON.stringify(withAi(settings.pricing.ai));
   const setAdd = (i: number, p: Partial<AiAddon>) => setA((x) => ({ ...x, addons: x.addons.map((r, n) => (n === i ? { ...r, ...p } : r)) }));
   const P = useMemo(() => ({ ...settings.pricing, ai: A }), [settings.pricing, A]);
-  const okUrl = /^https:\/\//.test(A.payUrl);
 
   return (
     <div className="split even">
       <div className="col">
         <div className="panel bar" style={{ position: "sticky", top: 92, zIndex: 5 }}>
-          <button className="btn primary" disabled={!dirty || !okUrl} onClick={async () => { if (await saveSettings({ pricing: { ...settings.pricing, ai: A } })) toast("המחירון נשמר. הצעות חדשות ישתמשו בו."); }}><Icon n="check" s={16} />שמירת המחירון</button>
+          <button className="btn primary" disabled={!dirty} onClick={async () => { if (await saveSettings({ pricing: { ...settings.pricing, ai: A } })) toast("המחירון נשמר. הצעות חדשות ישתמשו בו."); }}><Icon n="check" s={16} />שמירת המחירון</button>
           {dirty ? <button className="btn ghost" onClick={() => setA(withAi(settings.pricing.ai))}>ביטול שינויים</button> : <span className="tiny">אין שינויים שלא נשמרו</span>}
           <button className="btn ghost" style={{ marginInlineStart: "auto" }} onClick={() => setA(DEFAULT_AI)}>שחזור לברירת המחדל</button>
           <span className="tiny" style={{ width: "100%" }}>הצעה שכבר נחתמה נשארת עם המחירים שבהם נחתמה. בכל הצעה אפשר לשנות את המחיר החודשי רק לה.</span>
@@ -420,10 +454,6 @@ function AiPricingTab() {
           <button className="add" style={{ marginTop: 0 }} onClick={() => setA({ ...A, addons: [...A.addons, { id: "a" + Date.now().toString(36), label: "תוספת חדשה", d: "", price: 0 }] })}><Icon n="plus" s={15} />תוספת חדשה</button>
         </Panel>
 
-        <Panel icon="wallet" title="קישור לתשלום">
-          <label className="field"><span>הקישור שהלקוח מקבל לתשלום</span><input className="inp ltr" value={A.payUrl} onChange={(e) => setA({ ...A, payUrl: e.target.value.trim() })} /></label>
-          {!okUrl ? <span className="tiny" style={{ color: "var(--bad)" }}>הקישור צריך להתחיל ב-https://</span> : <span className="tiny">מופיע ללקוח ככפתור &quot;מעבר לתשלום&quot; אחרי החתימה, ונשלח בוואטסאפ מכפתור &quot;שליחת קישור לתשלום&quot; בהצעה.</span>}
-        </Panel>
       </div>
       <div className="ctlp">
         <AiPreview P={P} T={settings.template} vat={settings.vat} />
