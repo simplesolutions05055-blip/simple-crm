@@ -730,3 +730,8 @@ b.bad{color:var(--bad)}
 .tbl tr.picked td{background:#fdecec}
 .tbl td input[type=checkbox]{width:18px;height:18px;accent-color:var(--navy);cursor:pointer}
 .purge-list{margin:10px 0;padding-inline-start:20px;max-height:220px;overflow:auto;display:flex;flex-direction:column;gap:4px}
+/* project progress: share of its tasks done */
+.pbar{position:relative;height:6px;border-radius:99px;background:var(--line);overflow:visible;margin-top:2px}
+.pbar span{position:absolute;inset-block:0;inset-inline-start:0;border-radius:99px;background:var(--ok)}
+.pbar em{position:absolute;top:8px;inset-inline-start:0;font-style:normal;font-size:11px;color:var(--muted)}
+.kcard .pbar{margin-bottom:14px}

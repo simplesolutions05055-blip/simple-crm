@@ -390,13 +390,12 @@ function AiPricingTab() {
   const dirty = JSON.stringify(A) !== JSON.stringify(withAi(settings.pricing.ai));
   const setAdd = (i: number, p: Partial<AiAddon>) => setA((x) => ({ ...x, addons: x.addons.map((r, n) => (n === i ? { ...r, ...p } : r)) }));
   const P = useMemo(() => ({ ...settings.pricing, ai: A }), [settings.pricing, A]);
-  const okUrl = /^https:\/\//.test(A.payUrl);
 
   return (
     <div className="split even">
       <div className="col">
         <div className="panel bar" style={{ position: "sticky", top: 92, zIndex: 5 }}>
-          <button className="btn primary" disabled={!dirty || !okUrl} onClick={async () => { if (await saveSettings({ pricing: { ...settings.pricing, ai: A } })) toast("המחירון נשמר. הצעות חדשות ישתמשו בו."); }}><Icon n="check" s={16} />שמירת המחירון</button>
+          <button className="btn primary" disabled={!dirty} onClick={async () => { if (await saveSettings({ pricing: { ...settings.pricing, ai: A } })) toast("המחירון נשמר. הצעות חדשות ישתמשו בו."); }}><Icon n="check" s={16} />שמירת המחירון</button>
           {dirty ? <button className="btn ghost" onClick={() => setA(withAi(settings.pricing.ai))}>ביטול שינויים</button> : <span className="tiny">אין שינויים שלא נשמרו</span>}
           <button className="btn ghost" style={{ marginInlineStart: "auto" }} onClick={() => setA(DEFAULT_AI)}>שחזור לברירת המחדל</button>
           <span className="tiny" style={{ width: "100%" }}>הצעה שכבר נחתמה נשארת עם המחירים שבהם נחתמה. בכל הצעה אפשר לשנות את המחיר החודשי רק לה.</span>
@@ -420,10 +419,6 @@ function AiPricingTab() {
           <button className="add" style={{ marginTop: 0 }} onClick={() => setA({ ...A, addons: [...A.addons, { id: "a" + Date.now().toString(36), label: "תוספת חדשה", d: "", price: 0 }] })}><Icon n="plus" s={15} />תוספת חדשה</button>
         </Panel>
 
-        <Panel icon="wallet" title="קישור לתשלום">
-          <label className="field"><span>הקישור שהלקוח מקבל לתשלום</span><input className="inp ltr" value={A.payUrl} onChange={(e) => setA({ ...A, payUrl: e.target.value.trim() })} /></label>
-          {!okUrl ? <span className="tiny" style={{ color: "var(--bad)" }}>הקישור צריך להתחיל ב-https://</span> : <span className="tiny">מופיע ללקוח ככפתור &quot;מעבר לתשלום&quot; אחרי החתימה, ונשלח בוואטסאפ מכפתור &quot;שליחת קישור לתשלום&quot; בהצעה.</span>}
-        </Panel>
       </div>
       <div className="ctlp">
         <AiPreview P={P} T={settings.template} vat={settings.vat} />

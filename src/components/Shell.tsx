@@ -15,6 +15,7 @@ const NAV = [
   { href: "/leads/all", label: "מאגר לידים", icon: "list", sub: true },
   { href: "/quotes", label: "הצעות מחיר", icon: "file" },
   { href: "/clients", label: "לקוחות", icon: "brief" },
+  { href: "/projects", label: "פרויקטים", icon: "layout" },
   { href: "/finance", label: "כספים", icon: "wallet" },
   { href: "/calendar", label: "יומן", icon: "cal" },
   { href: "/social", label: "סושיאל", icon: "pulse" },
