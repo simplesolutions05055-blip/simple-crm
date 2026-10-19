@@ -679,6 +679,7 @@ b.bad{color:var(--bad)}
 .tk-5{background:#eef0f4;color:#334155;border-color:#cfd5df}.tk-5.dot{background:#334155}
 .tk-6{background:#fde8ec;color:#be123c;border-color:#f6c1cc}.tk-6.dot{background:#be123c}
 .tk-7{background:#f4f4f5;color:#52525b;border-color:#dcdce0}.tk-7.dot{background:#71717a}
+.tk-next{background:#fff7e6;color:#a15c00;border-color:#f3d39b}.tk-next.dot{background:#e39b1b}
 /* task cards on the tasks page */
 .tcard{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px 14px;align-items:start;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
 .tcard+.tcard{margin-top:8px}
