@@ -7,7 +7,8 @@ import { sb } from "@/lib/supabase/browser";
 import { Top, Panel, Modal, St } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
-import { EditField, EditArea, FieldRow, CustomFields, LinksBox, ActivityLog, QuotesBox, TasksBox, type CField } from "@/components/Blocks";
+import { EditField, EditArea, FieldRow, CustomFields, LinksBox, ActivityLog, QuotesBox, type CField } from "@/components/Blocks";
+import CardTasks from "@/components/CardTasks";
 import { ProjectsBox } from "@/components/ProjectBits";
 import WaBox from "@/components/WaBox";
 import { DocsBox } from "@/components/DocsBox";
@@ -163,7 +164,7 @@ export default function LeadPage() {
             <ActivityLog leadId={id} reload={logTick} />
             <WaBox leadId={id} phone={l.phone} name={l.name} onLog={() => setLogTick((t) => t + 1)} />
             <ProjectsBox leadId={id} />
-            <TasksBox leadId={id} />
+            <CardTasks leadId={id} />
           </div>
         </div>
       </div>

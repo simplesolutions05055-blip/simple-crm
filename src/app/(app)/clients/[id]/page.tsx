@@ -7,7 +7,8 @@ import { Top, Panel, St, Empty, Modal } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import { purgeClient } from "@/lib/purge";
 import { useApp } from "@/components/AppCtx";
-import { EditField, FieldRow, CustomFields, LinksBox, ActivityLog, QuotesBox, TasksBox, Collapse, type CField } from "@/components/Blocks";
+import { EditField, EditArea, FieldRow, CustomFields, LinksBox, ActivityLog, QuotesBox, Collapse, type CField } from "@/components/Blocks";
+import CardTasks from "@/components/CardTasks";
 import { ProjectsBox } from "@/components/ProjectBits";
 import { AccessBox } from "@/components/ClientAccess";
 import WaBox from "@/components/WaBox";
@@ -100,6 +101,10 @@ export default function ClientPage() {
           <WaBox clientId={id} leadId={c.lead_id || undefined} phone={c.phone} name={c.contact} onLog={() => setTick((t) => t + 1)} />
         </div>
 
+        <Panel icon="note" title="הערות">
+          <EditArea value={c.notes} rows={4} placeholder="הערות כלליות על הלקוח. נשמר לבד כשיוצאים מהתיבה." onSave={(v) => save({ notes: v })} />
+        </Panel>
+
         <Panel icon="list" title="קליטה" right={onb.length ? <span className="tiny">{done}/{onb.length}</span> : null}>
                 <div className="onb-grid">
                 {onb.map((o) => (
@@ -124,6 +129,9 @@ export default function ClientPage() {
               <FieldRow icon="phone" label="טלפון"><EditField className="fi ltr" phone value={c.phone} onSave={(v) => save({ phone: v.replace(/[^0-9+]/g, "") || null })} /></FieldRow>
               <FieldRow icon="mail" label="מייל"><EditField className="fi ltr" value={c.email} onSave={(v) => save({ email: v || null })} /></FieldRow>
               <FieldRow icon="tag" label="תחום"><EditField value={c.industry} list="industries" onSave={(v) => save({ industry: v })} /></FieldRow>
+              <FieldRow icon="pin" label="עיר"><EditField value={c.city} placeholder="עיר" onSave={(v) => save({ city: v.trim() || null })} /></FieldRow>
+              <FieldRow icon="pin" label="רחוב ומספר"><EditField value={c.street} placeholder="רחוב ומספר בית" onSave={(v) => save({ street: v.trim() || null })} /></FieldRow>
+              <FieldRow icon="pin" label="מספר דירה"><EditField value={c.apt} placeholder="דירה" onSave={(v) => save({ apt: v.trim() || null })} /></FieldRow>
               <FieldRow icon="wa" label="קבוצת וואטסאפ"><EditField className="fi ltr" value={c.wa_group} placeholder="קישור לקבוצה" onSave={(v) => save({ wa_group: v })} /></FieldRow>
               <datalist id="industries">{INDUSTRIES.map((i) => <option key={i} value={i} />)}</datalist>
               <div style={{ marginTop: 8 }}><CustomFields fields={custom.info || []} onChange={(f) => save({ custom: { ...custom, info: f } })} /></div>
@@ -155,7 +163,7 @@ export default function ClientPage() {
           <ActivityLog clientId={id} leadId={c.lead_id || undefined} reload={tick} />
           <div className="col">
             <ProjectsBox clientId={id} />
-            <TasksBox clientId={id} />
+            <CardTasks clientId={id} />
               {c.status === "עזב" ? (
               <Panel icon="alert" title="למה עזב">
                 <EditField className="inp" value={c.churn_reason} placeholder="סיבת העזיבה" onSave={(v) => save({ churn_reason: v })} />
