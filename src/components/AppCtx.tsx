@@ -40,8 +40,14 @@ export default function AppProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const refreshCounts = useCallback(async () => {
-    const { count } = await sb().from("crm_tasks").select("id", { count: "exact", head: true }).eq("done", false).lte("due_date", new Date().toISOString().slice(0, 10));
-    setCounts({ tasksDue: count || 0 });
+    const d = new Date().toISOString().slice(0, 10);
+    // due tasks plus "הצעד הבא" of leads and clients that is due
+    const [t, l, c] = await Promise.all([
+      sb().from("crm_tasks").select("id", { count: "exact", head: true }).eq("done", false).lte("due_date", d),
+      sb().from("crm_leads").select("id", { count: "exact", head: true }).lte("next_at", d).is("archived_at", null).not("stage", "in", "(\"לקוח\",\"נפסל\",\"סגירת פנייה\")"),
+      sb().from("crm_clients").select("id", { count: "exact", head: true }).lte("next_at", d).is("archived_at", null),
+    ]);
+    setCounts({ tasksDue: (t.count || 0) + (l.count || 0) + (c.count || 0) });
   }, []);
 
   useEffect(() => {
