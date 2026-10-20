@@ -71,7 +71,7 @@ export default function CardTasks({ leadId, clientId }: { leadId?: string; clien
           <button type="button" className="btn icon sm ghost" title="מחיקה" onClick={() => remove(it)}><Icon n="x" s={14} /></button>
         </div>
       ))}
-      <div className="taskadd">
+      <div className="taskadd two">
         <input className="inp sm" placeholder="משימה חדשה, ואז Enter" value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
         <button type="button" className="btn sm" onClick={add}><Icon n="plus" s={15} /></button>
       </div>

@@ -18,8 +18,10 @@ export async function proxy(request: NextRequest) {
       },
     },
   });
-  const { data } = await supabase.auth.getUser();
-  if (!data.user) {
+  // getClaims checks the token's signature locally when the project signs with asymmetric keys,
+  // so a page load does not wait on a round trip to the auth server (it falls back to one otherwise)
+  const { data } = await supabase.auth.getClaims();
+  if (!data?.claims?.sub) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";
