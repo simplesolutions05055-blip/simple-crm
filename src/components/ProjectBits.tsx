@@ -114,7 +114,7 @@ export function Checklist({ project, onChange, compact }: { project: Row; onChan
           <button type="button" className="btn icon sm ghost" title="מחיקת שלב" onClick={() => remove(it)}><Icon n="x" s={14} /></button>
         </div>
       ))}
-      <div className="taskadd">
+      <div className="taskadd two">
         <input className="inp sm" placeholder="שלב חדש, ואז Enter" value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
         <button type="button" className="btn sm" onClick={add}><Icon n="plus" s={15} /></button>
       </div>

@@ -52,17 +52,24 @@ export default function AppProvider({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     (async () => {
-      const { data: u } = await sb().auth.getUser();
+      // the session is read from the cookie (the server already checked it), and the businesses,
+      // the open business's settings and the calendar link load together in one round trip
+      const { data: sess } = await sb().auth.getSession();
+      const email = sess.session?.user?.email || "";
       // remember this address for the login screen's quick-pick list
       try {
-        const e = (u.user?.email || "").toLowerCase();
+        const e = email.toLowerCase();
         if (e) {
           const list: string[] = JSON.parse(localStorage.getItem("sscrm_emails") || "[]");
           localStorage.setItem("sscrm_emails", JSON.stringify([e, ...list.filter((x) => x !== e)].slice(0, 5)));
         }
       } catch { /* private mode */ }
-      // every business this login belongs to; the database decides which one is open
-      const { data: m, error: e1 } = await sb().rpc("crm_my_orgs");
+      // every business this login belongs to; the database decides which one is open (and settings rows follow it)
+      const [{ data: m, error: e1 }, first, { data: gcal }] = await Promise.all([
+        sb().rpc("crm_my_orgs"),
+        sb().from("crm_settings").select("*").limit(1).maybeSingle(),
+        sb().rpc("crm_gcal_info"), // one Google Calendar for all businesses
+      ]);
       let orgs = ((m || []) as Biz[]).map((o) => ({ ...o, brand: o.brand || {} }));
       let error = e1;
       if (e1) {
@@ -72,15 +79,13 @@ export default function AppProvider({ children }: { children: React.ReactNode })
         orgs = (r.data || []).map((x: Row) => ({ id: x.org_id, name: "", brand: { logo: "/crm-logo.png" }, role: x.role, active: true, home: true }));
       }
       if (error || !orgs.length) {
-        setErr("המשתמש " + (u.user?.email || "") + " לא מורשה למערכת.");
+        setErr("המשתמש " + email + " לא מורשה למערכת.");
         return;
       }
       const biz = orgs.find((o) => o.active) || orgs[0];
       const org = biz.id;
-      const [{ data: s }, { data: gcal }] = await Promise.all([
-        sb().from("crm_settings").select("*").eq("org_id", org).single(),
-        sb().rpc("crm_gcal_info"), // one Google Calendar for all businesses
-      ]);
+      let s = first.data as Row | null;
+      if (!s || s.org_id !== org) s = (await sb().from("crm_settings").select("*").eq("org_id", org).maybeSingle()).data;
       const row = (s || {}) as Row;
       // first run: write the template's price list and texts into settings
       const patch: Row = {};
@@ -91,7 +96,7 @@ export default function AppProvider({ children }: { children: React.ReactNode })
         org,
         orgs,
         biz,
-        email: u.user?.email || "",
+        email,
         settings: {
           vat: Number(row.vat ?? 18),
           valid_days: Number(row.valid_days ?? 14),
