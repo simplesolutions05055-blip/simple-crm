@@ -90,6 +90,10 @@ export default function Leads() {
                       <b className="kname">{l.name || l.biz || "ללא שם"}</b>
                       {l.phone ? <span className="meta" dir="ltr" style={{ alignSelf: "flex-start" }}>{l.phone}</span> : <span className="meta faint">אין טלפון</span>}
                       <span className="sub">{l.industry || <span className="faint">סוג העסק לא צוין</span>}</span>
+                      {l.next_at ? <span className={"knext" + (late ? " bad" : l.next_at === today() ? " gold" : "")} title={l.next_step || ""}>
+                        <Icon n="flag" s={12} />{l.next_at === today() ? "היום" : fmtDate(l.next_at)}{l.next_time ? " · " + String(l.next_time).slice(0, 5) : ""}
+                        {l.next_step ? <em>{l.next_step}</em> : null}
+                      </span> : null}
                     </Link>
                   );
                 })}

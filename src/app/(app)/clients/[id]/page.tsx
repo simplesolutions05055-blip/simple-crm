@@ -10,6 +10,7 @@ import { useApp } from "@/components/AppCtx";
 import { EditField, EditArea, FieldRow, CustomFields, LinksBox, ActivityLog, QuotesBox, Collapse, type CField } from "@/components/Blocks";
 import CardTasks from "@/components/CardTasks";
 import { ProjectsBox } from "@/components/ProjectBits";
+import { doneNextStep } from "@/components/taskDone";
 import { AccessBox } from "@/components/ClientAccess";
 import WaBox from "@/components/WaBox";
 import { DocsBox } from "@/components/DocsBox";
@@ -97,6 +98,11 @@ export default function ClientPage() {
               <div><small>מתי</small><EditField type="date" value={c.next_at} onSave={(v) => save({ next_at: v || null })} /></div>
               <div><small>שעה (לא חובה)</small><EditField type="time" value={c.next_time ? String(c.next_time).slice(0, 5) : ""} onSave={(v) => save({ next_time: v || null })} /></div>
             </div>
+            {c.next_step || c.next_at ? <button type="button" className="tcheck" title="הצעד בוצע" aria-label="הצעד בוצע" onClick={async () => {
+              const err = await doneNextStep(org, "client", id, c.next_step);
+              if (err) return toast("לא עודכן: " + err, true);
+              setC((x) => ({ ...x!, next_step: null, next_at: null, next_time: null })); setTick((t) => t + 1); toast("סומן כבוצע. אפשר לקבוע צעד הבא חדש");
+            }}><Icon n="check" s={15} /></button> : null}
           </div>
           <WaBox clientId={id} leadId={c.lead_id || undefined} phone={c.phone} name={c.contact} onLog={() => setTick((t) => t + 1)} />
         </div>

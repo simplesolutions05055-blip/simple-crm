@@ -10,7 +10,7 @@ import AiQuoteDoc from "@/components/AiQuoteDoc";
 import { useApp } from "@/components/AppCtx";
 import { computeQuote, normalizeInput, toggleableCards, withPricing, withTemplate, nis, type QuoteInput, type Pricing, type ExtraLine } from "@/lib/quote-engine";
 import { aiView, emptyAi, normalizeAi, withAi, computeAi, type AiInput, type AiPricing } from "@/lib/ai-campaign";
-import { packView, emptyPack, normalizePack, withPack, computePack, newLine, basePrice, priceOf, offeredAddons, type PackInput, type PackLine, type PackPricing, type ProdId } from "@/lib/products";
+import { packView, emptyPack, normalizePack, withPack, computePack, newLine, basePrice, priceOf, offeredAddons, addonPriceOf, type PackInput, type PackLine, type PackPricing, type ProdId } from "@/lib/products";
 import { QUOTE_STATUS_CLS, fillTemplate, waLink, waTemplates, appUrl, fmtDateTime, type Row } from "@/lib/crm";
 
 export default function QuoteEditor() {
@@ -141,9 +141,16 @@ export default function QuoteEditor() {
     let next = on ? cur.lines.filter((l) => l.id !== id) : [...cur.lines, newLine(id)];
     if (!on && id === "soc") next = next.filter((l) => l.id !== "socfull");
     if (!on && id === "socfull") next = next.filter((l) => l.id !== "soc");
-    if ((pk || ai) && !next.length) return toast("בהצעה צריך להישאר לפחות מוצר אחד", true);
+    if ((pk || ai) && !next.length && !cur.extras) return toast("בהצעה צריך להישאר לפחות מוצר אחד", true);
     upd({ product: "pack", prods: { ...cur, lines: next } });
   }
+  // "תוספות" as a product of its own: every add-on is offered, each with its own price
+  function toggleExtras() {
+    const cur = pk ? normalizePack(I?.prods, withAi(settings.pricing.ai).payUrl) : ai ? fromAi() : emptyPack(withAi(settings.pricing.ai).payUrl);
+    if (cur.extras && !cur.lines.length) return toast("בהצעה צריך להישאר לפחות מוצר אחד", true);
+    upd({ product: "pack", prods: { ...cur, extras: !cur.extras, addons: cur.extras ? cur.addons.filter((a) => offeredAddons(PP, cur.lines.map((l) => l.id)).some((x) => x.id === a)) : cur.addons } });
+  }
+  const extrasOn = !!pkv?.I.extras;
   const product = !locked && !q?.sent_at ? (
     <div className="cgroup">
       <b>מה בהצעה</b>
@@ -152,9 +159,10 @@ export default function QuoteEditor() {
           const on = lines.some((l) => l.id === p.id) || (ai && p.id === "ai");
           return <button key={p.id} type="button" className={"pillck" + (on ? " on" : "")} onClick={() => toggleProd(p.id)}>{on ? "✓ " : ""}{p.short}</button>;
         })}
+        <button type="button" className={"pillck" + (extrasOn ? " on" : "")} onClick={toggleExtras}>{extrasOn ? "✓ " : ""}תוספות</button>
         <button type="button" className={"pillck" + (!ai && !pk ? " on" : "")} onClick={() => (ai || pk) && upd({ product: "packages", track: "custom" })}>הרכבה אישית</button>
       </div>
-      <span className="tiny">אפשר לסמן כמה מוצרים יחד, כולל קמפיין AI עם המבצע. הרכבה אישית היא הצעה נפרדת.</span>
+      <span className="tiny">אפשר לסמן כמה מוצרים יחד, כולל קמפיין AI עם המבצע. &quot;תוספות&quot; מוסיף את כל התוספות לבחירה, עם פירוט ומחיר לכל אחת, וגם לבד בלי מוצר אחר. הרכבה אישית היא הצעה נפרדת.</span>
     </div>
   ) : null;
   if (!q || !I || (!model && !aiv && !pkv)) return <><Top title="הצעת מחיר" crumb={{ href: "/quotes", label: "הצעות מחיר" }} /><div className="loading" style={{ minHeight: 200 }}>טוען…</div></>;
@@ -426,7 +434,10 @@ function AiControls({ I, ai, A, vat, upd, top }: { I: QuoteInput; ai: AiInput; A
           return (
             <label key={x.id} className="hidrow">
               <input type="checkbox" checked={on} onChange={(e) => set({ addons: e.target.checked ? [...new Set([...ai.addons, x.id])] : ai.addons.filter((a) => a !== x.id) })} />
-              <span style={{ flex: 1 }}>{x.label}</span><b className="num">{nis(x.price)}</b>
+              <span style={{ flex: 1 }}>{x.label}</span>
+              {on ? <input className="inp sm num" style={{ width: 96 }} type="number" min={0} aria-label="מחיר בהצעה" value={ai.addonPrices?.[x.id] ?? x.price}
+                onChange={(e) => { const n = Math.max(0, Math.round(Number(e.target.value) || 0)); const ap = { ...(ai.addonPrices || {}) }; if (n === x.price) delete ap[x.id]; else ap[x.id] = n; set({ addonPrices: ap }); }} />
+                : <b className="num">{nis(x.price)}</b>}
             </label>
           );
         })}
@@ -437,16 +448,21 @@ function AiControls({ I, ai, A, vat, upd, top }: { I: QuoteInput; ai: AiInput; A
   );
 }
 
-/* one price: the original (empty = the catalog) and an optional price after discount */
+/* one price: the original (filled with the catalog price, editable) and an optional sale price */
 function PriceIn({ label, def, orig, sale, set }: { label: string; def: number; orig: number | null; sale: number | null; set: (o: number | null, s: number | null) => void }) {
   const val = (v: string) => (v.trim() === "" || isNaN(Number(v)) ? null : Math.max(0, Math.round(Number(v))));
+  const [o, setO] = useState(String(orig ?? def));
+  useEffect(() => setO(String(orig ?? def)), [orig, def]);
+  // the original is stored only when it differs from the catalog, so a later catalog change still reaches it
+  const commit = (v: string) => { const n = val(v); set(n == null || n === def ? null : n, sale); };
   return (
     <div className="f2">
       <label className="field"><span>{label}, מחיר מקורי</span>
-        <input className="inp sm" type="number" min={0} placeholder={String(def)} value={orig ?? ""} onChange={(e) => set(val(e.target.value), sale)} />
+        <input className="inp sm" type="number" min={0} value={o} onChange={(e) => { setO(e.target.value); if (val(e.target.value) != null) commit(e.target.value); }}
+          onBlur={() => { if (val(o) == null) { setO(String(def)); commit(""); } }} />
       </label>
-      <label className="field"><span>אחרי הנחה (לא חובה)</span>
-        <input className="inp sm" type="number" min={0} placeholder="ריק = בלי הנחה" value={sale ?? ""} onChange={(e) => set(orig, val(e.target.value))} />
+      <label className="field"><span>מחיר מבצע (לא חובה)</span>
+        <input className="inp sm" type="number" min={0} placeholder="ריק = בלי מבצע" value={sale ?? ""} onChange={(e) => set(orig, val(e.target.value))} />
       </label>
     </div>
   );
@@ -514,18 +530,25 @@ function PackControls({ I, pi, P, vat, upd, top }: { I: QuoteInput; pi: PackInpu
         );
       })}
 
-      <div className="cgroup">
-        <b>תוספות חד פעמיות</b>
-        {offeredAddons(P, pi.lines.map((l) => l.id)).map((x) => {
+      <div className={"cgroup" + (pi.extras ? " pline" : "")}>
+        <b>{pi.extras ? "תוספות" : "תוספות חד פעמיות"}</b>
+        {offeredAddons(P, pi.lines.map((l) => l.id), pi.extras).map((x) => {
           const on = pi.addons.includes(x.id);
+          const ov = pi.addonPrices[x.id];
+          const p = addonPriceOf(x, ov);
           return (
-            <label key={x.id} className="hidrow">
-              <input type="checkbox" checked={on} onChange={(e) => set({ addons: e.target.checked ? [...new Set([...pi.addons, x.id])] : pi.addons.filter((a) => a !== x.id) })} />
-              <span style={{ flex: 1 }}>{x.label}</span><b className="num">{nis(x.price)}</b>
-            </label>
+            <div key={x.id} className="addrow">
+              <label className="hidrow">
+                <input type="checkbox" checked={on} onChange={(e) => set({ addons: e.target.checked ? [...new Set([...pi.addons, x.id])] : pi.addons.filter((a) => a !== x.id) })} />
+                <span style={{ flex: 1 }}>{x.label}{pi.extras && x.d ? <span className="tiny" style={{ display: "block" }}>{x.d}</span> : null}</span>
+                {p.was != null ? <s className="num tiny">{nis(p.was)}</s> : null}<b className="num">{p.eff === 0 && p.was ? "ללא עלות" : nis(p.eff)}</b>
+              </label>
+              {on ? <PriceIn label="חד פעמי" def={x.was ?? x.price} orig={ov ? ov.price : null} sale={ov ? ov.sale : x.was != null ? x.price : null}
+                set={(o, sl) => set({ addonPrices: { ...pi.addonPrices, [x.id]: { price: o, sale: sl } } })} /> : null}
+            </div>
           );
         })}
-        <span className="tiny">תוספת שלא סומנה מופיעה בהצעה בטבלת &quot;תוספות אפשריות&quot;.{hasSite || hasMail ? " דפים נוספים וחבילות הודעות נבחרים בכרטיס של המוצר." : ""}</span>
+        <span className="tiny">מסמנים תוספת כדי להכניס אותה לסיכום לתשלום, ואז אפשר לשנות לה מחיר או לתת מחיר מבצע. תוספת שלא סומנה מופיעה בהצעה בטבלת &quot;תוספות אפשריות&quot;.{hasSite || hasMail ? " דפים נוספים וחבילות הודעות נבחרים בכרטיס של המוצר." : ""}</span>
       </div>
 
       <div className="cgroup">

@@ -5,6 +5,7 @@ import { Modal } from "./Shell";
 import Icon from "./Icon";
 import { useApp } from "./AppCtx";
 import { pushToCalendar } from "./AiPlan";
+import { setTaskDone } from "./taskDone";
 import { today, TASK_KINDS, taskKindCls, type Row, type TaskAttachment } from "@/lib/crm";
 import { LinkPicker, AttachmentChips } from "./TaskBits";
 
@@ -113,6 +114,12 @@ export default function TaskModal({ task, onClose, onDone }: { task: Row; onClos
         <div className="full bar">
           <button className="btn primary">שמירה</button>
           <button type="button" className="btn ghost" onClick={onClose}>ביטול</button>
+          {task.id ? <button type="button" className={"btn" + (task.done ? "" : " ok")} onClick={async () => {
+            const err = await setTaskDone(task, !task.done, gcal);
+            if (err) return toast("לא עודכן: " + err, true);
+            toast(task.done ? "המשימה נפתחה מחדש" : "סומנה כבוצעה");
+            onDone();
+          }}><Icon n={task.done ? "reset" : "check"} s={15} />{task.done ? "פתיחה מחדש" : "סימון כבוצעה"}</button> : null}
           {task.id ? <button type="button" className="btn danger" style={{ marginInlineStart: "auto" }} onClick={async () => {
             if (!confirm("למחוק את המשימה?")) return;
             if (task.gcal_event_id) await pushToCalendar(task.id, true);

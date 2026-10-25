@@ -10,6 +10,7 @@ import { useApp } from "@/components/AppCtx";
 import { EditField, EditArea, FieldRow, CustomFields, LinksBox, ActivityLog, QuotesBox, type CField } from "@/components/Blocks";
 import CardTasks from "@/components/CardTasks";
 import { ProjectsBox } from "@/components/ProjectBits";
+import { doneNextStep } from "@/components/taskDone";
 import WaBox from "@/components/WaBox";
 import { DocsBox } from "@/components/DocsBox";
 import { STAGES, SOURCES, INDUSTRIES, BUDGETS, DISQ, FIT, fmtDate, today, waLink, type Row } from "@/lib/crm";
@@ -110,6 +111,11 @@ export default function LeadPage() {
             <div><small>מתי</small><EditField type="date" value={l.next_at} onSave={(v) => save({ next_at: v || null })} /></div>
             <div><small>שעה (לא חובה)</small><EditField type="time" value={l.next_time ? String(l.next_time).slice(0, 5) : ""} onSave={(v) => save({ next_time: v || null })} /></div>
           </div>
+          {l.next_step || l.next_at ? <button type="button" className="tcheck" title="הצעד בוצע" aria-label="הצעד בוצע" onClick={async () => {
+            const err = await doneNextStep(org, "lead", id, l.next_step);
+            if (err) return toast("לא עודכן: " + err, true);
+            setL((x) => ({ ...x!, next_step: null, next_at: null, next_time: null })); setLogTick((t) => t + 1); toast("סומן כבוצע. אפשר לקבוע צעד הבא חדש");
+          }}><Icon n="check" s={15} /></button> : null}
         </div>
 
         <div className="grid g2">

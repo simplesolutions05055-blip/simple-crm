@@ -11,6 +11,7 @@ export type AiInput = {
   promo: boolean;       // first month at promoPct off
   platform: AiPlatform;
   addons: string[];     // selected add-on ids
+  addonPrices?: Record<string, number>;  // an add-on's price in this quote, when it differs from the catalog
   payUrl: string;       // payment page sent to the client
 };
 
@@ -23,7 +24,7 @@ export const DEFAULT_AI: AiPricing = {
   addons: [
     { id: "lp", label: "דף נחיתה", d: "דף ממיר שמחובר לקמפיין, עם טופס לידים וכפתור וואטסאפ", price: 1200 },
     { id: "site5", label: "אתר תדמית, עד 5 דפים", d: "אתר עסקי מעוצב, מותאם לנייד, עם טפסים לאיסוף לידים", price: 4500 },
-    { id: "anim3", label: "חבילת 3 סרטונים", d: "סרטונים שיווקיים מוכנים לפרסום בקמפיין ובעמודים", price: 550 },
+    { id: "anim3", label: "חבילת 3 סרטונים", d: "סרטונים שיווקיים מוכנים לפרסום בקמפיין ובעמודים", price: 1100 },
     { id: "shoot", label: "יום צילום", d: "צילום בבית העסק, עד 5 שעות, עם תכנים כתובים מראש", price: 2200 },
     { id: "gfx8", label: "חבילת גרפיקות, 8 גרפיקות", d: "גרפיקות מעוצבות לפי השפה של העסק", price: 300 },
   ],
@@ -50,6 +51,7 @@ export function normalizeAi(a: unknown, A: AiPricing): AiInput {
     promo: typeof o.promo === "boolean" ? o.promo : base.promo,
     platform: o.platform === "meta" || o.platform === "tiktok" ? o.platform : "either",
     addons: Array.isArray(o.addons) ? o.addons : [],
+    addonPrices: o.addonPrices && typeof o.addonPrices === "object" ? o.addonPrices : {},
     payUrl: typeof o.payUrl === "string" && /^https:\/\//.test(o.payUrl) ? o.payUrl : base.payUrl,
   };
 }
@@ -101,7 +103,10 @@ export function computeAi(A: AiPricing, I: AiInput, vat: number, T: Template): A
   const price = Math.max(0, Math.round(I.price || 0));
   const pct = A.promoPct;
   const first = I.promo ? Math.round(price * (100 - pct) / 100) : price;
-  const picked = A.addons.filter((x) => I.addons.includes(x.id));
+  // an add-on keeps the price it had in this quote when that was set (e.g. a quote sent before a price change)
+  const own = I.addonPrices || {};
+  const priced = A.addons.map((x) => (typeof own[x.id] === "number" ? { ...x, price: own[x.id] } : x));
+  const picked = priced.filter((x) => I.addons.includes(x.id));
   const oneoff = picked.reduce((s, x) => s + x.price, 0);
   const vatLbl = 'מע"מ ' + (vat || 0) + "%";
   const brand = T.name || "Simple Solution";
@@ -131,7 +136,7 @@ export function computeAi(A: AiPricing, I: AiInput, vat: number, T: Template): A
   S.push({ cls: "grand", a: picked.length ? "סה\"כ לתשלום בהצטרפות" : I.promo ? "סה\"כ לחודש הראשון" : "סה\"כ לחודש", b: nis(g(net)) + ' כולל מע"מ' });
   const summaryNote = I.promo ? `מהחודש השני: ${nis(price)} לחודש לפני מע"מ, ${nis(g(price))} כולל מע"מ.` : "";
 
-  const addons = A.addons.map((x) => ({ t: x.label, d: x.d, net: nis(x.price), gross: nis(g(x.price)), on: I.addons.includes(x.id) }));
+  const addons = priced.map((x) => ({ t: x.label, d: x.d, net: nis(x.price), gross: nis(g(x.price)), on: I.addons.includes(x.id) }));
 
   const terms = [
     `כל המחירים בהצעה הם לפני מע"מ. ${vatLbl}`,

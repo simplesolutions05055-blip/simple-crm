@@ -6,6 +6,7 @@ import { sb } from "@/lib/supabase/browser";
 import Icon from "./Icon";
 import { Panel, Empty, St } from "./Shell";
 import { useApp } from "./AppCtx";
+import { setTaskDone } from "./taskDone";
 import { FTYPES, LINKS, TOUCH, fmtDateTime, fmtDate, today, QUOTE_STATUS_CLS, money, type Row } from "@/lib/crm";
 import { pastePhone } from "@/lib/crm";
 
@@ -170,7 +171,7 @@ export function QuotesBox({ leadId, clientId }: { leadId?: string; clientId?: st
 
 /* tasks linked to a lead/client */
 export function TasksBox({ leadId, clientId, projectId, onChange }: { leadId?: string; clientId?: string; projectId?: string; onChange?: () => void }) {
-  const { org, toast, refreshCounts } = useApp();
+  const { org, toast, refreshCounts, settings } = useApp();
   const [rows, setRows] = useState<Row[]>([]);
   const [title, setTitle] = useState("");
   const [due, setDue] = useState(today());
@@ -190,7 +191,8 @@ export function TasksBox({ leadId, clientId, projectId, onChange }: { leadId?: s
     setTitle(""); setTime(""); load(); refreshCounts(); onChange?.();
   }
   async function toggle(t: Row) {
-    await sb().from("crm_tasks").update({ done: !t.done }).eq("id", t.id);
+    const err = await setTaskDone(t, !t.done, !!settings.gcal?.email);
+    if (err) toast("לא עודכן: " + err, true);
     load(); refreshCounts(); onChange?.();
   }
   return (
