@@ -114,7 +114,7 @@ export default function LeadPage() {
           {l.next_step || l.next_at ? <button type="button" className="tcheck" title="הצעד בוצע" aria-label="הצעד בוצע" onClick={async () => {
             const err = await doneNextStep(org, "lead", id, l.next_step);
             if (err) return toast("לא עודכן: " + err, true);
-            setL((x) => ({ ...x!, next_step: null, next_at: null, next_time: null })); setLogTick((t) => t + 1); toast("סומן כבוצע. אפשר לקבוע צעד הבא חדש");
+            setL((x) => ({ ...x!, next_step: "", next_at: null, next_time: null })); setLogTick((t) => t + 1); toast("סומן כבוצע. אפשר לקבוע צעד הבא חדש");
           }}><Icon n="check" s={15} /></button> : null}
         </div>
 

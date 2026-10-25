@@ -16,7 +16,7 @@ export async function setTaskDone(task: Row, done: boolean, gcalOn: boolean): Pr
 /* the next step was done: clear it from the card and note it in the card's history */
 export async function doneNextStep(org: string, rec: "lead" | "client", id: string, title: string): Promise<string> {
   const table = rec === "lead" ? "crm_leads" : "crm_clients";
-  const { error } = await sb().from(table).update({ next_step: null, next_at: null, next_time: null }).eq("id", id);
+  const { error } = await sb().from(table).update({ next_step: "", next_at: null, next_time: null }).eq("id", id);
   if (error) return error.message;
   await sb().from("crm_activities").insert({ org_id: org, [rec === "lead" ? "lead_id" : "client_id"]: id, type: "מערכת", text: "בוצע הצעד הבא: " + (title || "צעד הבא"), by: "מערכת" });
   return "";

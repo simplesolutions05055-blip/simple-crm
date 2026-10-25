@@ -101,7 +101,7 @@ export default function ClientPage() {
             {c.next_step || c.next_at ? <button type="button" className="tcheck" title="הצעד בוצע" aria-label="הצעד בוצע" onClick={async () => {
               const err = await doneNextStep(org, "client", id, c.next_step);
               if (err) return toast("לא עודכן: " + err, true);
-              setC((x) => ({ ...x!, next_step: null, next_at: null, next_time: null })); setTick((t) => t + 1); toast("סומן כבוצע. אפשר לקבוע צעד הבא חדש");
+              setC((x) => ({ ...x!, next_step: "", next_at: null, next_time: null })); setTick((t) => t + 1); toast("סומן כבוצע. אפשר לקבוע צעד הבא חדש");
             }}><Icon n="check" s={15} /></button> : null}
           </div>
           <WaBox clientId={id} leadId={c.lead_id || undefined} phone={c.phone} name={c.contact} onLog={() => setTick((t) => t + 1)} />
