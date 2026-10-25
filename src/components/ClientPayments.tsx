@@ -56,6 +56,17 @@ export default function ClientPayments({ client, pays, retainerDefault, until, o
     if (error) return toast(error.message, true);
     onDone();
   }
+  // a payment written by mistake: removed for good, after a confirmation
+  async function del(p: Row) {
+    const retainer = p.kind === "retainer" || !!p.period;
+    const msg = "למחוק לצמיתות את \"" + (p.what || "התשלום") + "\" על " + money(Number(p.amount)) + "?"
+      + (retainer ? "\n\nזה חיוב ריטיינר חודשי: כל עוד הריטיינר פעיל מהחודש הזה, המערכת תיצור אותו שוב. כדי שלא ייווצר, משנים את \"מאיזה חודש\" של הריטיינר." : "");
+    if (!confirm(msg)) return;
+    const { error } = await sb().from("crm_payments").delete().eq("id", p.id);
+    if (error) return toast("לא נמחק: " + error.message, true);
+    toast("התשלום נמחק");
+    onDone();
+  }
   const upd = async (p: Row, patch: Row) => { const { error } = await sb().from("crm_payments").update(patch).eq("id", p.id); if (error) toast(error.message, true); else onDone(); };
 
   return (
@@ -71,9 +82,9 @@ export default function ClientPayments({ client, pays, retainerDefault, until, o
         </select>
       </label>
 
-      <div className="prow2 phead"><span /><span>סכום</span><span>שולם בפועל</span><span>אופן</span><span>מצב</span></div>
+      <div className="prow2 phead"><span /><span>סכום</span><span>שולם בפועל</span><span>אופן</span><span>מצב</span><span /></div>
       <h4 className="psec">תשלום ראשון</h4>
-      {first.length ? first.map((p) => <PayRow key={p.id} p={p} onPaid={setPaid} onUpd={upd} />)
+      {first.length ? first.map((p) => <PayRow key={p.id} p={p} onPaid={setPaid} onUpd={upd} onDel={del} />)
         : <AddPayment clientId={client.id} kind="first" label="הגדרת תשלום ראשון" method={client.pay_method} onDone={onDone} />}
 
       <h4 className="psec">ריטיינר חודשי</h4>
@@ -88,7 +99,7 @@ export default function ClientPayments({ client, pays, retainerDefault, until, o
       </div>
       {!months.length ? <Empty>{retAmt ? "בוחרים מאיזה חודש הריטיינר מתחיל" : "אין ריטיינר. כותבים סכום חודשי, או משייכים מוצר עם ריטיינר."}</Empty> : months.map((k) => {
         const row = monthly.find((p) => (p.period || ym(p.due)) === k);
-        return row ? <PayRow key={k} p={row} title={mName(k)} onPaid={setPaid} onUpd={upd} />
+        return row ? <PayRow key={k} p={row} title={mName(k)} onPaid={setPaid} onUpd={upd} onDel={del} />
           : (
             <div className="prow2" key={k}>
               <span className="pw"><b>{mName(k)}</b>{k > now ? <span className="meta">צפוי</span> : null}</span>
@@ -96,12 +107,13 @@ export default function ClientPayments({ client, pays, retainerDefault, until, o
               <span className="pp meta">-</span>
               <span className="pm" />
               <PaidToggle on={false} onChange={(v) => monthPaid(k, undefined, v)} />
+              <span />
             </div>
           );
       })}
 
       <h4 className="psec">תשלומים נוספים</h4>
-      {!other.length ? <span className="tiny">אין</span> : other.map((p) => <PayRow key={p.id} p={p} onPaid={setPaid} onUpd={upd} />)}
+      {!other.length ? <span className="tiny">אין</span> : other.map((p) => <PayRow key={p.id} p={p} onPaid={setPaid} onUpd={upd} onDel={del} />)}
       <AddPayment clientId={client.id} kind="other" label="תשלום" method={client.pay_method} onDone={onDone} />
     </Panel>
   );
@@ -116,7 +128,7 @@ function PaidToggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => v
   );
 }
 
-function PayRow({ p, title, onPaid, onUpd }: { p: Row; title?: string; onPaid: (p: Row, on: boolean) => void; onUpd: (p: Row, patch: Row) => void }) {
+function PayRow({ p, title, onPaid, onUpd, onDel }: { p: Row; title?: string; onPaid: (p: Row, on: boolean) => void; onUpd: (p: Row, patch: Row) => void; onDel: (p: Row) => void }) {
   const late = !p.paid_at && p.due < today();
   const partial = p.paid_at && Number(p.paid_amount ?? p.amount) < Number(p.amount);
   return (
@@ -135,6 +147,7 @@ function PayRow({ p, title, onPaid, onUpd }: { p: Row; title?: string; onPaid: (
         </select>
       </span>
       <PaidToggle on={!!p.paid_at} onChange={(v) => onPaid(p, v)} />
+      <button type="button" className="btn icon sm ghost pdel" title="מחיקת התשלום" aria-label="מחיקת התשלום" onClick={() => onDel(p)}><Icon n="trash" s={15} /></button>
     </div>
   );
 }
