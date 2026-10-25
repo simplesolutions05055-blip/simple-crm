@@ -1,7 +1,7 @@
 /* Zernio (social posting and ads API), server side only. One Zernio profile per business (org); the
    profile id is kept in crm_settings.social.zernio. The API key comes from the ZERNIO_API_KEY env var, or
    from Supabase Vault ("zernio_api_key") through an RPC that also needs the server-only GCAL_SERVER_KEY. */
-import { sbServer } from "@/lib/supabase/server";
+import { sbAnon, sbServer } from "@/lib/supabase/server";
 
 const BASE = "https://zernio.com/api/v1";
 export const ZERNIO_TZ = "Asia/Jerusalem";
@@ -12,9 +12,14 @@ async function apiKey(): Promise<string> {
   if (process.env.ZERNIO_API_KEY) return process.env.ZERNIO_API_KEY;
   if (cachedKey) return cachedKey;
   if (!process.env.GCAL_SERVER_KEY) return "";
-  const supa = await sbServer();
-  const { data, error } = await supa.rpc("crm_zernio_key", { p_key: process.env.GCAL_SERVER_KEY });
-  if (error || !data) return "";
+  /* a signed-in member first; the nightly job and the webhook have no session and use the server-key RPC */
+  let data: unknown = null;
+  try {
+    const supa = await sbServer();
+    data = (await supa.rpc("crm_zernio_key", { p_key: process.env.GCAL_SERVER_KEY })).data;
+  } catch { /* no request scope (cookies) */ }
+  if (!data) data = (await sbAnon().rpc("crm_ads_job", { p_key: process.env.GCAL_SERVER_KEY, p_op: "zernio_key" })).data;
+  if (!data) return "";
   cachedKey = String(data);
   return cachedKey;
 }
@@ -36,10 +41,17 @@ export class ZError extends Error {
   constructor(msg: string, public status: number, public code: string, public addon: boolean) { super(msg); }
 }
 
-export async function zapi(path: string, init?: RequestInit): Promise<J> {
+/* every write carries an Idempotency-Key, so a retried call never creates a second ad or campaign */
+export async function zapi(path: string, init?: RequestInit & { idem?: string }): Promise<J> {
+  const { idem, ...rest } = init || {};
+  const write = !!rest.method && rest.method !== "GET";
   const r = await fetch(BASE + path, {
-    ...init,
-    headers: { authorization: "Bearer " + (await apiKey()), "content-type": "application/json", ...(init?.headers || {}) },
+    ...rest,
+    headers: {
+      authorization: "Bearer " + (await apiKey()), "content-type": "application/json",
+      ...(write ? { "Idempotency-Key": idem || crypto.randomUUID() } : {}),
+      ...((rest.headers as Record<string, string>) || {}),
+    },
     cache: "no-store",
   });
   const text = await r.text();

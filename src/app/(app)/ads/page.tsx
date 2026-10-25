@@ -9,11 +9,12 @@ import { useApp } from "@/components/AppCtx";
 import { fmtDate, type Row } from "@/lib/crm";
 import { sb } from "@/lib/supabase/browser";
 import { AdBuilder, CampaignActions } from "@/components/AdBuilder";
+import { EngineSettingsPanel } from "@/components/AdsManage";
 import { GraphicsStudio } from "@/components/Graphics";
 import { AdLeadsButton } from "@/components/AdLeadsSync";
 import { CONNECT_HREF, n0, zName } from "@/components/SocialLive";
 
-const TABS = ["קמפיינים", "קמפיין חדש", "גרפיקות", "חיבור חשבון מודעות"] as const;
+const TABS = ["קמפיינים", "קמפיין חדש", "מנוע אוטומטי", "גרפיקות", "חיבור חשבון מודעות"] as const;
 type Tab = (typeof TABS)[number];
 const STATUS: Record<string, [string, string]> = {
   active: ["פעיל", "ok"], paused: ["מושהה", "warn"], pending_review: ["בבדיקה", "info"], rejected: ["נדחה", "bad"],
@@ -41,6 +42,7 @@ export default function Ads() {
         <div className="tabs">{TABS.map((t) => <button key={t} className={"btn sm" + (tab === t ? " on" : "")} onClick={() => setTab(t)}>{t}</button>)}</div>
         {tab === "קמפיינים" ? <Campaigns goConnect={() => setTab("חיבור חשבון מודעות")} goNew={() => setTab("קמפיין חדש")} />
           : tab === "קמפיין חדש" ? <AdBuilder onDone={() => setTab("קמפיינים")} />
+          : tab === "מנוע אוטומטי" ? <EngineSettingsPanel />
           : tab === "גרפיקות" ? <GraphicsStudio /> : <ConnectAds />}
       </div>
     </>
@@ -105,7 +107,7 @@ function Campaigns({ goConnect, goNew }: { goConnect: () => void; goNew: () => v
                     const s = STATUS[c.status] || [c.status || "-", ""];
                     return (
                       <tr key={c.platform + c.id}>
-                        <td><b dir="auto">{c.name || c.id}</b><span className="meta">{c.adAccount}{c.ads ? " · " + c.ads + " מודעות" : ""}</span></td>
+                        <td><Link href={"/ads/campaign/" + encodeURIComponent(c.id)} className="clink"><b dir="auto">{c.name || c.id}</b></Link><span className="meta">{c.adAccount}{c.ads ? " · " + c.ads + " מודעות" : ""}</span></td>
                         <td>{zName(c.platform)}</td>
                         <td><St cls={s[1]}>{s[0]}</St></td>
                         <td>{c.budget ? money(c.budget.amount, c.currency) + (c.budget.type === "daily" ? " ליום" : " כולל") : "-"}</td>
@@ -115,7 +117,7 @@ function Campaigns({ goConnect, goNew }: { goConnect: () => void; goNew: () => v
                         <td>{typeof c.m?.ctr === "number" ? c.m.ctr.toFixed(2) + "%" : "-"}</td>
                         <td>{money(c.m?.cpc, c.currency)}</td>
                         <td>{n0(c.m?.conversions)}</td>
-                        <td><CampaignActions c={c} onDone={reload} /></td>
+                        <td><span className="bar" style={{ flexWrap: "nowrap" }}>{["facebook", "instagram", "tiktok"].includes(c.platform) ? <Link className="btn sm primary" href={"/ads/campaign/" + encodeURIComponent(c.id)}>ניהול</Link> : null}<CampaignActions c={c} onDone={reload} /></span></td>
                       </tr>
                     );
                   })}</tbody>
@@ -181,12 +183,12 @@ function ConnectAds() {
   );
 }
 
-const ACTIONS: Record<string, string> = { boost: "קידום פוסט", create: "מודעה חדשה", "create:validate": "בדיקה", status: "הפעלה / השהיה", budget: "שינוי תקציב" };
+const ACTIONS: Record<string, string> = { boost: "קידום פוסט", create: "מודעה חדשה", "create:validate": "בדיקה", status: "הפעלה / השהיה", budget: "שינוי תקציב", "ad:add": "מודעה נוספה", "ad:replace": "מודעה הוחלפה", "ad:paused": "מודעה הושהתה", "ad:active": "מודעה הופעלה", targeting: "קהל", settings: "הגדרות", "engine:recommend": "המלצה", "draft:ready": "מודעה מוכנה", lead: "ליד חדש" };
 function History({ tick }: { tick: number }) {
   const { org } = useApp();
   const [rows, setRows] = useState<Row[] | null>(null);
   useEffect(() => {
-    sb().from("crm_ad_launches").select("id,action,name,ok,result,request,created_at").eq("org_id", org).order("created_at", { ascending: false }).limit(15)
+    sb().from("crm_ad_launches").select("id,action,name,ok,result,request,created_at,actor").eq("org_id", org).not("action", "like", "engine:%").not("action", "like", "status:%").order("created_at", { ascending: false }).limit(15)
       .then(({ data }: { data: Row[] | null }) => setRows(data || []));
   }, [org, tick]);
   if (!rows?.length) return null;
@@ -196,7 +198,7 @@ function History({ tick }: { tick: number }) {
         <div key={r.id} className="lrow">
           <St cls={r.ok ? "ok" : "bad"}>{r.ok ? "בוצע" : "נכשל"}</St>
           <span className="grow"><b dir="auto">{r.name || "-"}</b>
-            <span className="meta">{ACTIONS[r.action] || r.action} · {fmtDate(r.created_at)}{r.action === "status" && r.request?.status ? " · " + (r.request.status === "active" ? "הופעל" : "הושהה") : ""}{r.action === "budget" && r.request?.budget ? " · " + r.request.budget.amount : ""}{!r.ok && r.result?.error ? " · " + String(r.result.error).slice(0, 160) : ""}</span></span>
+            <span className="meta">{ACTIONS[r.action] || r.action}{r.actor && r.actor !== "משתמש" ? " · " + r.actor : ""} · {fmtDate(r.created_at)}{r.action === "status" && r.request?.status ? " · " + (r.request.status === "active" ? "הופעל" : "הושהה") : ""}{r.action === "budget" && r.request?.budget ? " · " + r.request.budget.amount : ""}{!r.ok && r.result?.error ? " · " + String(r.result.error).slice(0, 160) : ""}</span></span>
         </div>
       ))}
     </Panel>

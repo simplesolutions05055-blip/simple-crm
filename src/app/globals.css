@@ -798,3 +798,11 @@ b.bad{color:var(--bad)}
 .addrow{display:flex;flex-direction:column;gap:6px;padding:2px 0}
 .addrow+.addrow{border-top:1px dashed var(--line);padding-top:8px}
 .addrow .f2{padding-inline-start:26px}
+
+/* Simple Ads campaign page */
+.clink{color:inherit;text-decoration:none}.clink:hover b{text-decoration:underline}
+.adthumb{width:46px;height:56px;object-fit:cover;border-radius:6px;flex:none;background:#eef0f6}
+.adtbl td{vertical-align:top}
+.draftrow{display:flex;flex-direction:column;gap:8px}
+.draftimg{width:150px;max-width:40vw;border-radius:8px;display:block;background:#eef0f6}
+.draftimg.story{width:90px}

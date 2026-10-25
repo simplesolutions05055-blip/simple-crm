@@ -12,7 +12,7 @@ import { GraphicPicker } from "@/components/Graphics";
 import { CONNECT_HREF, zName } from "@/components/SocialLive";
 import { AD_CTAS, AD_GENDERS, AD_GOALS, LEAD_QUESTIONS, waLink } from "@/lib/ads";
 
-type Pick = { id: string; name: string; radius?: number; type?: string };
+export type Pick = { id: string; name: string; radius?: number; type?: string };
 type Net = "meta" | "tiktok";
 const NET_PLATS: Record<Net, string[]> = { meta: ["facebook", "instagram"], tiktok: ["tiktok", "tiktokads"] };
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -299,7 +299,7 @@ export function AdBuilder({ onDone }: { onDone: () => void }) {
 }
 
 /* pick one of the page's Meta lead forms, or create a new one in place */
-function LeadFormPicker({ org, accountId, value, onChange }: { org: string; accountId: string; value: string; onChange: (id: string) => void }) {
+export function LeadFormPicker({ org, accountId, value, onChange }: { org: string; accountId: string; value: string; onChange: (id: string) => void }) {
   const { toast } = useApp();
   const [forms, setForms] = useState<Row[] | null>(null);
   const [err, setErr] = useState("");
@@ -393,8 +393,8 @@ function WaLinkHelper({ onLink }: { onLink: (url: string) => void }) {
   );
 }
 
-function AudienceSearch({ kind, label, org, accountId, adAccountId, picks, setPicks, radius }: {
-  kind: "city" | "interest"; label: string; org: string; accountId: string; adAccountId: string; picks: Pick[]; setPicks: (p: Pick[]) => void; radius?: boolean;
+export function AudienceSearch({ kind, label, org, accountId, adAccountId, picks, setPicks, radius, defRadius = 17 }: {
+  kind: "city" | "interest"; label: string; org: string; accountId: string; adAccountId: string; picks: Pick[]; setPicks: (p: Pick[]) => void; radius?: boolean; defRadius?: number;
 }) {
   const [q, setQ] = useState("");
   const [res, setRes] = useState<Row[]>([]);
@@ -417,7 +417,7 @@ function AudienceSearch({ kind, label, org, accountId, adAccountId, picks, setPi
       {res.length ? (
         <div className="pills" style={{ marginTop: 6 }}>
           {res.filter((r) => !picks.some((p) => p.id === r.id)).map((r) => (
-            <button key={r.id} className="pillck" onClick={() => { setPicks([...picks, { id: r.id, name: r.name, type: r.type, ...(radius ? { radius: 17 } : {}) }]); setQ(""); setRes([]); }} title={r.path}>
+            <button key={r.id} className="pillck" onClick={() => { setPicks([...picks, { id: r.id, name: r.name, type: r.type, ...(radius ? { radius: defRadius } : {}) }]); setQ(""); setRes([]); }} title={r.path}>
               <Icon n="plus" s={12} /> {r.name}{r.size ? <span className="tiny"> · {Number(r.size).toLocaleString("he-IL")}</span> : null}
             </button>
           ))}
