@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { sbServer } from "@/lib/supabase/server";
 import { accountsFor, profileFor, zapi, zfail } from "@/lib/zernio";
 import { AD_CTAS, AD_GOALS, AD_MAX_DAILY, AD_MAX_LIFETIME } from "@/lib/ads";
+import { ENGINE } from "@/lib/ads-engine";
 
 type J = Record<string, unknown>;
 const DT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
@@ -43,6 +44,8 @@ export async function POST(req: NextRequest) {
   if (end && start && end <= start) return bad("תאריך הסיום לפני ההתחלה");
   const name = str(b.name, 120);
   if (!name) return bad("חסר שם לקמפיין");
+  /* Simple Ads rule: never under 40 a day (Meta needs room to learn) */
+  if (budgetType === "daily" && budgetAmount < ENGINE.minDailyBudget) return bad("תקציב יומי מינימלי: " + ENGINE.minDailyBudget);
   const adAccountId = str(b.adAccountId, 64);
   if (!adAccountId) return bad("לא נבחר חשבון מודעות");
 
@@ -60,7 +63,16 @@ export async function POST(req: NextRequest) {
 
   const supa = await sbServer();
   const log = async (ok: boolean, request: J, result: J) => {
-    await supa.from("crm_ad_launches").insert({ org_id: org, action: validate ? kind + ":validate" : kind, name, request, result, ok });
+    const ad = (result.ad || {}) as J;
+    const campaign_id = str(ad.platformCampaignId || result.platformCampaignId, 80);
+    await supa.from("crm_ad_launches").insert({ org_id: org, action: validate ? kind + ":validate" : kind, name, request, result, ok, campaign_id, adset_id: str(ad.platformAdSetId, 80), ad_id: str(ad.platformAdId, 80) });
+    /* every campaign launched from the CRM is managed by Simple Ads from now on (recommendations only until the user switches on auto) */
+    if (ok && !validate && campaign_id) {
+      await supa.from("crm_ad_campaigns").upsert({
+        org_id: org, campaign_id, name, goal, platform: str(ad.platform, 20) || "facebook",
+        account_id: str(request.accountId, 80), ad_account_id: adAccountId, lead_form_id: leadFormId,
+      }, { onConflict: "org_id,campaign_id", ignoreDuplicates: true });
+    }
   };
 
   try {
@@ -139,7 +151,10 @@ export async function POST(req: NextRequest) {
       if (validate && tiktok) return NextResponse.json({ ok: true, validated: false, note: "בטיקטוק אין בדיקה מוקדמת. אפשר ליצור במצב מושהה ולבדוק במנהל המודעות" });
       body = tiktok
         ? { ...common, body: text, imageUrl, linkUrl, callToAction: cta, ...tiktokIdentity }
-        : { ...common, ...lead, headline, body: text, imageUrl, ...(linkUrl ? { linkUrl } : {}), callToAction: cta, ...(str(ad.description, 255) ? { description: str(ad.description, 255) } : {}), ...(validate ? { validateOnly: true } : {}) };
+        : {
+            ...common, campaignName: name + " | Simple Ads", adSetName: "קהל ראשי | " + name, budgetLevel: "adset", aiDisclosure: "OPT_IN", multiAdvertiser: "OPT_OUT",
+            ...lead, headline, body: text, imageUrl, ...(linkUrl ? { linkUrl } : {}), callToAction: cta, ...(str(ad.description, 255) ? { description: str(ad.description, 255) } : {}), ...(validate ? { validateOnly: true } : {}),
+          };
       path = "/ads/create";
     }
     const j = await zapi(path, { method: "POST", body: JSON.stringify(body) });

@@ -1,17 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { sbServer } from "@/lib/supabase/server";
 import { accountsFor, profileFor, zapi, zfail } from "@/lib/zernio";
+import { leadFromForm } from "@/lib/ads-leads";
 
 type J = Record<string, unknown>;
 const str = (v: unknown, max = 500) => String(v ?? "").trim().slice(0, max);
 const META = ["facebook", "instagram", "metaads"];
 const DAYS = 90;
-
-/* first answer whose question key matches */
-function pick(fields: Record<string, string>, re: RegExp, not?: RegExp) {
-  const k = Object.keys(fields).find((x) => re.test(x) && !(not && not.test(x)));
-  return k ? str(fields[k], 300) : "";
-}
 
 /* takes leads from the business's Meta lead forms (through Zernio) into crm_leads.
    POST { org } -> { ok, added, returned, seen }. Each lead is taken in once (crm_ad_leads_seen);
@@ -44,18 +39,7 @@ export async function POST(req: NextRequest) {
     let added = 0, returned = 0, seen = 0;
     const errors: string[] = [];
     for (const [ext, { l, platform }] of leads) {
-      const fields = (l.fields || {}) as Record<string, string>;
-      const first = pick(fields, /^first_?name$/i), last = pick(fields, /^last_?name$/i);
-      const name = pick(fields, /full_?name|^name$|שם/i, /company|business|עסק/i) || [first, last].filter(Boolean).join(" ");
-      const known = /name|phone|email|city|company|business|שם|טלפון|אימייל|עיר|עסק/i;
-      const extra = Object.entries(fields).filter(([k]) => !known.test(k)).map(([k, v]) => k + ": " + str(v, 300));
-      const lead = {
-        name, phone: pick(fields, /phone|טלפון/i), email: pick(fields, /e-?mail|אימייל/i),
-        biz: pick(fields, /company|business|עסק/i),
-        source: platform === "instagram" ? "קמפיין I" : "קמפיין F",
-        campaign: str(l.formName, 160) || "טופס לידים",
-        message: ["ליד מטופס במודעה" + (l.formName ? " (" + str(l.formName, 160) + ")" : ""), pick(fields, /city|עיר/i) ? "עיר: " + pick(fields, /city|עיר/i) : "", ...extra].filter(Boolean).join("\n"),
-      };
+      const lead = leadFromForm((l.fields || {}) as Record<string, string>, { platform, formName: str(l.formName, 160) });
       if (!lead.name && !lead.phone) { seen++; continue; }
       const { data, error } = await supa.rpc("crm_ingest_ad_lead", { p_org: org, p_ext: ext, p_lead: lead });
       if (error) { errors.push(error.message); if (error.message.includes("not allowed")) break; continue; }
