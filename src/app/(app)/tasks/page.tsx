@@ -5,8 +5,9 @@ import { sb } from "@/lib/supabase/browser";
 import { Top, Panel, Empty } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
-import AiPlanBox, { pushToCalendar } from "@/components/AiPlan";
+import AiPlanBox from "@/components/AiPlan";
 import TaskModal from "@/components/TaskModal";
+import { setTaskDone, doneNextStep } from "@/components/taskDone";
 import { today, fmtDate, TASK_KINDS, taskKindCls, type Row, type TaskAttachment } from "@/lib/crm";
 import { LinkPicker, AttachmentChips } from "@/components/TaskBits";
 
@@ -60,19 +61,19 @@ export default function Tasks() {
   // done with a next step: clear it from the card and note it in the card's history
   async function doneNext(r: Row) {
     setNexts((x) => x.filter((y) => y.id !== r.id));
-    const table = r.rec === "lead" ? "crm_leads" : "crm_clients";
-    const { error } = await sb().from(table).update({ next_step: null, next_at: null, next_time: null }).eq("id", r.recId);
-    if (error) { toast(error.message, true); load(); return; }
-    await sb().from("crm_activities").insert({ org_id: org, [r.rec === "lead" ? "lead_id" : "client_id"]: r.recId, type: "מערכת", text: "בוצע הצעד הבא: " + r.title, by: "מערכת" });
+    const err = await doneNextStep(org, r.rec, r.recId, r.title);
+    if (err) { toast("לא עודכן: " + err, true); load(); return; }
     refreshCounts();
     toast("סומן כבוצע. צעד הבא חדש קובעים בכרטיס");
   }
   async function toggle(r: Row) {
     if (r.isNext) return doneNext(r);
-    setRows((x) => x!.map((y) => (y.id === r.id ? { ...y, done: !r.done } : y)));
-    await sb().from("crm_tasks").update({ done: !r.done }).eq("id", r.id);
+    const done = !r.done;
+    setRows((x) => x!.map((y) => (y.id === r.id ? { ...y, done } : y)));
+    const err = await setTaskDone(r, done, !!settings.gcal?.email);
+    if (err) { setRows((x) => x!.map((y) => (y.id === r.id ? { ...y, done: r.done } : y))); return toast("לא עודכן: " + err, true); }
     refreshCounts();
-    if (settings.gcal?.email && r.gcal_event_id && !r.done) pushToCalendar(r.id, true);
+    toast(done ? "סומנה כבוצעה" : "המשימה נפתחה מחדש");
   }
 
   return (
@@ -97,7 +98,7 @@ export default function Tasks() {
                 const atts = (Array.isArray(r.attachments) ? r.attachments : []) as TaskAttachment[];
                 return (
                   <div key={r.id} className={"tcard" + (r.done ? " done" : "")}>
-                    <input type="checkbox" checked={!!r.done} onChange={() => toggle(r)} aria-label="בוצעה" />
+                    <button type="button" className={"tcheck" + (r.done ? " on" : "")} onClick={() => toggle(r)} aria-label={r.done ? "פתיחה מחדש" : "סימון כבוצעה"} title={r.done ? "פתיחה מחדש" : "סימון כבוצעה"}><Icon n="check" s={15} /></button>
                     <div className="tcard-b">
                       {r.isNext ? <Link className="tcard-t" href={(r.rec === "lead" ? "/leads/" : "/clients/") + r.recId}>{r.title}</Link>
                         : <button type="button" className="tcard-t" onClick={() => setEdit(r)}>{r.title}</button>}

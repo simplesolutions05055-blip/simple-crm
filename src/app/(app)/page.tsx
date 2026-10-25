@@ -7,9 +7,17 @@ import Icon from "@/components/Icon";
 import { STAGES, today, fmtDate, money, ago, QUOTE_STATUS_CLS, type Row } from "@/lib/crm";
 import { useApp } from "@/components/AppCtx";
 import { StopAlerts, needsStop } from "@/components/ClientProducts";
+import { setTaskDone, doneNextStep } from "@/components/taskDone";
 
 export default function Dashboard() {
-  const { settings } = useApp();
+  const { settings, org, toast, refreshCounts } = useApp();
+  // close a next step or a task right from the dashboard, without opening anything
+  const tick = (fn: () => Promise<string>, msg: string) => async (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    const err = await fn();
+    if (err) return toast("לא עודכן: " + err, true);
+    toast(msg); refreshCounts(); load();
+  };
   const [d, setD] = useState<Row | null>(null);
 
   const load = async () => {
@@ -17,7 +25,7 @@ export default function Dashboard() {
       const since = new Date(Date.now() - 7 * 86400000).toISOString();
       const [leads, tasks, quotes, pays, services, sup] = await Promise.all([
         sb().from("crm_leads").select("id,name,biz,stage,created_at,next_step,next_at,next_time,last_contact_at").is("archived_at", null),
-        sb().from("crm_tasks").select("id,title,due_date,lead_id,client_id").eq("done", false).lte("due_date", t).order("due_date"),
+        sb().from("crm_tasks").select("id,title,due_date,lead_id,client_id,gcal_event_id").eq("done", false).lte("due_date", t).order("due_date"),
         sb().from("crm_quotes").select("id,no,status,views,sent_at,totals,lead:crm_leads(name,biz),client:crm_clients(biz)").in("status", ["נשלחה", "נצפתה"]).order("sent_at", { ascending: false }),
         sb().from("crm_payments").select("id,what,amount,due,client:crm_clients(id,biz)").is("paid_at", null).lte("due", t).order("due"),
         sb().from("crm_client_services").select("price,billing,status,client:crm_clients(status)").eq("billing", "חודשי").eq("status", "פעיל"),
@@ -85,6 +93,7 @@ export default function Dashboard() {
                   <Icon n="flag" />
                   <span className="grow"><b>{l.next_step || "צעד הבא"}</b><span className="meta">{l.name} · {fmtDate(l.next_at)}{l.next_time ? " · " + String(l.next_time).slice(0, 5) : ""}</span></span>
                   {l.next_at < today() ? <St cls="bad">באיחור</St> : <St cls="gold">היום</St>}
+                  <button type="button" className="tcheck" title="בוצע" aria-label="בוצע" onClick={tick(() => doneNextStep(org, "lead", l.id, l.next_step), "סומן כבוצע")}><Icon n="check" s={15} /></button>
                 </Link>
               ))}
               {d.tasks.map((t: Row) => (
@@ -92,6 +101,7 @@ export default function Dashboard() {
                   <Icon n="tasks" />
                   <span className="grow"><b>{t.title}</b><span className="meta">משימה · {fmtDate(t.due_date)}</span></span>
                   {t.due_date < today() ? <St cls="bad">באיחור</St> : <St cls="gold">היום</St>}
+                  <button type="button" className="tcheck" title="בוצעה" aria-label="בוצעה" onClick={tick(() => setTaskDone(t, true, !!settings.gcal?.email), "סומנה כבוצעה")}><Icon n="check" s={15} /></button>
                 </Link>
               ))}
             </Panel>

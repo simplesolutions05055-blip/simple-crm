@@ -8,10 +8,11 @@ import { sb } from "@/lib/supabase/browser";
 import { Panel } from "./Shell";
 import Icon from "./Icon";
 import { useApp } from "./AppCtx";
+import { setTaskDone } from "./taskDone";
 import { fmtDate, today, type Row } from "@/lib/crm";
 
 export default function CardTasks({ leadId, clientId }: { leadId?: string; clientId?: string }) {
-  const { org, toast, refreshCounts } = useApp();
+  const { org, toast, refreshCounts, settings } = useApp();
   const [items, setItems] = useState<Row[] | null>(null);
   const [dated, setDated] = useState<Row[]>([]);
   const [title, setTitle] = useState("");
@@ -20,7 +21,7 @@ export default function CardTasks({ leadId, clientId }: { leadId?: string; clien
     const col = clientId ? "client_id" : "lead_id", val = (clientId || leadId)!;
     const [a, b] = await Promise.all([
       sb().from("crm_card_items").select("*").eq(col, val).order("pos").order("created_at"),
-      sb().from("crm_tasks").select("id,title,done,due_date,start_time").eq(col, val).order("done").order("due_date"),
+      sb().from("crm_tasks").select("id,title,done,due_date,start_time,gcal_event_id").eq(col, val).order("done").order("due_date"),
     ]);
     setItems(a.data || []);
     setDated(b.data || []);
@@ -51,7 +52,8 @@ export default function CardTasks({ leadId, clientId }: { leadId?: string; clien
   }
   async function toggleDated(t: Row) {
     setDated((x) => x.map((y) => (y.id === t.id ? { ...y, done: !t.done } : y)));
-    await sb().from("crm_tasks").update({ done: !t.done }).eq("id", t.id);
+    const err = await setTaskDone(t, !t.done, !!settings.gcal?.email);
+    if (err) { setDated((x) => x.map((y) => (y.id === t.id ? { ...y, done: t.done } : y))); return toast("לא עודכן: " + err, true); }
     refreshCounts();
   }
 

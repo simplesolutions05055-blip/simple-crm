@@ -9,7 +9,7 @@ import { Top, St } from "@/components/Shell";
 import Icon from "@/components/Icon";
 import { useApp } from "@/components/AppCtx";
 import { download } from "@/components/ExcelIO";
-import { STAGES, SOURCES, INDUSTRIES, type Row } from "@/lib/crm";
+import { STAGES, SOURCES, INDUSTRIES, fmtDate, today, type Row } from "@/lib/crm";
 import { REGIONS } from "@/lib/regions";
 
 const GROUPS = ["הכל", "בטיפול", "סגירת פנייה", "לא עכשיו", "נפסל", "הפכו ללקוח", "ארכיון"] as const;
@@ -22,13 +22,21 @@ function groupOf(l: Row): Group {
   return (GROUPS as readonly string[]).includes(l.stage) ? (l.stage as Group) : "בטיפול";
 }
 const DATES = [["", "כל הזמן"], ["7", "7 הימים האחרונים"], ["30", "30 הימים האחרונים"], ["90", "90 הימים האחרונים"], ["month", "החודש"], ["range", "טווח תאריכים"]] as const;
-type Sort = "date" | "name" | "industry" | "stage";
+type Sort = "date" | "name" | "industry" | "stage" | "next";
 type F = { g: Group; q: string; date: string; from: string; to: string; industry: string; source: string; campaign: string; region: string; sort: Sort; asc: boolean };
 const EMPTY: F = { g: "הכל", q: "", date: "", from: "", to: "", industry: "", source: "", campaign: "", region: "", sort: "date", asc: false };
 const KEY = "crm.leadsPool.filters";
 
 const ymd = (d: Date) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 const dmy = (s?: string) => { if (!s) return ""; const d = new Date(s); return String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0") + "/" + String(d.getFullYear()).slice(2); };
+/* the next step's date and hour, as the sort key and as the label in the list */
+const nextKey = (l: Row) => (l.next_at ? l.next_at + " " + (l.next_time ? String(l.next_time).slice(0, 5) : "00:00") : "");
+function NextChip({ l }: { l: Row }) {
+  if (!l.next_at) return <span className="faint">-</span>;
+  const t = today();
+  const cls = l.next_at < t ? "bad" : l.next_at === t ? "gold" : "";
+  return <span className={"nx " + cls} title={l.next_step || ""}>{l.next_at === t ? "היום" : fmtDate(l.next_at)}{l.next_time ? " · " + String(l.next_time).slice(0, 5) : ""}</span>;
+}
 const fileDate = () => { const d = new Date(); return d.getDate() + "." + (d.getMonth() + 1) + "." + d.getFullYear(); };
 
 export default function LeadsPool() {
@@ -83,8 +91,12 @@ export default function LeadsPool() {
   }, [base]);
   const list = useMemo(() => {
     const xs = base.filter((l) => f.g === "הכל" || groupOf(l) === f.g);
-    const val = (l: Row) => (f.sort === "date" ? l.created_at || "" : f.sort === "name" ? l.name || l.biz || "" : f.sort === "industry" ? l.industry || "" : l.stage || "");
-    xs.sort((a, b) => { const r = String(val(a)).localeCompare(String(val(b)), "he"); return f.asc ? r : -r; });
+    const val = (l: Row) => (f.sort === "date" ? l.created_at || "" : f.sort === "name" ? l.name || l.biz || "" : f.sort === "industry" ? l.industry || "" : f.sort === "next" ? nextKey(l) : l.stage || "");
+    xs.sort((a, b) => {
+      // by next step: leads without one always go last
+      if (f.sort === "next" && !nextKey(a) !== !nextKey(b)) return nextKey(a) ? -1 : 1;
+      const r = String(val(a)).localeCompare(String(val(b)), "he"); return f.asc ? r : -r;
+    });
     return xs;
   }, [base, f.g, f.sort, f.asc]);
 
@@ -132,7 +144,7 @@ export default function LeadsPool() {
         </div>
         {filtered ? <div className="bar"><button className="btn sm ghost" onClick={() => setF(EMPTY)}><Icon n="reset" s={14} />ניקוי הסינון</button></div> : null}
         <div className="pool">
-          <div className="pr h">{head("date", "תאריך")}{head("name", "שם ועסק")}<span>טלפון</span>{head("industry", "תחום")}<span>מקור / קמפיין</span>{head("stage", "סטטוס")}</div>
+          <div className="pr h">{head("date", "תאריך")}{head("name", "שם ועסק")}<span>טלפון</span>{head("next", "צעד הבא")}{head("industry", "תחום")}<span>מקור / קמפיין</span>{head("stage", "סטטוס")}</div>
           {!rows ? <div className="pr"><span className="tiny">טוען…</span></div>
             : !list.length ? <div className="pr"><span className="tiny">אין לידים בסינון הזה</span></div>
             : list.map((l) => (
@@ -140,6 +152,7 @@ export default function LeadsPool() {
                 <span className="d">{dmy(l.created_at)}</span>
                 <span className="nm"><b>{l.name || l.biz || "ללא שם"}</b>{l.biz && l.name ? <span className="meta"> · {l.biz}</span> : null}</span>
                 <span className="ph">{l.phone || ""}</span>
+                <span className="nxc"><NextChip l={l} /></span>
                 <span className="ind">{l.industry || ""}</span>
                 <span className="src meta">{[l.source, l.campaign].filter(Boolean).join(" · ")}</span>
                 <St cls={stCls(l)}>{groupOf(l) === "הפכו ללקוח" ? "לקוח" : l.archived_at ? "ארכיון" : l.stage}</St>
