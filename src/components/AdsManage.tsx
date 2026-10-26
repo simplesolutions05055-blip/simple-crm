@@ -382,6 +382,71 @@ function Audience({ c, set, onClose, onDone }: { c: Row; set: Row; onClose: () =
   );
 }
 
+/* the main colors of a logo: pixels grouped into coarse buckets, transparent and near-white skipped,
+   the biggest groups first, near-duplicates merged */
+async function logoColors(file: File): Promise<string[]> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const W = 120, H = Math.max(1, Math.round((img.height / img.width) * W));
+    const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+    const ctx = cv.getContext("2d");
+    if (!ctx) return [];
+    ctx.drawImage(img, 0, 0, W, H);
+    const px = ctx.getImageData(0, 0, W, H).data;
+    const groups = new Map<string, { n: number; r: number; g: number; b: number }>();
+    for (let i = 0; i < px.length; i += 4) {
+      const [r, g, b, a] = [px[i], px[i + 1], px[i + 2], px[i + 3]];
+      if (a < 128 || (r > 240 && g > 240 && b > 240)) continue;
+      const k = (r >> 5) + "," + (g >> 5) + "," + (b >> 5);
+      const x = groups.get(k) || { n: 0, r: 0, g: 0, b: 0 };
+      x.n++; x.r += r; x.g += g; x.b += b; groups.set(k, x);
+    }
+    const hex = (v: number) => Math.round(v).toString(16).padStart(2, "0");
+    const out: { c: number[]; h: string }[] = [];
+    const total = [...groups.values()].reduce((a, x) => a + x.n, 0);
+    for (const x of [...groups.values()].sort((a, b) => b.n - a.n)) {
+      if (x.n < total * 0.04) break; /* edge pixels and small details are not brand colors */
+      const c = [x.r / x.n, x.g / x.n, x.b / x.n];
+      if (out.some((o) => Math.hypot(o.c[0] - c[0], o.c[1] - c[1], o.c[2] - c[2]) < 60)) continue;
+      out.push({ c, h: "#" + c.map(hex).join("") });
+      if (out.length === 4) break;
+    }
+    return out.map((o) => o.h);
+  } catch { return []; } finally { URL.revokeObjectURL(url); }
+}
+
+function LogoField({ url, onChange }: { url: string; onChange: (url: string, colors?: string) => void }) {
+  const { org, toast } = useApp();
+  const [busy, setBusy] = useState(false);
+  async function pick(file: File | undefined) {
+    if (!file) return;
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) return toast("PNG, JPG או WEBP", true);
+    if (file.size > 5 * 1024 * 1024) return toast("עד 5MB", true);
+    setBusy(true);
+    const ext = file.type.split("/")[1].replace("jpeg", "jpg");
+    const path = org + "/brand-logo-" + crypto.randomUUID() + "." + ext;
+    const [{ error }, colors] = await Promise.all([
+      sb().storage.from("crm-graphics").upload(path, file, { contentType: file.type, upsert: false }),
+      logoColors(file),
+    ]);
+    setBusy(false);
+    if (error) return toast("ההעלאה נכשלה: " + error.message, true);
+    onChange(sb().storage.from("crm-graphics").getPublicUrl(path).data.publicUrl, colors.join(", ") || undefined);
+    toast(colors.length ? "הלוגו הועלה והצבעים נלקחו ממנו. לוחצים שמירה" : "הלוגו הועלה. לוחצים שמירה");
+  }
+  return (
+    <div className="field full"><span>לוגו</span>
+      <div className="bar" style={{ flexWrap: "wrap" }}>
+        {url ? <img src={url} alt="לוגו" className="logoprev" /> : null}
+        <label className="btn sm">{busy ? "מעלה…" : url ? "החלפת לוגו" : "העלאת קובץ לוגו"}<input type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(ev) => { pick(ev.target.files?.[0]); ev.target.value = ""; }} /></label>
+        {url ? <button type="button" className="btn sm ghost" onClick={() => onChange("")}>הסרה</button> : null}
+      </div>
+      <span className="tiny">עדיף PNG עם רקע שקוף.</span>
+    </div>
+  );
+}
+
 /* engine settings for the whole business: who gets the approval emails and the brand details for new ads */
 export function EngineSettingsPanel() {
   const { org, toast } = useApp();
@@ -421,8 +486,13 @@ export function EngineSettingsPanel() {
         <div className="form">
           {f("business", "שם העסק במודעות", "Simple Solution")}
           {f("site", "אתר ברירת מחדל", "https://", true)}
-          {f("colors", "צבעי המותג", "לדוגמה: כחול כהה #1f3c88 ולבן")}
-          {f("logo_url", "קישור ללוגו (PNG)", "https://", true)}
+          <LogoField url={e.logo_url || ""} onChange={(logo_url, colors) => setE({ ...e, logo_url, ...(colors ? { colors } : {}) })} />
+          <label className="field full"><span>צבעי המותג (נלקחים מהלוגו, אפשר לערוך)</span>
+            <div className="bar" style={{ flexWrap: "nowrap" }}>
+              {String(e.colors || "").match(/#[0-9a-f]{6}/gi)?.map((c) => <span key={c} className="swatch" style={{ background: c }} title={c} />)}
+              <input className="inp ltr" style={{ flex: 1 }} value={e.colors || ""} placeholder="#1f3c88, #ffffff" onChange={(ev) => setE({ ...e, colors: ev.target.value })} />
+            </div>
+          </label>
           <label className="bar tiny full" style={{ cursor: "pointer" }}><input type="checkbox" checked={!!e.brand_in_ads} onChange={(ev) => setE({ ...e, brand_in_ads: ev.target.checked })} />לשים את הלוגו ושם העסק בגרפיקות</label>
         </div>
         <h3 className="tiny" style={{ margin: "14px 0 6px" }}><b>מיילים לאישור מודעות ולהתראות</b></h3>
