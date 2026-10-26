@@ -806,3 +806,5 @@ b.bad{color:var(--bad)}
 .draftrow{display:flex;flex-direction:column;gap:8px}
 .draftimg{width:150px;max-width:40vw;border-radius:8px;display:block;background:#eef0f6}
 .draftimg.story{width:90px}
+.logoprev{height:48px;max-width:140px;object-fit:contain;border-radius:8px;background:#f4f5f9;padding:4px}
+.swatch{width:26px;height:26px;border-radius:6px;flex:none;border:1px solid rgba(0,0,0,.12)}
