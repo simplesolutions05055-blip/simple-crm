@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "../lp.css";
 import LeadForm from "../LeadForm";
-import WaFab from "../WaFab";
+import WaFab, { ChatIcon } from "../WaFab";
 
 /* landing page for the "קמפיין AI" first-month promo (traffic from the TikTok / Meta ads).
    Prices match the AI campaign quote: 600 before VAT a month, the first month at 50%. */
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const WA = "https://wa.me/972509697776?text=" + encodeURIComponent("היי מאור, ראיתי את המבצע של 50% על ניהול קמפיין ואשמח לפרטים");
+const WA = "https://wa.me/972549020253?text=" + encodeURIComponent("היי מאור, ראיתי את המבצע של 50% על ניהול קמפיין ואשמח לפרטים");
 const LOGO = "https://simple-solutions-site.vercel.app/logo-simple-solutions.png";
 
 const INC = [
@@ -35,22 +35,24 @@ const FAQ = [
 export default function Page() {
   return (
     <div className="lp">
-      <header className="lp-top"><span className="lp-logo-chip"><img src={LOGO} alt="Simple Solutions" className="lp-logo" /></span><a className="lp-wa-mini" href={WA}>וואטסאפ</a></header>
+      <header className="lp-top"><span className="lp-logo-chip"><img src={LOGO} alt="Simple Solutions" className="lp-logo" /></span><a className="lp-wa lp-wa-sm" href={WA}><ChatIcon />וואטסאפ</a></header>
 
       <section className="lp-hero">
-        <div className="lp-wrap lp-hero-grid">
-          <div>
-            <span className="lp-eyebrow">מבצע למצטרפים חדשים · לזמן מוגבל</span>
-            <h1>ניהול קמפיין ממומן לעסק שלך. <span className="lp-gold">החודש הראשון ב-50% הנחה.</span></h1>
-            <p className="lp-sub">לבעלי עסקים נותני שירות: אני בונה ומנהל לך קמפיין במטא או בטיקטוק, עם מעקב יומי ופגישת תוצאות כל שבועיים. בלי התחייבות לחודשים.</p>
-            <div className="lp-price-chip">
-              <b>300 ₪</b><s>600 ₪</s><span>לחודש הראשון, לפני מע&quot;מ</span>
-            </div>
+        <div className="lp-wrap lp-banner">
+          <div className="lp-big" aria-label="50% הנחה"><span className="lp-big-num">50<small>%</small></span><span className="lp-big-off">הנחה</span></div>
+          <div className="lp-banner-text">
+            <h1>מבצע מיוחד <span className="lp-gold">למצטרפים חדשים</span></h1>
+            <p className="lp-sub">ניהול קמפיין ממומן במטא או בטיקטוק לעסקים נותני שירות. החודש הראשון ב-300 ₪ במקום 600 ₪ (לפני מע&quot;מ), עם מעקב יומי ופגישת תוצאות כל שבועיים. בלי התחייבות לחודשים.</p>
           </div>
-          <div className="lp-card" id="form">
-            <h2>לתיאום שיחה קצרה</h2>
-            <p className="lp-muted">משאירים שם וטלפון, ומאור חוזר אליך.</p>
-            <LeadForm page="campaign-50" cta="שמרו לי את המבצע" />
+        </div>
+        <div className="lp-wrap"><div className="lp-limited"><span>לזמן מוגבל בלבד</span></div></div>
+      </section>
+
+      <section className="lp-formbar" id="form">
+        <div className="lp-wrap">
+          <div className="lp-card wide">
+            <div className="lp-card-head"><h2>לתיאום שיחה קצרה</h2><p className="lp-muted">משאירים שם וטלפון, ומאור חוזר אליך.</p></div>
+            <LeadForm page="campaign-50" cta="שמרו לי את המבצע" wide />
           </div>
         </div>
       </section>
@@ -101,7 +103,7 @@ export default function Page() {
           <p>שיחה קצרה, בלי התחייבות. אם זה לא מתאים, אגיד לך את זה ישר.</p>
           <div className="lp-cta-row">
             <a className="lp-btn" href="#form">שמרו לי את המבצע</a>
-            <a className="lp-btn lp-ghost" href={WA}>לכתוב לי בוואטסאפ</a>
+            <a className="lp-wa" href={WA}><ChatIcon />לכתוב לי בוואטסאפ</a>
           </div>
         </div>
       </section>
