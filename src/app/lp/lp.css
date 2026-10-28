@@ -176,3 +176,6 @@
 .lp-credit a:hover{border-color:var(--p7)}
 @media (max-width:860px){.lp-fifty{width:240px}}
 .lp-formbar{padding-bottom:24px}
+.lp-fifty{width:380px}
+.lp-art .lp-big-off{margin-top:4px}
+@media (max-width:860px){.lp-fifty{width:280px}}
