@@ -40,6 +40,7 @@ export default function Page() {
         </div>
       </section>
 
+      <footer className="lp-credit">נבנה על ידי <a href="https://www.simple-solution.co.il/" target="_blank" rel="noopener">Simple Solution</a></footer>
     </div>
   );
 }
