@@ -1,7 +1,11 @@
+/* Heebo served from this site (variable weight, Hebrew + Latin subsets, SIL OFL - see public/lp/fonts/OFL.txt),
+   so the headline never falls back to a system font when Google Fonts is slow or blocked */
+@font-face{font-family:'Heebo LP';font-style:normal;font-weight:100 900;font-display:swap;src:url(/lp/fonts/heebo-hebrew-wght-normal.woff2) format('woff2');unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
+@font-face{font-family:'Heebo LP';font-style:normal;font-weight:100 900;font-display:swap;src:url(/lp/fonts/heebo-latin-wght-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 /* landing pages of the CRM, in the Simple Solutions brand (deep purple, violet neon, gold accent, Heebo).
    Everything is scoped under .lp */
 .lp{--p:#3D1466;--p9:#1F0B33;--p7:#5A1E94;--v:#8a3cff;--g:#C9A961;--g5:#F5E8B0;--ink:#1F0B33;--mute:rgba(31,11,51,.68);--line:rgba(61,20,102,.14);
-  font-family:'Heebo',sans-serif;color:var(--ink);background:#fff;min-height:100vh;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:clip}
+  font-family:'Heebo LP','Heebo',sans-serif;color:var(--ink);background:#fff;min-height:100vh;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:clip}
 .lp *{box-sizing:border-box}
 .lp h1,.lp h2{margin:0;font-weight:800;line-height:1.12;letter-spacing:-.01em}
 .lp p{margin:0}
@@ -35,16 +39,16 @@
 .lp-hero-grid{position:relative;z-index:1;width:100%;display:grid;grid-template-columns:1.1fr .9fr;column-gap:24px;
   grid-template-areas:"h1 fifty" "price photo" "next photo";grid-template-rows:auto auto 1fr}
 .lp-h1{grid-area:h1;display:flex;flex-direction:column;align-items:center;text-align:center;font-size:clamp(30px,6.3vh,64px)!important;color:#fff}
-.lp-a-fifty{grid-area:fifty;align-self:center;display:flex;justify-content:center;pointer-events:none;margin-bottom:-3.5vh}
+.lp-a-fifty{grid-area:fifty;align-self:start;display:flex;justify-content:center;pointer-events:none;margin-bottom:-14vh}
 /* the 50% hero mark */
 .lp-fifty-box{position:relative;display:flex;flex-direction:column;align-items:center;animation:lp-pop .8s cubic-bezier(.2,1.4,.4,1) both}
 .lp-burst{position:absolute;left:50%;top:44%;width:150%;aspect-ratio:1;translate:-50% -50%;z-index:0;pointer-events:none;opacity:.9}
 .lp-burst-rays{transform-origin:0 0;animation:lp-spin 60s linear infinite}
 .lp-fifty{position:relative;z-index:1;height:clamp(72px,18vh,196px);width:auto;display:block;rotate:-7deg;animation:lp-bob 4.5s ease-in-out .8s infinite}
 .lp-fifty-pill{position:relative;z-index:2;margin-top:clamp(-14px,-1.2vh,-6px);padding:clamp(3px,.6vh,6px) clamp(18px,2.6vh,30px);border-radius:99px;rotate:-7deg;
-  font-weight:900;font-size:clamp(16px,2.7vh,27px);line-height:1.15;letter-spacing:.06em;color:#fff;text-shadow:0 1px 0 rgba(122,11,74,.55);
-  background:linear-gradient(180deg,#ff8fcb 0%,#ff4aa8 48%,#d81f86 100%);border:2px solid rgba(255,255,255,.75);
-  box-shadow:0 0 0 3px rgba(122,11,74,.55),0 12px 26px -8px rgba(255,61,158,.85),inset 0 -4px 8px rgba(122,11,74,.35)}
+  font-weight:900;font-size:clamp(16px,2.7vh,27px);line-height:1.15;letter-spacing:.06em;color:#fff;text-shadow:0 1px 0 rgba(30,14,110,.55);
+  background:linear-gradient(180deg,#86b4ff 0%,#4a63ff 48%,#7a2ee6 100%);border:2px solid rgba(255,255,255,.75);
+  box-shadow:0 0 0 3px rgba(30,14,110,.55),0 12px 26px -8px rgba(77,107,255,.85),inset 0 -4px 8px rgba(30,14,110,.35)}
 .lp-fifty-pill::before{content:"";position:absolute;inset:3px 12% 52% 12%;border-radius:99px;background:linear-gradient(180deg,rgba(255,255,255,.7),rgba(255,255,255,0))}
 .lp-fifty-stars{position:absolute;inset:-8% -10%;width:120%;height:116%;z-index:3;pointer-events:none;overflow:visible}
 .lp-spark.d3{animation-delay:1.5s}
@@ -52,7 +56,7 @@
 @keyframes lp-spin{to{transform:rotate(360deg)}}
 @keyframes lp-bob{0%,100%{translate:0 0}50%{translate:0 -5px}}
 @media (prefers-reduced-motion:reduce){.lp-fifty-box,.lp-burst-rays,.lp-fifty{animation:none}}
-.lp-a-price{grid-area:price;display:flex;justify-content:center;margin-top:clamp(6px,2vh,22px)}
+.lp-a-price{grid-area:price;display:flex;justify-content:center;margin-top:clamp(-6px,-.6vh,0px)}
 .lp-price{height:clamp(110px,26vh,250px);width:auto;max-width:100%;display:block;filter:drop-shadow(0 18px 34px rgba(0,0,0,.4))}
 .lp-a-next{grid-area:next;display:flex;flex-direction:column;align-items:center;text-align:center;padding-bottom:clamp(48px,7vh,64px)}
 .lp-next{font-size:clamp(16px,2.6vh,23px);font-weight:800;color:#fff;margin-top:clamp(2px,1vh,10px)!important;text-wrap:balance}
@@ -113,9 +117,9 @@
   .lp-hero-grid{grid-template-columns:62% 38%;column-gap:0;grid-template-areas:"h1 fifty" "price photo" "next next";grid-template-rows:auto auto auto}
   .lp-h1{font-size:min(4.4vh,6.3vw,40px)!important}
   .lp-h1 span{white-space:nowrap}
-  .lp-a-fifty{margin-bottom:0}
+  .lp-a-fifty{margin-bottom:-4vh}
   .lp-fifty{height:clamp(56px,9vh,100px)}
-  .lp-fifty-pill{font-size:clamp(13px,1.9vh,18px);padding:2px 14px;margin-top:-6px;border-width:1.5px;box-shadow:0 0 0 2px rgba(122,11,74,.55),0 8px 18px -6px rgba(255,61,158,.85)}
+  .lp-fifty-pill{font-size:clamp(13px,1.9vh,18px);padding:2px 14px;margin-top:-6px;border-width:1.5px;box-shadow:0 0 0 2px rgba(30,14,110,.55),0 8px 18px -6px rgba(77,107,255,.85)}
   .lp-price{height:clamp(96px,17vh,190px)}
   .lp-a-photo{align-self:end}
   .lp-a-photo img{max-height:clamp(110px,19vh,210px)}
