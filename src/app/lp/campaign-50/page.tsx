@@ -19,7 +19,7 @@ const LOGO = "https://simple-solutions-site.vercel.app/logo-simple-solutions.png
 export default function Page() {
   return (
     <div className="lp">
-      <header className="lp-top"><span className="lp-logo-chip"><img src={LOGO} alt="Simple Solutions" className="lp-logo" /></span><a className="lp-wa lp-wa-sm" href={WA}><ChatIcon />וואטסאפ</a></header>
+      <header className="lp-top"><span className="lp-logo-chip"><img src={LOGO} alt="Simple Solutions" className="lp-logo" /></span><a className="lp-wa-fab" href={WA} aria-label="וואטסאפ" title="וואטסאפ"><ChatIcon /></a></header>
 
       <section className="lp-hero">
         <div className="lp-wrap lp-hero-grid">
