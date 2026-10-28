@@ -18,6 +18,11 @@
 .lp-wa{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 24px;border-radius:14px;font-weight:800;font-size:17px;text-decoration:none;color:#fff!important;background:#25D366;box-shadow:0 12px 30px -10px rgba(37,211,102,.7)}
 .lp-wa:hover{background:#1fbf5b}
 .lp-wa-sm{min-height:40px;padding:0 16px;font-size:15px;border-radius:99px}
+/* round icon-only WhatsApp button, top right under the logo */
+.lp-wa-fab{position:absolute;right:20px;top:calc(100% + 4px);width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  color:#fff!important;background:#25D366;box-shadow:0 0 0 4px rgba(37,211,102,.22),0 12px 28px -8px rgba(37,211,102,.75);transition:transform .15s}
+.lp-wa-fab:hover{background:#1fbf5b;transform:scale(1.06)}
+.lp-wa-fab svg{width:28px;height:28px}
 
 /* one screen: the hero takes what the form strip leaves, sizes follow the viewport height */
 .lp{display:flex;flex-direction:column;min-height:100svh}
@@ -28,7 +33,7 @@
 .lp-h1{grid-area:h1;display:flex;flex-direction:column;align-items:center;text-align:center;font-size:clamp(30px,6.3vh,64px)!important;color:#fff}
 .lp-a-fifty{grid-area:fifty;align-self:center;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
 .lp-fifty{height:clamp(64px,14vh,150px);width:auto;display:block;transform:rotate(-6deg)}
-.lp-a-fifty span{margin-top:-4px;font-weight:900;font-size:clamp(16px,3vh,28px);letter-spacing:.35em;color:#e9dcff;text-shadow:0 0 18px rgba(163,92,255,.8)}
+.lp-a-fifty span{margin-top:-4px;font-weight:900;font-size:clamp(16px,3vh,28px);letter-spacing:.35em;color:#ffd3ea;text-shadow:0 0 18px rgba(255,79,168,.8)}
 .lp-a-price{grid-area:price;display:flex;justify-content:center;margin-top:clamp(6px,2vh,22px)}
 .lp-price{height:clamp(110px,26vh,250px);width:auto;max-width:100%;display:block;filter:drop-shadow(0 18px 34px rgba(0,0,0,.4))}
 .lp-a-next{grid-area:next;display:flex;flex-direction:column;align-items:center;text-align:center;padding-bottom:clamp(48px,7vh,64px)}
@@ -93,6 +98,9 @@
   .lp-a-photo{align-self:end}
   .lp-a-photo img{max-height:clamp(110px,19vh,210px)}
   .lp-a-next{padding-bottom:clamp(44px,6vh,56px)}
+  /* no room under the logo next to the one-line headline: logo to the left, the round button takes the right corner */
+  .lp-top{flex-direction:row-reverse}
+  .lp-wa-fab{top:14px}
   .lp-form.wide{display:flex}
   .lp-form.wide .lp-row{grid-template-columns:1fr 1fr}
   .lp-form.wide .lp-row .lp-btn{grid-column:1/-1}
@@ -104,6 +112,8 @@
 @media (max-width:480px){
   .lp-logo{height:26px}
   .lp-wa-sm{min-height:36px;font-size:14px}
+  .lp-wa-fab{width:46px;height:46px;right:16px}
+  .lp-wa-fab svg{width:24px;height:24px}
   .lp-card-head h2{font-size:19px}
   .lp-muted{font-size:13px}
 }
