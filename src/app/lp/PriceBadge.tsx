@@ -36,7 +36,7 @@ export default function PriceBadge() {
 
       {/* "רק" chip */}
       <rect x="180" y="18" width="100" height="54" rx="16" fill="url(#pb-pill)" stroke="#d9b8ff" strokeWidth="2.5" transform="rotate(-4 230 45)" />
-      <text x="230" y="58" textAnchor="middle" fontFamily="Heebo, sans-serif" fontWeight="900" fontSize="34" fill="#fff" transform="rotate(-4 230 45)">רק</text>
+      <text x="230" y="58" textAnchor="middle" fontFamily="'Heebo LP', Heebo, sans-serif" fontWeight="900" fontSize="34" fill="#fff" transform="rotate(-4 230 45)">רק</text>
 
       {/* ₪ box */}
       <rect x="92" y="122" width="70" height="62" rx="14" fill="url(#pb-pill)" stroke="#d9b8ff" strokeWidth="2" />
@@ -61,7 +61,7 @@ export default function PriceBadge() {
 
       {/* "לחודש הראשון !" pill */}
       <rect x="66" y="206" width="328" height="56" rx="20" fill="url(#pb-pill)" stroke="#d9b8ff" strokeWidth="2.5" transform="rotate(-3 230 234)" />
-      <text x="230" y="245" textAnchor="middle" direction="rtl" fontFamily="Heebo, sans-serif" fontWeight="800" fontSize="32" fill="#fff" transform="rotate(-3 230 234)">לחודש הראשון !</text>
+      <text x="230" y="245" textAnchor="middle" direction="rtl" fontFamily="'Heebo LP', Heebo, sans-serif" fontWeight="800" fontSize="32" fill="#fff" transform="rotate(-3 230 234)">לחודש הראשון !</text>
 
       <g fill="#fff">
         <path className="lp-spark" d="M420 40 l5 13 13 5 -13 5 -5 13 -5 -13 -13 -5 13 -5z" />
