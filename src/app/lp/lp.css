@@ -1,75 +1,87 @@
-/* Heebo served from this site (variable weight, Hebrew + Latin subsets, SIL OFL - see public/lp/fonts/OFL.txt),
-   so the headline never falls back to a system font when Google Fonts is slow or blocked */
+/* Self-hosted fonts (SIL OFL, see public/lp/fonts): Heebo for all text, Space Grotesk for the price and the brand pill,
+   as on simple-solution.co.il. Served from this site so nothing falls back when Google Fonts is slow or blocked. */
 @font-face{font-family:'Heebo LP';font-style:normal;font-weight:100 900;font-display:swap;src:url(/lp/fonts/heebo-hebrew-wght-normal.woff2) format('woff2');unicode-range:U+0307-0308,U+0590-05FF,U+200C-2010,U+20AA,U+25CC,U+FB1D-FB4F}
 @font-face{font-family:'Heebo LP';font-style:normal;font-weight:100 900;font-display:swap;src:url(/lp/fonts/heebo-latin-wght-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
-/* landing pages of the CRM, in the Simple Solutions brand (deep purple, violet neon, gold accent, Heebo).
-   Everything is scoped under .lp */
-.lp{--p:#3D1466;--p9:#1F0B33;--p7:#5A1E94;--v:#8a3cff;--g:#C9A961;--g5:#F5E8B0;--ink:#1F0B33;--mute:rgba(31,11,51,.68);--line:rgba(61,20,102,.14);
-  font-family:'Heebo LP','Heebo',sans-serif;color:var(--ink);background:#fff;min-height:100vh;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:clip}
+@font-face{font-family:'Space Grotesk LP';font-style:normal;font-weight:300 700;font-display:swap;src:url(/lp/fonts/space-grotesk-latin-wght-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F}
+
+/* Landing pages of the CRM, in the simple-solution.co.il brand: deep purple, gold accent, Heebo.
+   Design spec: one offer block leads the eye, gold is the action colour. Everything is scoped under .lp */
+.lp{--p:#3D1466;--p9:#1F0B33;--p7:#5A1E94;--p4:#9d6ce7;--v:#8a3cff;--g:#C9A961;--g7:#A88845;--g5:#F5E8B0;--ink:#1F0B33;--mute:rgba(31,11,51,.68);--line:rgba(61,20,102,.14);
+  --num:'Space Grotesk LP','Heebo LP',sans-serif;
+  font-family:'Heebo LP','Heebo',sans-serif;color:var(--ink);background:#fff;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:clip;
+  display:flex;flex-direction:column;min-height:100svh}
 .lp *{box-sizing:border-box}
-.lp h1,.lp h2{margin:0;font-weight:800;line-height:1.12;letter-spacing:-.01em}
+.lp h1,.lp h2{margin:0;font-weight:800;line-height:1.1;letter-spacing:-.01em}
 .lp p{margin:0}
 .lp a{color:inherit}
-.lp-wrap{max-width:1120px;margin:0 auto;padding:0 20px}
-.lp-gold{background:linear-gradient(135deg,#d9b86c 0%,#f5e8b0 45%,#c9a961 75%,#a88845 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.lp-wrap{max-width:1120px;margin:0 auto;padding:0 20px;width:100%}
+.lp-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
-/* header */
+/* gold text that slowly shimmers (the site's .gold-text) */
+.lp-gold{background:linear-gradient(135deg,#d9b86c 0%,#f5e8b0 40%,#c9a961 70%,#a88845 100%);background-size:200% 200%;
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:lp-shimmer 6s ease-in-out infinite}
+
+/* header: logo chip + round WhatsApp button */
 .lp-top{position:absolute;inset:0 0 auto;z-index:3;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;max-width:1120px;margin:0 auto}
 .lp-logo-chip{display:inline-flex;background:#fff;border-radius:12px;padding:6px 12px}
 .lp-logo{height:40px;width:auto;display:block}
-
-/* WhatsApp in WhatsApp green */
-.lp-wa{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 24px;border-radius:14px;font-weight:800;font-size:17px;text-decoration:none;color:#fff!important;background:#25D366;box-shadow:0 12px 30px -10px rgba(37,211,102,.7)}
-.lp-wa:hover{background:#1fbf5b}
-.lp-wa-sm{min-height:40px;padding:0 16px;font-size:15px;border-radius:99px}
-/* round icon-only WhatsApp button, top right under the logo */
 .lp-wa-fab{position:absolute;right:20px;top:calc(100% + 4px);width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   color:#fff!important;background:#25D366;box-shadow:0 0 0 4px rgba(37,211,102,.22),0 12px 28px -8px rgba(37,211,102,.75);transition:transform .15s}
 .lp-wa-fab:hover{background:#1fbf5b;transform:scale(1.06)}
 .lp-wa-fab svg{width:28px;height:28px}
 
-/* one screen: the hero takes what the form strip leaves, sizes follow the viewport height */
-.lp{display:flex;flex-direction:column;min-height:100svh}
-.lp-hero{position:relative;flex:1 0 auto;display:flex;color:#fff;padding-top:clamp(62px,9vh,86px);background:radial-gradient(ellipse at 75% 0%,var(--p7) 0%,var(--p9) 72%)}
-.lp-hero::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 20% 55%,rgba(138,60,255,.28),transparent 42%)}
-/* the company "S" as a big glowing watermark behind the hero */
-.lp-bg-mark{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
-.lp-bg-mark img{position:absolute;left:50%;top:50%;height:118%;width:auto;transform:translate(-50%,-50%) rotate(-8deg);opacity:.42;mix-blend-mode:screen}
-.lp-bg-mark img:first-child{filter:blur(30px) saturate(1.5);opacity:.7}
-.lp-hero-grid{position:relative;z-index:1;width:100%;display:grid;grid-template-columns:1.1fr .9fr;column-gap:24px;
-  grid-template-areas:"h1 fifty" "price photo" "next photo";grid-template-rows:auto auto 1fr}
-.lp-h1{grid-area:h1;display:flex;flex-direction:column;align-items:center;text-align:center;font-size:clamp(30px,6.3vh,64px)!important;color:#fff}
-.lp-a-fifty{grid-area:fifty;align-self:start;display:flex;justify-content:center;pointer-events:none;margin-bottom:-14vh}
-/* the 50% hero mark */
-.lp-fifty-box{position:relative;display:flex;flex-direction:column;align-items:center;animation:lp-pop .8s cubic-bezier(.2,1.4,.4,1) both}
-.lp-burst{position:absolute;left:50%;top:44%;width:150%;aspect-ratio:1;translate:-50% -50%;z-index:0;pointer-events:none;opacity:.9}
-.lp-burst-rays{transform-origin:0 0;animation:lp-spin 60s linear infinite}
-.lp-fifty{position:relative;z-index:1;height:clamp(72px,18vh,196px);width:auto;display:block;rotate:-7deg;animation:lp-bob 4.5s ease-in-out .8s infinite}
-.lp-fifty-pill{position:relative;z-index:2;margin-top:clamp(-14px,-1.2vh,-6px);padding:clamp(3px,.6vh,6px) clamp(18px,2.6vh,30px);border-radius:99px;rotate:-7deg;
-  font-weight:900;font-size:clamp(16px,2.7vh,27px);line-height:1.15;letter-spacing:.06em;color:#fff;text-shadow:0 1px 0 rgba(30,14,110,.55);
-  background:linear-gradient(180deg,#86b4ff 0%,#4a63ff 48%,#7a2ee6 100%);border:2px solid rgba(255,255,255,.75);
-  box-shadow:0 0 0 3px rgba(30,14,110,.55),0 12px 26px -8px rgba(77,107,255,.85),inset 0 -4px 8px rgba(30,14,110,.35)}
-.lp-fifty-pill::before{content:"";position:absolute;inset:3px 12% 52% 12%;border-radius:99px;background:linear-gradient(180deg,rgba(255,255,255,.7),rgba(255,255,255,0))}
-.lp-fifty-stars{position:absolute;inset:-8% -10%;width:120%;height:116%;z-index:3;pointer-events:none;overflow:visible}
-.lp-spark.d3{animation-delay:1.5s}
-@keyframes lp-pop{0%{opacity:0;transform:scale(.55)}100%{opacity:1;transform:scale(1)}}
-@keyframes lp-spin{to{transform:rotate(360deg)}}
-@keyframes lp-bob{0%,100%{translate:0 0}50%{translate:0 -5px}}
-@media (prefers-reduced-motion:reduce){.lp-fifty-box,.lp-burst-rays,.lp-fifty{animation:none}}
-.lp-a-price{grid-area:price;display:flex;justify-content:center;margin-top:clamp(-6px,-.6vh,0px)}
-.lp-price{height:clamp(110px,26vh,250px);width:auto;max-width:100%;display:block;filter:drop-shadow(0 18px 34px rgba(0,0,0,.4))}
-.lp-a-next{grid-area:next;display:flex;flex-direction:column;align-items:center;text-align:center;padding-bottom:clamp(48px,7vh,64px)}
-.lp-next{font-size:clamp(16px,2.6vh,23px);font-weight:800;color:#fff;margin-top:clamp(2px,1vh,10px)!important;text-wrap:balance}
-.lp-vat{font-size:12px;color:rgba(255,255,255,.6);margin-top:2px!important}
-.lp-a-photo{grid-area:photo;align-self:end;display:flex;justify-content:center;align-items:flex-end;min-height:0}
-.lp-a-photo img{display:block;width:auto;height:auto;max-width:100%;max-height:calc(100svh - clamp(62px,9vh,86px) - 14vh - 200px);filter:drop-shadow(0 20px 40px rgba(0,0,0,.35))}
+/* hero: the site's dark CTA background, with a glow that breathes (opacity only) */
+.lp-hero{position:relative;flex:1 0 auto;display:flex;color:#fff;padding:clamp(70px,11vh,104px) 0 clamp(48px,7vh,64px);
+  background:radial-gradient(ellipse at 50% 50%,var(--p7) 0%,var(--p9) 80%);overflow:hidden}
+.lp-hero::before{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(circle at 70% 45%,rgba(157,108,231,.30),transparent 55%),radial-gradient(circle at 50% 100%,rgba(201,169,97,.20),transparent 50%);animation:lp-breathe 6s ease-in-out infinite}
+.lp-bg-mark{position:absolute;inset:0;pointer-events:none;z-index:0}
+.lp-bg-mark img{position:absolute;left:50%;top:50%;height:115%;width:auto;transform:translate(-50%,-50%) rotate(-8deg);opacity:.15;mix-blend-mode:screen}
 
-/* "לזמן מוגבל בלבד" ribbon */
-.lp-limited{display:flex;justify-content:center;margin-top:clamp(8px,2vh,22px)}
-.lp-limited span{display:inline-block;padding:clamp(6px,1.2vh,11px) clamp(18px,2.5vw,30px);font-size:clamp(17px,2.9vh,26px);font-weight:900;color:var(--p9);
-  background:linear-gradient(135deg,#f5e8b0 0%,#e3c478 40%,#c9a961 100%);border-radius:14px;transform:rotate(-2deg);
-  box-shadow:0 0 0 3px rgba(31,11,51,.6),0 0 0 5px rgba(201,169,97,.7),0 18px 40px -14px rgba(201,169,97,.7);animation:lp-pulse 2.4s ease-in-out infinite}
-.lp-limited span::before,.lp-limited span::after{content:"★";margin:0 12px;font-size:.7em;vertical-align:middle;color:var(--p7)}
+.lp-hero-grid{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);column-gap:28px;align-content:center;
+  grid-template-areas:". photo" "brand photo" "h1 photo" "trust photo" "offer photo" ". photo";grid-template-rows:1fr auto auto auto auto 1fr}
+.lp-brand-pill{grid-area:brand;justify-self:center;display:inline-flex;align-items:center;gap:12px;padding:8px 20px;border-radius:99px;margin-bottom:clamp(10px,2vh,22px);
+  background:rgba(31,11,51,.55);border:1px solid rgba(201,169,97,.3);backdrop-filter:blur(16px);
+  font-family:var(--num);font-size:12px;font-weight:600;letter-spacing:.32em;color:#fff;white-space:nowrap;animation:lp-fade .6s .05s both}
+.lp-brand-pill::before{content:"";width:22px;height:1px;background:var(--g)}
+.lp-h1{grid-area:h1;display:flex;flex-direction:column;align-items:center;text-align:center;font-size:clamp(32px,6.6vh,66px)!important;color:#fff}
+.lp-line{display:block;white-space:nowrap}
+.lp-w{display:inline-block;overflow:hidden;vertical-align:bottom;padding-bottom:.08em;margin-bottom:-.08em;margin-inline:.13em}
+.lp-w>span{display:inline-block;animation:lp-word .6s cubic-bezier(.2,.7,.2,1) both}
+.lp-trust{grid-area:trust;justify-self:center;display:inline-flex;align-items:center;gap:10px;margin-top:clamp(8px,1.6vh,16px);padding:7px 16px;border-radius:99px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(10px);font-size:13px;font-weight:600;color:rgba(255,255,255,.92);animation:lp-fade .6s .55s both}
+.lp-trust::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--g);box-shadow:0 0 10px var(--g)}
+.lp-a-offer{grid-area:offer;display:flex;justify-content:center;margin-top:clamp(16px,3vh,32px)}
+.lp-photo{grid-area:photo;position:relative;min-height:0}
+.lp-photo img{position:absolute;bottom:calc(-1 * clamp(48px,7vh,64px));left:50%;transform:translateX(-50%);height:calc(100% + clamp(48px,7vh,64px));width:auto;max-width:100%;object-fit:contain;object-position:bottom;
+  filter:drop-shadow(0 20px 40px rgba(0,0,0,.35))}
+
+/* the offer block: a glass card, the price counts down from 600 to 300 once, the old price gets struck */
+@property --lp-n{syntax:'<integer>';inherits:false;initial-value:300}
+.lp-offer{position:relative;width:min(100%,440px);padding:clamp(14px,2.4vh,26px) clamp(18px,2.6vw,32px) clamp(12px,2vh,22px);border-radius:24px;text-align:center;
+  background:linear-gradient(160deg,rgba(255,255,255,.13),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(14px);
+  box-shadow:0 30px 70px -24px rgba(10,4,30,.75),inset 0 1px 0 rgba(255,255,255,.18);animation:lp-rise .5s .45s cubic-bezier(.2,.7,.2,1) both}
+.lp-offer::before{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1px;pointer-events:none;
+  background:linear-gradient(135deg,rgba(201,169,97,.85),rgba(157,108,231,.35) 45%,rgba(59,107,255,.6));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+.lp-offer-tag{display:inline-block;padding:4px 14px;border-radius:99px;font-size:clamp(12px,1.7vh,14px);font-weight:800;letter-spacing:.04em;color:var(--g5);border:1px solid rgba(201,169,97,.55);background:rgba(201,169,97,.10)}
+.lp-offer-price{display:flex;align-items:baseline;justify-content:center;gap:clamp(8px,1.2vw,14px);margin-top:clamp(4px,1vh,10px);line-height:.9}
+.lp-offer-only{font-size:clamp(16px,2.6vh,24px);font-weight:800;color:rgba(255,255,255,.85)}
+.lp-offer-amount{display:inline-flex;align-items:baseline;gap:4px;font-family:var(--num);font-weight:700;font-size:clamp(54px,11.5vh,116px);letter-spacing:-.03em;
+  background:linear-gradient(180deg,#fff 30%,#d9c8ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 6px 18px rgba(138,60,255,.55))}
+.lp-offer-num::after{counter-reset:lp-n var(--lp-n,300);content:counter(lp-n)}
+.lp-offer-num{animation:lp-count .9s 1s cubic-bezier(.2,.7,.2,1) both}
+.lp-offer-cur{font-size:.42em;font-family:'Heebo LP',sans-serif;font-weight:800}
+.lp-offer-old{position:relative;text-decoration:none;font-family:var(--num);font-size:clamp(16px,2.6vh,24px);font-weight:600;color:rgba(255,255,255,.55);white-space:nowrap}
+.lp-offer-old::after{content:"";position:absolute;left:-4%;right:-4%;top:52%;height:2px;border-radius:2px;background:#ff5d7a;transform:rotate(-8deg) scaleX(0);transform-origin:left;animation:lp-strike .35s .8s ease-out both}
+.lp-offer-sub{margin-top:clamp(6px,1.2vh,12px)!important;font-size:clamp(14px,2.1vh,18px);font-weight:700;color:#fff;text-wrap:balance}
+.lp-offer-vat{margin-top:2px!important;font-size:12px;color:rgba(255,255,255,.62)}
+
+/* the 50% sticker on the card's corner */
+.lp-sticker{position:absolute;top:calc(-1 * clamp(22px,3.4vh,34px));left:calc(-1 * clamp(14px,2vw,30px));display:flex;flex-direction:column;align-items:center;rotate:-12deg;z-index:2;
+  animation:lp-pop .5s 1.2s cubic-bezier(.2,1.5,.4,1) both}
+.lp-fifty{height:clamp(46px,8.6vh,88px);width:auto;display:block;filter:drop-shadow(0 10px 18px rgba(20,10,80,.55))}
+.lp-sticker-pill{margin-top:-6px;padding:1px 12px;border-radius:99px;font-size:clamp(11px,1.6vh,14px);font-weight:900;color:#fff;letter-spacing:.04em;
+  background:linear-gradient(180deg,#86b4ff 0%,#4a63ff 48%,#7a2ee6 100%);border:1.5px solid rgba(255,255,255,.75);box-shadow:0 6px 14px -4px rgba(77,107,255,.85)}
 
 /* form strip, overlapping the bottom of the hero */
 .lp-formbar{position:relative;z-index:4;margin-top:-36px;padding-bottom:6px;scroll-margin-top:16px}
@@ -99,35 +111,48 @@
 .lp-btn:disabled{opacity:.6;cursor:default}
 .lp-btn.full{width:100%}
 
+/* the gold action button: a light sweep crosses it every few seconds (on hover too), the site's .btn-gold */
+.lp-btn{position:relative;overflow:hidden;isolation:isolate}
+.lp-btn::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.6) 50%,transparent 65%);transform:translateX(130%);animation:lp-sweep 4.5s 2s ease-in-out infinite}
+.lp-btn:hover{box-shadow:0 18px 50px -10px rgba(201,169,97,.75)}
+
 /* credit */
 .lp-credit{text-align:center;padding:2px 20px 6px;font-size:12px;line-height:1.4;color:var(--mute)}
 .lp-credit a{color:var(--p7);font-weight:700;text-decoration:none;border-bottom:1px solid rgba(90,30,148,.3)}
 
-.lp-spark{transform-box:fill-box;transform-origin:center;animation:lp-twinkle 2.2s ease-in-out infinite}
-.lp-spark.d2{animation-delay:.9s}
-@keyframes lp-twinkle{0%,100%{opacity:.35;transform:scale(.7)}50%{opacity:1;transform:scale(1.1)}}
-@keyframes lp-pulse{0%,100%{transform:rotate(-2deg) scale(1)}50%{transform:rotate(-2deg) scale(1.04)}}
-.lp-bg-mark img{animation:lp-float 9s ease-in-out infinite}
-@keyframes lp-float{0%,100%{transform:translate(-50%,-50%) rotate(-8deg)}50%{transform:translate(-50%,-52%) rotate(-6deg)}}
-@media (prefers-reduced-motion:reduce){.lp-bg-mark img{animation:none}}
-@media (prefers-reduced-motion:reduce){.lp-limited span,.lp-spark{animation:none}}
+@keyframes lp-shimmer{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+@keyframes lp-breathe{0%,100%{opacity:.7}50%{opacity:1}}
+@keyframes lp-word{from{transform:translateY(110%);opacity:0}to{transform:none;opacity:1}}
+@keyframes lp-fade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes lp-rise{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes lp-pop{from{opacity:0;scale:.4}to{opacity:1;scale:1}}
+@keyframes lp-count{from{--lp-n:600}to{--lp-n:300}}
+@keyframes lp-strike{to{transform:rotate(-8deg) scaleX(1)}}
+@keyframes lp-sweep{0%,70%{transform:translateX(130%)}100%{transform:translateX(-130%)}}
+@media (prefers-reduced-motion:reduce){
+  .lp-gold,.lp-hero::before,.lp-w>span,.lp-brand-pill,.lp-trust,.lp-offer,.lp-offer-num,.lp-sticker,.lp-btn::after{animation:none}
+  .lp-offer-old::after{animation:none;transform:rotate(-8deg)}
+}
 
-/* phones and narrow tablets: headline + 50% on top, price + photo side by side, then the rest */
+/* phones and narrow tablets: one column, the photo sits beside the offer */
 @media (max-width:900px){
-  .lp-hero-grid{grid-template-columns:62% 38%;column-gap:0;grid-template-areas:"h1 fifty" "price photo" "next next";grid-template-rows:auto auto auto}
-  .lp-h1{font-size:min(4.4vh,6.3vw,40px)!important}
-  .lp-h1 span{white-space:nowrap}
-  .lp-a-fifty{margin-bottom:-4vh}
-  .lp-fifty{height:clamp(56px,9vh,100px)}
-  .lp-fifty-pill{font-size:clamp(13px,1.9vh,18px);padding:2px 14px;margin-top:-6px;border-width:1.5px;box-shadow:0 0 0 2px rgba(30,14,110,.55),0 8px 18px -6px rgba(77,107,255,.85)}
-  .lp-price{height:clamp(96px,17vh,190px)}
-  .lp-a-photo{align-self:end}
-  .lp-a-photo img{max-height:clamp(110px,19vh,210px)}
-  .lp-a-next{padding-bottom:clamp(44px,6vh,56px)}
-  /* no room under the logo next to the one-line headline: logo to the left, the round button takes the right corner */
   .lp-top{flex-direction:row-reverse}
-  .lp-bg-mark img{height:92%;top:46%}
   .lp-wa-fab{top:14px}
+  .lp-hero{padding-top:clamp(66px,10vh,84px)}
+  .lp-hero-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:"h1" "trust" "offer";grid-template-rows:auto auto auto}
+  .lp-brand-pill{display:none}
+  .lp-h1{font-size:min(5.4vh,8.6vw,46px)!important}
+  .lp-a-offer{margin-top:clamp(26px,4.4vh,40px);justify-content:flex-start;position:relative;z-index:2}
+  .lp-photo{position:absolute;inset:auto auto 0 0;width:min(44%,290px);height:min(30vh,290px);z-index:0}
+  .lp-photo img{bottom:calc(-1 * clamp(48px,7vh,64px));left:0;transform:none;height:100%;max-width:none;object-position:left bottom}
+  .lp-offer{width:min(63%,330px);padding:clamp(14px,2.2vh,22px) 12px clamp(10px,1.6vh,16px)}
+  .lp-offer-price{flex-wrap:wrap;column-gap:6px;row-gap:2px}
+  .lp-offer-amount{font-size:clamp(50px,9.4vh,88px)}
+  .lp-offer-old{order:3;flex-basis:100%;font-size:clamp(14px,2.1vh,18px)}
+  .lp-offer-old::after{left:30%;right:30%}
+  .lp-offer-sub{font-size:clamp(13px,1.9vh,16px)}
+  .lp-sticker{top:calc(-1 * clamp(30px,4.4vh,40px));left:-34px}
+  .lp-fifty{height:clamp(40px,6.4vh,64px)}
   .lp-form.wide{display:flex}
   .lp-form.wide .lp-row{grid-template-columns:1fr 1fr}
   .lp-form.wide .lp-row .lp-btn{grid-column:1/-1}
@@ -138,29 +163,26 @@
 }
 @media (max-width:480px){
   .lp-logo{height:30px}
-  .lp-wa-sm{min-height:36px;font-size:14px}
   .lp-wa-fab{width:46px;height:46px;right:16px}
   .lp-wa-fab svg{width:24px;height:24px}
   .lp-card-head h2{font-size:19px}
   .lp-muted{font-size:13px}
 }
-
-/* short screens (laptops, small phones): everything a bit tighter so the form stays on screen */
+/* short screens: everything a bit tighter so the form stays on screen */
 @media (max-height:700px) and (min-width:901px){
-  .lp-hero{padding-top:58px}
-  .lp-a-next{padding-bottom:44px}
+  .lp-hero{padding-top:60px}
   .lp-card.wide{padding:12px 22px;gap:8px}
   .lp-card-head h2{font-size:20px}
   .lp-inp,.lp-btn{min-height:44px;height:44px}
 }
+@media (max-height:640px) and (max-width:900px){
+  .lp-trust{display:none}
+  .lp-a-offer{margin-top:30px}
+  .lp-offer-vat{display:none}
+}
 @media (max-height:760px) and (max-width:900px){
-  .lp-hero{padding-top:58px}
-  .lp-h1{font-size:min(4.2vh,6.2vw,40px)!important}
-  .lp-price{height:clamp(90px,15vh,190px)}
-  .lp-next{font-size:15px}
-  .lp-vat{font-size:11px}
-  .lp-limited span{font-size:16px}
-  .lp-a-next{padding-bottom:42px}
+  .lp-hero{padding-top:60px}
+  .lp-trust{font-size:12px;padding:5px 12px}
   .lp-card.wide{padding:10px 14px;gap:6px}
   .lp-card-head h2{font-size:17px}
   .lp-muted{font-size:12px}
