@@ -35,7 +35,7 @@ export default function LeadForm({ page, cta, wide }: { page: string; cta: strin
       </div>
       <input className="lp-hp" tabIndex={-1} autoComplete="off" aria-hidden="true" name="website" value={f.website} onChange={(e) => setF({ ...f, website: e.target.value })} />
       <label className="lp-check"><input type="checkbox" checked={f.terms} onChange={(e) => setF({ ...f, terms: e.target.checked })} /><span>קראתי ואני מאשר/ת את <a href="https://www.simple-solution.co.il/terms.html" target="_blank" rel="noopener noreferrer">התנאים</a> ו<a href="https://www.simple-solution.co.il/privacy.html" target="_blank" rel="noopener noreferrer">מדיניות הפרטיות</a></span></label>
-      <label className="lp-check"><input type="checkbox" checked={f.marketing} onChange={(e) => setF({ ...f, marketing: e.target.checked })} /><span>אשמח לקבל עדכונים ומבצעים במייל ובוואטסאפ (לא חובה)</span></label>
+      <label className="lp-check"><input type="checkbox" checked={f.marketing} onChange={(e) => setF({ ...f, marketing: e.target.checked })} /><span>אשמח לקבל עדכונים ומבצעים במייל ובוואטסאפ (לא&nbsp;חובה)</span></label>
       {err ? <p className="lp-err">{err}</p> : null}
       {!wide ? <button className="lp-btn full" disabled={state === "busy"}>{state === "busy" ? "שולח…" : cta}</button> : null}
     </form>
