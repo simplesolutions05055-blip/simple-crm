@@ -167,3 +167,12 @@
 @keyframes lp-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
 @keyframes lp-twinkle{0%,100%{opacity:.35;transform:scale(.7)}50%{opacity:1;transform:scale(1.1)}}
 @media (max-width:860px){.lp-fifty{width:250px}}
+.lp-fifty{width:320px}
+.lp-rays{transform-box:fill-box;transform-origin:center;animation:lp-spin 40s linear infinite}
+
+/* credit line at the bottom */
+.lp-credit{text-align:center;padding:4px 20px 28px;font-size:13px;color:var(--mute)}
+.lp-credit a{color:var(--p7);font-weight:700;text-decoration:none;border-bottom:1px solid rgba(90,30,148,.3)}
+.lp-credit a:hover{border-color:var(--p7)}
+@media (max-width:860px){.lp-fifty{width:240px}}
+.lp-formbar{padding-bottom:24px}
