@@ -3,7 +3,7 @@
    The ad's utm parameters travel with the lead so the CRM knows it came from TikTok / Meta. */
 import { useEffect, useRef, useState } from "react";
 
-export default function LeadForm({ page, cta }: { page: string; cta: string }) {
+export default function LeadForm({ page, cta, wide }: { page: string; cta: string; wide?: boolean }) {
   const [f, setF] = useState({ name: "", phone: "", terms: false, marketing: false, website: "" });
   const [state, setState] = useState<"" | "busy" | "done">("");
   const [err, setErr] = useState("");
@@ -27,14 +27,17 @@ export default function LeadForm({ page, cta }: { page: string; cta: string }) {
   }
   if (state === "done") return <div className="lp-done"><b>הפרטים התקבלו, תודה.</b><span>מאור יחזור אליך לשיחה קצרה.</span></div>;
   return (
-    <form className="lp-form" onSubmit={send} noValidate>
+    <form className={"lp-form" + (wide ? " wide" : "")} onSubmit={send} noValidate>
+      <div className="lp-row">
       <input className="lp-inp" placeholder="שם מלא" autoComplete="name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
       <input className="lp-inp" placeholder="טלפון" type="tel" inputMode="tel" autoComplete="tel" dir="ltr" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
+      {wide ? <button className="lp-btn" disabled={state === "busy"}>{state === "busy" ? "שולח…" : cta}</button> : null}
+      </div>
       <input className="lp-hp" tabIndex={-1} autoComplete="off" aria-hidden="true" name="website" value={f.website} onChange={(e) => setF({ ...f, website: e.target.value })} />
       <label className="lp-check"><input type="checkbox" checked={f.terms} onChange={(e) => setF({ ...f, terms: e.target.checked })} /><span>קראתי ואני מאשר/ת את <a href="https://www.simple-solution.co.il/terms.html" target="_blank" rel="noopener noreferrer">התנאים</a> ו<a href="https://www.simple-solution.co.il/privacy.html" target="_blank" rel="noopener noreferrer">מדיניות הפרטיות</a></span></label>
       <label className="lp-check"><input type="checkbox" checked={f.marketing} onChange={(e) => setF({ ...f, marketing: e.target.checked })} /><span>אשמח לקבל עדכונים ומבצעים במייל ובוואטסאפ (לא חובה)</span></label>
       {err ? <p className="lp-err">{err}</p> : null}
-      <button className="lp-btn full" disabled={state === "busy"}>{state === "busy" ? "שולח…" : cta}</button>
+      {!wide ? <button className="lp-btn full" disabled={state === "busy"}>{state === "busy" ? "שולח…" : cta}</button> : null}
     </form>
   );
 }
