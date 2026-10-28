@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "../lp.css";
 import LeadForm from "../LeadForm";
+import Fifty from "../Fifty";
 import { ChatIcon } from "../WaFab";
 
 /* landing page for the "קמפיין AI" first-month promo (traffic from the TikTok / Meta ads).
@@ -21,7 +22,7 @@ export default function Page() {
 
       <section className="lp-hero">
         <div className="lp-wrap lp-banner">
-          <div className="lp-big" aria-label="50% הנחה"><span className="lp-big-num">50<small>%</small></span><span className="lp-big-off">הנחה</span></div>
+          <div className="lp-art"><Fifty /><span className="lp-big-off">הנחה</span></div>
           <div className="lp-banner-text">
             <h1>מבצע מיוחד <span className="lp-gold">למצטרפים חדשים</span></h1>
             <p className="lp-sub">ניהול קמפיין ממומן במטא או בטיקטוק לעסקים נותני שירות. החודש הראשון ב-300 ₪ במקום 600 ₪ (לפני מע&quot;מ), עם מעקב יומי ופגישת תוצאות כל שבועיים. בלי התחייבות לחודשים.</p>
