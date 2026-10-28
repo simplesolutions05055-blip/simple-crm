@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "../lp.css";
 import LeadForm from "../LeadForm";
 import PriceBadge from "../PriceBadge";
-import Badge50 from "../Badge50";
+import Fifty from "../Fifty";
 import { ChatIcon } from "../WaFab";
 
 /* landing page for the "קמפיין AI" first-month promo (traffic from the TikTok / Meta ads).
@@ -23,17 +23,15 @@ export default function Page() {
 
       <section className="lp-hero">
         <div className="lp-wrap lp-hero-grid">
-          <div className="lp-hero-main">
-            <h1><span>מבצע מיוחד</span><span className="lp-gold">למצטרפים חדשים</span></h1>
-            <div className="lp-badges">
-              <PriceBadge />
-              <Badge50 />
-            </div>
+          <h1 className="lp-h1"><span>מבצע מיוחד</span><span className="lp-gold">למצטרפים חדשים</span></h1>
+          <div className="lp-a-fifty"><Fifty /><span>הנחה</span></div>
+          <div className="lp-a-price"><PriceBadge /></div>
+          <div className="lp-a-next">
             <p className="lp-next">מהחודש השני והלאה רק 600 ש&quot;ח לחודש בלבד</p>
             <p className="lp-vat">המחירים לפני מע&quot;מ</p>
             <div className="lp-limited"><span>לזמן מוגבל בלבד</span></div>
           </div>
-          <div className="lp-hero-photo"><img src="/lp/woman-purple.webp" alt="" width={759} height={716} /></div>
+          <div className="lp-a-photo"><img src="/lp/woman-purple.webp" alt="" width={759} height={716} /></div>
         </div>
       </section>
 

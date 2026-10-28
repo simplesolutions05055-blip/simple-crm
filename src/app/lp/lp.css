@@ -19,40 +19,45 @@
 .lp-wa:hover{background:#1fbf5b}
 .lp-wa-sm{min-height:40px;padding:0 16px;font-size:15px;border-radius:99px}
 
-/* hero: the offer on the right, the photo on the left */
-.lp-hero{position:relative;color:#fff;padding-top:84px;background:radial-gradient(ellipse at 75% 0%,var(--p7) 0%,var(--p9) 72%)}
-.lp-hero::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 18% 70%,rgba(138,60,255,.28),transparent 42%)}
-.lp-hero-grid{position:relative;z-index:1;display:grid;grid-template-columns:1.1fr .9fr;align-items:end;gap:16px}
-.lp-hero-main{display:flex;flex-direction:column;align-items:center;text-align:center;padding:12px 0 84px}
-.lp-hero h1{display:flex;flex-direction:column;font-size:clamp(36px,5vw,62px);color:#fff}
-.lp-hero-photo{align-self:end;display:flex;justify-content:center}
-.lp-hero-photo img{display:block;width:100%;max-width:580px;height:auto;filter:drop-shadow(0 20px 40px rgba(0,0,0,.35))}
-
-/* the two badges, side by side, the 50% overlapping like a sticker */
-.lp-badges{display:flex;align-items:center;justify-content:center;margin:14px 0 26px;width:100%;max-width:600px}
-.lp-price{flex:0 1 58%;width:58%;height:auto;display:block;position:relative;z-index:1;filter:drop-shadow(0 18px 34px rgba(0,0,0,.4))}
-.lp-b50{flex:0 1 42%;width:42%;height:auto;display:block;position:relative;z-index:2;margin-inline-start:-7%;transform:translateY(16%) rotate(5deg);filter:drop-shadow(0 18px 34px rgba(0,0,0,.45))}
-.lp-next{font-size:clamp(18px,2.2vw,23px);font-weight:800;color:#fff;margin-top:6px!important;text-wrap:balance}
-.lp-vat{font-size:13px;color:rgba(255,255,255,.6);margin-top:2px!important}
+/* one screen: the hero takes what the form strip leaves, sizes follow the viewport height */
+.lp{display:flex;flex-direction:column;min-height:100svh}
+.lp-hero{position:relative;flex:1 0 auto;display:flex;color:#fff;padding-top:clamp(62px,9vh,86px);background:radial-gradient(ellipse at 75% 0%,var(--p7) 0%,var(--p9) 72%)}
+.lp-hero::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 20% 55%,rgba(138,60,255,.28),transparent 42%)}
+.lp-hero-grid{position:relative;z-index:1;width:100%;display:grid;grid-template-columns:1.1fr .9fr;column-gap:24px;
+  grid-template-areas:"h1 fifty" "price photo" "next photo";grid-template-rows:auto auto 1fr}
+.lp-h1{grid-area:h1;display:flex;flex-direction:column;align-items:center;text-align:center;font-size:clamp(30px,6.3vh,64px)!important;color:#fff}
+.lp-a-fifty{grid-area:fifty;align-self:center;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.lp-fifty{height:clamp(64px,14vh,150px);width:auto;display:block;transform:rotate(-6deg)}
+.lp-a-fifty span{margin-top:-4px;font-weight:900;font-size:clamp(16px,3vh,28px);letter-spacing:.35em;color:#e9dcff;text-shadow:0 0 18px rgba(163,92,255,.8)}
+.lp-a-price{grid-area:price;display:flex;justify-content:center;margin-top:clamp(6px,2vh,22px)}
+.lp-price{height:clamp(110px,26vh,250px);width:auto;max-width:100%;display:block;filter:drop-shadow(0 18px 34px rgba(0,0,0,.4))}
+.lp-a-next{grid-area:next;display:flex;flex-direction:column;align-items:center;text-align:center;padding-bottom:clamp(48px,7vh,64px)}
+.lp-next{font-size:clamp(16px,2.6vh,23px);font-weight:800;color:#fff;margin-top:clamp(2px,1vh,10px)!important;text-wrap:balance}
+.lp-vat{font-size:12px;color:rgba(255,255,255,.6);margin-top:2px!important}
+.lp-a-photo{grid-area:photo;align-self:end;display:flex;justify-content:center;align-items:flex-end;min-height:0}
+.lp-a-photo img{display:block;width:auto;height:auto;max-width:100%;max-height:calc(100svh - clamp(62px,9vh,86px) - 14vh - 200px);filter:drop-shadow(0 20px 40px rgba(0,0,0,.35))}
 
 /* "לזמן מוגבל בלבד" ribbon */
-.lp-limited{display:flex;justify-content:center;margin-top:22px}
-.lp-limited span{display:inline-block;padding:11px 30px;font-size:clamp(19px,2.3vw,26px);font-weight:900;color:var(--p9);
+.lp-limited{display:flex;justify-content:center;margin-top:clamp(8px,2vh,22px)}
+.lp-limited span{display:inline-block;padding:clamp(6px,1.2vh,11px) clamp(18px,2.5vw,30px);font-size:clamp(17px,2.9vh,26px);font-weight:900;color:var(--p9);
   background:linear-gradient(135deg,#f5e8b0 0%,#e3c478 40%,#c9a961 100%);border-radius:14px;transform:rotate(-2deg);
   box-shadow:0 0 0 3px rgba(31,11,51,.6),0 0 0 5px rgba(201,169,97,.7),0 18px 40px -14px rgba(201,169,97,.7);animation:lp-pulse 2.4s ease-in-out infinite}
 .lp-limited span::before,.lp-limited span::after{content:"★";margin:0 12px;font-size:.7em;vertical-align:middle;color:var(--p7)}
 
 /* form strip, overlapping the bottom of the hero */
-.lp-formbar{position:relative;z-index:4;margin-top:-40px;padding-bottom:20px;scroll-margin-top:16px}
+.lp-formbar{position:relative;z-index:4;margin-top:-36px;padding-bottom:6px;scroll-margin-top:16px}
 .lp-card{background:#fff;color:var(--ink);border-radius:20px;box-shadow:0 24px 60px -20px rgba(31,11,51,.45)}
-.lp-card.wide{display:flex;flex-direction:column;gap:12px;padding:22px 26px}
+.lp-card.wide{display:flex;flex-direction:column;gap:10px;padding:16px 24px}
 .lp-card-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
-.lp-card-head h2{font-size:24px}
+.lp-card-head h2{font-size:22px}
 .lp-muted{color:var(--mute);font-size:15px}
 .lp-form{display:flex;flex-direction:column;gap:8px}
+.lp-form.wide{display:grid;grid-template-columns:auto auto 1fr;column-gap:22px;row-gap:8px}
+.lp-form.wide .lp-row{grid-column:1/-1}
+.lp-form.wide .lp-err{grid-column:1/-1}
 .lp-form.wide .lp-row{display:grid;grid-template-columns:1fr 1fr auto;gap:12px}
 .lp-form:not(.wide) .lp-row{display:flex;flex-direction:column;gap:10px}
-.lp-inp{height:52px;border:1px solid var(--line);border-radius:12px;padding:0 14px;font:inherit;font-size:16px;color:var(--ink);background:#faf9fd;width:100%}
+.lp-inp{height:48px;border:1px solid var(--line);border-radius:12px;padding:0 14px;font:inherit;font-size:16px;color:var(--ink);background:#faf9fd;width:100%}
 .lp-inp[dir=ltr]{text-align:right}
 .lp-inp:focus{outline:2px solid var(--v);border-color:transparent;background:#fff}
 .lp-hp{position:absolute!important;left:-9999px;width:1px;height:1px;opacity:0}
@@ -61,14 +66,14 @@
 .lp-check a{color:var(--p7)}
 .lp-err{color:#c0392b;font-size:14px;font-weight:600}
 .lp-done{display:flex;flex-direction:column;gap:4px;padding:18px;border-radius:14px;background:#f4fbf4;border:1px solid #bfe3c0;font-size:16px}
-.lp-btn{display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:0 26px;border:0;border-radius:14px;cursor:pointer;min-width:220px;
+.lp-btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 26px;border:0;border-radius:14px;cursor:pointer;min-width:220px;
   font:inherit;font-size:17px;font-weight:800;color:var(--p9);background:linear-gradient(135deg,#e3c478 0%,#c9a961 55%,#a88845 100%);box-shadow:0 14px 40px -12px rgba(201,169,97,.6)}
 .lp-btn:hover{filter:brightness(1.07)}
 .lp-btn:disabled{opacity:.6;cursor:default}
 .lp-btn.full{width:100%}
 
 /* credit */
-.lp-credit{text-align:center;padding:6px 20px 28px;font-size:13px;color:var(--mute)}
+.lp-credit{text-align:center;padding:2px 20px 6px;font-size:12px;line-height:1.4;color:var(--mute)}
 .lp-credit a{color:var(--p7);font-weight:700;text-decoration:none;border-bottom:1px solid rgba(90,30,148,.3)}
 
 .lp-spark{transform-box:fill-box;transform-origin:center;animation:lp-twinkle 2.2s ease-in-out infinite}
@@ -77,19 +82,51 @@
 @keyframes lp-pulse{0%,100%{transform:rotate(-2deg) scale(1)}50%{transform:rotate(-2deg) scale(1.04)}}
 @media (prefers-reduced-motion:reduce){.lp-limited span,.lp-spark{animation:none}}
 
-/* tablet and phone: one column, the photo under the offer, behind the top of the form */
+/* phones and narrow tablets: headline + 50% on top, price + photo side by side, then the rest */
 @media (max-width:900px){
-  .lp-hero{padding-top:78px}
-  .lp-hero-grid{grid-template-columns:1fr;gap:0}
-  .lp-hero-main{padding-bottom:8px}
-  .lp-hero-photo img{max-width:300px}
-  .lp-form.wide .lp-row{grid-template-columns:1fr}
+  .lp-hero-grid{grid-template-columns:62% 38%;column-gap:0;grid-template-areas:"h1 fifty" "price photo" "next next";grid-template-rows:auto auto auto}
+  .lp-h1{font-size:min(4.4vh,6.3vw,40px)!important}
+  .lp-h1 span{white-space:nowrap}
+  .lp-fifty{height:clamp(52px,8vh,90px)}
+  .lp-a-fifty span{font-size:clamp(13px,1.9vh,18px)}
+  .lp-price{height:clamp(96px,17vh,190px)}
+  .lp-a-photo{align-self:end}
+  .lp-a-photo img{max-height:clamp(110px,19vh,210px)}
+  .lp-a-next{padding-bottom:clamp(44px,6vh,56px)}
+  .lp-form.wide{display:flex}
+  .lp-form.wide .lp-row{grid-template-columns:1fr 1fr}
+  .lp-form.wide .lp-row .lp-btn{grid-column:1/-1}
   .lp-btn{min-width:0;width:100%}
-  .lp-card-head{flex-direction:column;gap:2px}
-  .lp-card.wide{padding:20px}
+  .lp-card-head{flex-direction:column;gap:0}
+  .lp-card.wide{padding:14px 16px;gap:8px}
+  .lp-check{font-size:12px}
 }
 @media (max-width:480px){
-  .lp-logo{height:28px}
-  .lp-hero-photo img{max-width:250px}
-  .lp-badges{margin-top:12px}
+  .lp-logo{height:26px}
+  .lp-wa-sm{min-height:36px;font-size:14px}
+  .lp-card-head h2{font-size:19px}
+  .lp-muted{font-size:13px}
+}
+
+/* short screens (laptops, small phones): everything a bit tighter so the form stays on screen */
+@media (max-height:700px) and (min-width:901px){
+  .lp-hero{padding-top:58px}
+  .lp-a-next{padding-bottom:44px}
+  .lp-card.wide{padding:12px 22px;gap:8px}
+  .lp-card-head h2{font-size:20px}
+  .lp-inp,.lp-btn{min-height:44px;height:44px}
+}
+@media (max-height:760px) and (max-width:900px){
+  .lp-hero{padding-top:58px}
+  .lp-h1{font-size:min(4.2vh,6.2vw,40px)!important}
+  .lp-price{height:clamp(90px,15vh,190px)}
+  .lp-next{font-size:15px}
+  .lp-vat{font-size:11px}
+  .lp-limited span{font-size:16px}
+  .lp-a-next{padding-bottom:42px}
+  .lp-card.wide{padding:10px 14px;gap:6px}
+  .lp-card-head h2{font-size:17px}
+  .lp-muted{font-size:12px}
+  .lp-inp,.lp-btn{min-height:42px;height:42px}
+  .lp-check{font-size:11px}
 }
