@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "../lp.css";
 import LeadForm from "../LeadForm";
-import Fifty from "../Fifty";
+import PriceBadge from "../PriceBadge";
 import { ChatIcon } from "../WaFab";
 
 /* landing page for the "קמפיין AI" first-month promo (traffic from the TikTok / Meta ads).
@@ -21,12 +21,11 @@ export default function Page() {
       <header className="lp-top"><span className="lp-logo-chip"><img src={LOGO} alt="Simple Solutions" className="lp-logo" /></span><a className="lp-wa lp-wa-sm" href={WA}><ChatIcon />וואטסאפ</a></header>
 
       <section className="lp-hero">
-        <div className="lp-wrap lp-banner">
-          <div className="lp-art"><Fifty /><span className="lp-big-off">הנחה</span></div>
-          <div className="lp-banner-text">
-            <h1>מבצע מיוחד <span className="lp-gold">למצטרפים חדשים</span></h1>
-            <p className="lp-sub">ניהול קמפיין ממומן במטא או בטיקטוק לעסקים נותני שירות. החודש הראשון ב-300 ₪ במקום 600 ₪ (לפני מע&quot;מ), עם מעקב יומי ופגישת תוצאות כל שבועיים. בלי התחייבות לחודשים.</p>
-          </div>
+        <div className="lp-wrap lp-banner single">
+          <h1>מבצע מיוחד <span className="lp-gold">למצטרפים חדשים</span></h1>
+          <PriceBadge />
+          <p className="lp-next">מהחודש השני והלאה רק 600 ש&quot;ח לחודש בלבד</p>
+          <p className="lp-vat">המחירים לפני מע&quot;מ</p>
         </div>
         <div className="lp-wrap"><div className="lp-limited"><span>לזמן מוגבל בלבד</span></div></div>
       </section>
