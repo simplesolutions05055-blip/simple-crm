@@ -14,25 +14,24 @@ export const metadata: Metadata = {
 };
 
 const WA = "https://wa.me/972549020253?text=" + encodeURIComponent("היי מאור, ראיתי את המבצע של 50% על ניהול קמפיין ואשמח לפרטים");
-const LOGO = "https://simple-solutions-site.vercel.app/logo-simple-solutions.png";
 
 export default function Page() {
   return (
     <div className="lp">
-      <header className="lp-top"><span className="lp-logo-chip"><img src={LOGO} alt="Simple Solutions" className="lp-logo" /></span><a className="lp-wa-fab" href={WA} aria-label="וואטסאפ" title="וואטסאפ"><ChatIcon /></a></header>
+      <header className="lp-top"><span className="lp-logo-chip"><img src="/lp/logo.webp" alt="Simple Solutions" className="lp-logo" width={241} height={104} /></span><a className="lp-wa-fab" href={WA} aria-label="וואטסאפ" title="וואטסאפ"><ChatIcon /></a></header>
 
       <section className="lp-hero">
-        <div className="lp-bg-mark" aria-hidden="true"><img src="/lp/s-mark.webp" alt="" width={557} height={713} /><img src="/lp/s-mark.webp" alt="" width={557} height={713} /></div>
+        <div className="lp-bg-mark" aria-hidden="true"><img src="/lp/s-mark.webp" alt="" width={557} height={713} decoding="async" /><img src="/lp/s-mark.webp" alt="" width={557} height={713} decoding="async" /></div>
         <div className="lp-wrap lp-hero-grid">
           <h1 className="lp-h1"><span>מבצע מיוחד</span><span className="lp-gold">למצטרפים חדשים</span></h1>
-          <div className="lp-a-fifty"><Fifty /><span>הנחה</span></div>
+          <div className="lp-a-fifty"><Fifty /></div>
           <div className="lp-a-price"><PriceBadge /></div>
           <div className="lp-a-next">
             <p className="lp-next">מהחודש השני והלאה רק 600 ש&quot;ח לחודש בלבד</p>
             <p className="lp-vat">המחירים לפני מע&quot;מ</p>
             <div className="lp-limited"><span>לזמן מוגבל בלבד</span></div>
           </div>
-          <div className="lp-a-photo"><img src="/lp/woman-purple.webp" alt="" width={759} height={716} /></div>
+          <div className="lp-a-photo"><img src="/lp/woman-purple.webp" alt="" width={759} height={716} fetchPriority="high" decoding="async" /></div>
         </div>
       </section>
 

@@ -12,7 +12,7 @@
 /* header */
 .lp-top{position:absolute;inset:0 0 auto;z-index:3;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;max-width:1120px;margin:0 auto}
 .lp-logo-chip{display:inline-flex;background:#fff;border-radius:12px;padding:6px 12px}
-.lp-logo{height:34px;width:auto;display:block}
+.lp-logo{height:40px;width:auto;display:block}
 
 /* WhatsApp in WhatsApp green */
 .lp-wa{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 24px;border-radius:14px;font-weight:800;font-size:17px;text-decoration:none;color:#fff!important;background:#25D366;box-shadow:0 12px 30px -10px rgba(37,211,102,.7)}
@@ -35,9 +35,23 @@
 .lp-hero-grid{position:relative;z-index:1;width:100%;display:grid;grid-template-columns:1.1fr .9fr;column-gap:24px;
   grid-template-areas:"h1 fifty" "price photo" "next photo";grid-template-rows:auto auto 1fr}
 .lp-h1{grid-area:h1;display:flex;flex-direction:column;align-items:center;text-align:center;font-size:clamp(30px,6.3vh,64px)!important;color:#fff}
-.lp-a-fifty{grid-area:fifty;align-self:center;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
-.lp-fifty{height:clamp(64px,14vh,150px);width:auto;display:block;transform:rotate(-6deg)}
-.lp-a-fifty span{margin-top:-4px;font-weight:900;font-size:clamp(16px,3vh,28px);letter-spacing:.35em;color:#ffd3ea;text-shadow:0 0 18px rgba(255,79,168,.8)}
+.lp-a-fifty{grid-area:fifty;align-self:center;display:flex;justify-content:center;pointer-events:none;margin-bottom:-3.5vh}
+/* the 50% hero mark */
+.lp-fifty-box{position:relative;display:flex;flex-direction:column;align-items:center;animation:lp-pop .8s cubic-bezier(.2,1.4,.4,1) both}
+.lp-burst{position:absolute;left:50%;top:44%;width:150%;aspect-ratio:1;translate:-50% -50%;z-index:0;pointer-events:none;opacity:.9}
+.lp-burst-rays{transform-origin:0 0;animation:lp-spin 60s linear infinite}
+.lp-fifty{position:relative;z-index:1;height:clamp(72px,18vh,196px);width:auto;display:block;rotate:-7deg;animation:lp-bob 4.5s ease-in-out .8s infinite}
+.lp-fifty-pill{position:relative;z-index:2;margin-top:clamp(-14px,-1.2vh,-6px);padding:clamp(3px,.6vh,6px) clamp(18px,2.6vh,30px);border-radius:99px;rotate:-7deg;
+  font-weight:900;font-size:clamp(16px,2.7vh,27px);line-height:1.15;letter-spacing:.06em;color:#fff;text-shadow:0 1px 0 rgba(122,11,74,.55);
+  background:linear-gradient(180deg,#ff8fcb 0%,#ff4aa8 48%,#d81f86 100%);border:2px solid rgba(255,255,255,.75);
+  box-shadow:0 0 0 3px rgba(122,11,74,.55),0 12px 26px -8px rgba(255,61,158,.85),inset 0 -4px 8px rgba(122,11,74,.35)}
+.lp-fifty-pill::before{content:"";position:absolute;inset:3px 12% 52% 12%;border-radius:99px;background:linear-gradient(180deg,rgba(255,255,255,.7),rgba(255,255,255,0))}
+.lp-fifty-stars{position:absolute;inset:-8% -10%;width:120%;height:116%;z-index:3;pointer-events:none;overflow:visible}
+.lp-spark.d3{animation-delay:1.5s}
+@keyframes lp-pop{0%{opacity:0;transform:scale(.55)}100%{opacity:1;transform:scale(1)}}
+@keyframes lp-spin{to{transform:rotate(360deg)}}
+@keyframes lp-bob{0%,100%{translate:0 0}50%{translate:0 -5px}}
+@media (prefers-reduced-motion:reduce){.lp-fifty-box,.lp-burst-rays,.lp-fifty{animation:none}}
 .lp-a-price{grid-area:price;display:flex;justify-content:center;margin-top:clamp(6px,2vh,22px)}
 .lp-price{height:clamp(110px,26vh,250px);width:auto;max-width:100%;display:block;filter:drop-shadow(0 18px 34px rgba(0,0,0,.4))}
 .lp-a-next{grid-area:next;display:flex;flex-direction:column;align-items:center;text-align:center;padding-bottom:clamp(48px,7vh,64px)}
@@ -99,8 +113,9 @@
   .lp-hero-grid{grid-template-columns:62% 38%;column-gap:0;grid-template-areas:"h1 fifty" "price photo" "next next";grid-template-rows:auto auto auto}
   .lp-h1{font-size:min(4.4vh,6.3vw,40px)!important}
   .lp-h1 span{white-space:nowrap}
-  .lp-fifty{height:clamp(52px,8vh,90px)}
-  .lp-a-fifty span{font-size:clamp(13px,1.9vh,18px)}
+  .lp-a-fifty{margin-bottom:0}
+  .lp-fifty{height:clamp(56px,9vh,100px)}
+  .lp-fifty-pill{font-size:clamp(13px,1.9vh,18px);padding:2px 14px;margin-top:-6px;border-width:1.5px;box-shadow:0 0 0 2px rgba(122,11,74,.55),0 8px 18px -6px rgba(255,61,158,.85)}
   .lp-price{height:clamp(96px,17vh,190px)}
   .lp-a-photo{align-self:end}
   .lp-a-photo img{max-height:clamp(110px,19vh,210px)}
@@ -118,7 +133,7 @@
   .lp-check{font-size:12px}
 }
 @media (max-width:480px){
-  .lp-logo{height:26px}
+  .lp-logo{height:30px}
   .lp-wa-sm{min-height:36px;font-size:14px}
   .lp-wa-fab{width:46px;height:46px;right:16px}
   .lp-wa-fab svg{width:24px;height:24px}
