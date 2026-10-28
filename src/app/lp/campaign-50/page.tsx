@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { preload } from "react-dom";
 import "../lp.css";
 import LeadForm from "../LeadForm";
-import PriceBadge from "../PriceBadge";
-import Fifty from "../Fifty";
+import Offer from "../Offer";
 import { ChatIcon } from "../WaFab";
 
 /* landing page for the "קמפיין AI" first-month promo (traffic from the TikTok / Meta ads).
@@ -16,24 +15,33 @@ export const metadata: Metadata = {
 
 const WA = "https://wa.me/972549020253?text=" + encodeURIComponent("היי מאור, ראיתי את המבצע של 50% על ניהול קמפיין ואשמח לפרטים");
 
+/* the headline words rise one by one (as on simple-solution.co.il); each word is its own span with its own delay */
+function Words({ text, from, gold }: { text: string; from: number; gold?: boolean }) {
+  return text.split(" ").map((w, i) => (
+    <span className="lp-w" key={i}>
+      <span className={gold ? "lp-gold" : undefined} style={{ animationDelay: `${(from + i * 0.08).toFixed(2)}s` }}>{w}</span>
+    </span>
+  ));
+}
+
 export default function Page() {
   preload("/lp/fonts/heebo-hebrew-wght-normal.woff2", { as: "font", type: "font/woff2", crossOrigin: "anonymous" });
+  preload("/lp/fonts/space-grotesk-latin-wght-normal.woff2", { as: "font", type: "font/woff2", crossOrigin: "anonymous" });
   return (
     <div className="lp">
       <header className="lp-top"><span className="lp-logo-chip"><img src="/lp/logo.webp" alt="Simple Solutions" className="lp-logo" width={241} height={104} /></span><a className="lp-wa-fab" href={WA} aria-label="וואטסאפ" title="וואטסאפ"><ChatIcon /></a></header>
 
       <section className="lp-hero">
-        <div className="lp-bg-mark" aria-hidden="true"><img src="/lp/s-mark.webp" alt="" width={557} height={713} decoding="async" /><img src="/lp/s-mark.webp" alt="" width={557} height={713} decoding="async" /></div>
+        <div className="lp-bg-mark" aria-hidden="true"><img src="/lp/s-mark.webp" alt="" width={557} height={713} decoding="async" /></div>
         <div className="lp-wrap lp-hero-grid">
-          <h1 className="lp-h1"><span>מבצע מיוחד</span><span className="lp-gold">למצטרפים חדשים</span></h1>
-          <div className="lp-a-fifty"><Fifty /></div>
-          <div className="lp-a-price"><PriceBadge /></div>
-          <div className="lp-a-next">
-            <p className="lp-next">מהחודש השני והלאה רק 600 ש&quot;ח לחודש בלבד</p>
-            <p className="lp-vat">המחירים לפני מע&quot;מ</p>
-            <div className="lp-limited"><span>לזמן מוגבל בלבד</span></div>
-          </div>
-          <div className="lp-a-photo"><img src="/lp/woman-purple.webp" alt="" width={759} height={716} fetchPriority="high" decoding="async" /></div>
+          <span className="lp-brand-pill" dir="ltr">SIMPLE SOLUTIONS · BUSINESS OS</span>
+          <h1 className="lp-h1">
+            <span className="lp-line"><Words text="מבצע מיוחד" from={0.15} /></span>
+            <span className="lp-line"><Words text="למצטרפים חדשים" from={0.31} gold /></span>
+          </h1>
+          <span className="lp-trust">+50 לקוחות פעילים</span>
+          <div className="lp-a-offer"><Offer /></div>
+          <div className="lp-photo"><img src="/lp/woman-purple.webp" alt="" width={759} height={716} fetchPriority="high" /></div>
         </div>
       </section>
 
