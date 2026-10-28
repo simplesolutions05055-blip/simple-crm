@@ -22,6 +22,7 @@ export default function Page() {
       <header className="lp-top"><span className="lp-logo-chip"><img src={LOGO} alt="Simple Solutions" className="lp-logo" /></span><a className="lp-wa-fab" href={WA} aria-label="וואטסאפ" title="וואטסאפ"><ChatIcon /></a></header>
 
       <section className="lp-hero">
+        <div className="lp-bg-mark" aria-hidden="true"><img src="/lp/s-mark.webp" alt="" width={557} height={713} /><img src="/lp/s-mark.webp" alt="" width={557} height={713} /></div>
         <div className="lp-wrap lp-hero-grid">
           <h1 className="lp-h1"><span>מבצע מיוחד</span><span className="lp-gold">למצטרפים חדשים</span></h1>
           <div className="lp-a-fifty"><Fifty /><span>הנחה</span></div>
