@@ -15,11 +15,11 @@ export const metadata: Metadata = {
 
 const WA = "https://wa.me/972549020253?text=" + encodeURIComponent("היי מאור, ראיתי את המבצע של 50% על ניהול קמפיין ואשמח לפרטים");
 
-/* the headline words rise one by one (as on simple-solution.co.il); each word is its own span with its own delay */
+/* the headline words blur in one by one; each word is its own span with its own delay */
 function Words({ text, from, gold }: { text: string; from: number; gold?: boolean }) {
   return text.split(" ").map((w, i) => (
     <span className="lp-w" key={i}>
-      <span className={gold ? "lp-gold" : undefined} style={{ animationDelay: `${(from + i * 0.08).toFixed(2)}s` }}>{w}</span>
+      <span className={gold ? "lp-grad" : undefined} style={{ animationDelay: `${(from + i * 0.08).toFixed(2)}s` }}>{w}</span>
     </span>
   ));
 }
@@ -29,30 +29,27 @@ export default function Page() {
   preload("/lp/fonts/space-grotesk-latin-wght-normal.woff2", { as: "font", type: "font/woff2", crossOrigin: "anonymous" });
   return (
     <div className="lp">
+      <div className="lp-sky" aria-hidden="true">
+        <span className="lp-aurora a1" /><span className="lp-aurora a2" /><span className="lp-aurora a3" />
+        <span className="lp-beams" /><span className="lp-stars" /><span className="lp-grain" />
+      </div>
       <header className="lp-top"><span className="lp-logo-chip"><img src="/lp/logo.webp" alt="Simple Solutions" className="lp-logo" width={241} height={104} /></span><a className="lp-wa-fab" href={WA} aria-label="וואטסאפ" title="וואטסאפ"><ChatIcon /></a></header>
 
-      <section className="lp-hero">
-        <div className="lp-bg-mark" aria-hidden="true"><img src="/lp/s-mark.webp" alt="" width={557} height={713} decoding="async" /></div>
-        <div className="lp-wrap lp-hero-grid">
-          <span className="lp-brand-pill" dir="ltr">SIMPLE SOLUTIONS · BUSINESS OS</span>
-          <h1 className="lp-h1">
-            <span className="lp-line"><Words text="מבצע מיוחד" from={0.15} /></span>
-            <span className="lp-line"><Words text="למצטרפים חדשים" from={0.31} gold /></span>
-          </h1>
-          <span className="lp-trust">+50 לקוחות פעילים</span>
-          <div className="lp-a-offer"><Offer /></div>
-          <div className="lp-photo"><img src="/lp/woman-purple.webp" alt="" width={759} height={716} fetchPriority="high" /></div>
+      <main className="lp-hero">
+        <span className="lp-badge"><i />לזמן מוגבל בלבד</span>
+        <h1 className="lp-h1">
+          <span className="lp-line"><Words text="מבצע מיוחד" from={0.15} /></span>
+          <span className="lp-line"><Words text="למצטרפים חדשים" from={0.33} gold /></span>
+        </h1>
+        <span className="lp-trust">+50 לקוחות פעילים</span>
+        <Offer />
+        <div className="lp-horizon">
+        <section className="lp-panel" id="form">
+          <div className="lp-card-head"><h2>לתיאום שיחה קצרה</h2><p className="lp-muted">משאירים שם וטלפון, ומאור חוזר אליך.</p></div>
+          <LeadForm page="campaign-50" cta="שמרו לי את המבצע" wide />
+        </section>
         </div>
-      </section>
-
-      <section className="lp-formbar" id="form">
-        <div className="lp-wrap">
-          <div className="lp-card wide">
-            <div className="lp-card-head"><h2>לתיאום שיחה קצרה</h2><p className="lp-muted">משאירים שם וטלפון, ומאור חוזר אליך.</p></div>
-            <LeadForm page="campaign-50" cta="שמרו לי את המבצע" wide />
-          </div>
-        </div>
-      </section>
+      </main>
 
       <footer className="lp-credit">נבנה על ידי <a href="https://www.simple-solution.co.il/" target="_blank" rel="noopener">Simple Solution</a></footer>
     </div>
