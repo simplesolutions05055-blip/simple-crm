@@ -4,6 +4,7 @@ import "../lp.css";
 import LeadForm from "../LeadForm";
 import Offer from "../Offer";
 import { ChatIcon } from "../WaFab";
+import TikTokPixel from "../TikTokPixel";
 
 /* landing page for the "קמפיין AI" first-month promo (traffic from the TikTok / Meta ads).
    Prices match the AI campaign quote: 600 before VAT a month, the first month at 50%. */
@@ -51,6 +52,7 @@ export default function Page() {
         </div>
       </main>
 
+      <TikTokPixel />
       <footer className="lp-credit">נבנה על ידי <a href="https://www.simple-solution.co.il/" target="_blank" rel="noopener">Simple Solution</a></footer>
     </div>
   );

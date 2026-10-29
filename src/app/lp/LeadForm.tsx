@@ -3,6 +3,18 @@
    The ad's utm parameters travel with the lead so the CRM knows it came from TikTok / Meta. */
 import { useEffect, useRef, useState } from "react";
 
+/* tell the TikTok pixel (when the page loads it) that a lead came in; the phone is sent only as a SHA-256 hash (advanced matching) */
+async function track(phone: string) {
+  const ttq = (window as unknown as { ttq?: { track: (e: string) => void; identify: (d: Record<string, string>) => void } }).ttq;
+  if (!ttq) return;
+  try {
+    const digits = phone.replace(/[^\d]/g, "").replace(/^0/, "972");
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("+" + digits));
+    ttq.identify({ phone_number: Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("") });
+  } catch { /* hashing is optional */ }
+  ttq.track("Lead");
+}
+
 export default function LeadForm({ page, cta, wide }: { page: string; cta: string; wide?: boolean }) {
   const [f, setF] = useState({ name: "", phone: "", terms: false, marketing: false, website: "" });
   const [state, setState] = useState<"" | "busy" | "done">("");
@@ -24,6 +36,7 @@ export default function LeadForm({ page, cta, wide }: { page: string; cta: strin
     const j = r ? await r.json().catch(() => ({})) : {};
     if (!r || !r.ok || !j.ok) { setState(""); return setErr(j.error || "השליחה נכשלה. אפשר לכתוב לנו בוואטסאפ"); }
     setState("done");
+    track(f.phone);
   }
   if (state === "done") return <div className="lp-done"><b>הפרטים התקבלו, תודה.</b><span>מאור יחזור אליך לשיחה קצרה.</span></div>;
   return (

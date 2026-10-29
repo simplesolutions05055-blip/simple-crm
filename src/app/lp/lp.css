@@ -77,8 +77,8 @@
 .lp-deal-price{display:flex;align-items:baseline;gap:clamp(10px,1.4vw,16px);line-height:.9;margin-top:clamp(2px,.6vh,6px)}
 .lp-offer-amount{display:inline-flex;align-items:baseline;gap:6px;font-family:var(--num);font-weight:600;font-size:clamp(52px,10.5vh,108px);letter-spacing:-.045em;
   background:linear-gradient(180deg,#fff 30%,#c3cdff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 8px 30px rgba(91,124,255,.45))}
-.lp-offer-num::after{counter-reset:lp-n var(--lp-n,300);content:counter(lp-n)}
-.lp-offer-num{animation:lp-count .9s 1.05s cubic-bezier(.2,.7,.2,1) both}
+.lp-offer-num::after{content:counter(lp-n)}
+.lp-offer-num{counter-reset:lp-n var(--lp-n,300);animation:lp-count .9s 1.05s cubic-bezier(.2,.7,.2,1) both}
 .lp-offer-cur{font-size:.42em;font-family:'Heebo LP',sans-serif;font-weight:700}
 .lp-offer-old{position:relative;text-decoration:none;font-family:var(--num);font-size:clamp(16px,2.6vh,24px);font-weight:500;color:rgba(255,255,255,.45);white-space:nowrap}
 .lp-offer-old::after{content:"";position:absolute;left:-6%;right:-6%;top:54%;height:1.5px;border-radius:2px;background:rgba(255,255,255,.7);transform:scaleX(0);transform-origin:left;animation:lp-strike .35s .85s ease-out both}
