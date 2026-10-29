@@ -64,25 +64,35 @@
 .lp-trust{display:inline-flex;align-items:center;gap:8px;margin-top:clamp(8px,1.6vh,16px);font-size:13px;font-weight:600;color:rgba(255,255,255,.72);animation:lp-fade .6s .7s both}
 .lp-trust::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--g);box-shadow:0 0 8px var(--g)}
 
-/* the price */
+/* the offer card: price on the right, a "50%" emblem with an orbiting gold light on the left */
 .lp-offer{margin-top:clamp(22px,4.2vh,44px);animation:lp-rise .6s .55s cubic-bezier(.2,.7,.2,1) both}
-.lp-offer-price{position:relative;display:flex;align-items:baseline;justify-content:center;gap:clamp(10px,1.4vw,18px);line-height:.85}
-.lp-offer-only{font-size:clamp(18px,3vh,28px);font-weight:800;color:rgba(255,255,255,.8)}
-.lp-offer-amount{position:relative;display:inline-flex;align-items:baseline;gap:6px;font-family:var(--num);font-weight:700;font-size:clamp(64px,15vh,164px);letter-spacing:-.045em;
-  background:linear-gradient(180deg,#fff 25%,#b9c6ff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 10px 40px rgba(91,124,255,.55))}
+.lp-deal{position:relative;display:flex;align-items:center;gap:clamp(16px,2.8vw,36px);padding:clamp(14px,2.4vh,24px) clamp(20px,3vw,40px);border-radius:26px;
+  background:linear-gradient(160deg,rgba(255,255,255,.09),rgba(255,255,255,.02));backdrop-filter:blur(14px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 30px 80px -30px rgba(59,107,255,.5)}
+.lp-deal::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;
+  background:linear-gradient(120deg,rgba(201,169,97,.75),rgba(255,255,255,.08) 35%,rgba(255,255,255,.08) 65%,rgba(143,180,255,.7));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+.lp-deal-main{display:flex;flex-direction:column;align-items:flex-start;text-align:right}
+.lp-deal-eyebrow{font-size:clamp(12px,1.8vh,14px);font-weight:700;letter-spacing:.08em;color:var(--g5)}
+.lp-deal-price{display:flex;align-items:baseline;gap:clamp(10px,1.4vw,16px);line-height:.9;margin-top:clamp(2px,.6vh,6px)}
+.lp-offer-amount{display:inline-flex;align-items:baseline;gap:6px;font-family:var(--num);font-weight:600;font-size:clamp(52px,10.5vh,108px);letter-spacing:-.045em;
+  background:linear-gradient(180deg,#fff 30%,#c3cdff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 8px 30px rgba(91,124,255,.45))}
 .lp-offer-num::after{counter-reset:lp-n var(--lp-n,300);content:counter(lp-n)}
 .lp-offer-num{animation:lp-count .9s 1.05s cubic-bezier(.2,.7,.2,1) both}
-.lp-offer-cur{font-size:.4em;font-family:'Heebo LP',sans-serif;font-weight:800}
-.lp-offer-old{position:relative;text-decoration:none;font-family:var(--num);font-size:clamp(18px,3vh,30px);font-weight:600;color:rgba(255,255,255,.5);white-space:nowrap}
-.lp-offer-old::after{content:"";position:absolute;left:-6%;right:-6%;top:52%;height:2px;border-radius:2px;background:#ff5d7a;box-shadow:0 0 10px #ff5d7a;transform:rotate(-10deg) scaleX(0);transform-origin:left;animation:lp-strike .35s .85s ease-out both}
-.lp-offer-sub{margin-top:clamp(8px,1.4vh,14px)!important;font-size:clamp(14px,2.1vh,18px);font-weight:600;color:rgba(255,255,255,.88);text-wrap:balance}
-.lp-offer-vat{margin-top:2px!important;font-size:12px;color:rgba(255,255,255,.5)}
-/* the 50% balloon sticker, pinned to the price */
-.lp-sticker{position:relative;align-self:flex-start;margin-top:calc(-1 * clamp(6px,1.4vh,16px));margin-inline-start:clamp(0px,1vw,10px);display:flex;flex-direction:column;align-items:center;rotate:-12deg;z-index:2;
-  animation:lp-pop .5s 1.25s cubic-bezier(.2,1.5,.4,1) both}
-.lp-fifty{height:clamp(42px,8vh,84px);width:auto;display:block;filter:drop-shadow(0 10px 18px rgba(20,10,80,.6))}
-.lp-sticker-pill{margin-top:-6px;padding:1px 12px;border-radius:99px;font-size:clamp(11px,1.6vh,14px);font-weight:900;color:#fff;letter-spacing:.04em;
-  background:linear-gradient(180deg,#86b4ff 0%,#4a63ff 48%,#7a2ee6 100%);border:1.5px solid rgba(255,255,255,.75);box-shadow:0 6px 14px -4px rgba(77,107,255,.85)}
+.lp-offer-cur{font-size:.42em;font-family:'Heebo LP',sans-serif;font-weight:700}
+.lp-offer-old{position:relative;text-decoration:none;font-family:var(--num);font-size:clamp(16px,2.6vh,24px);font-weight:500;color:rgba(255,255,255,.45);white-space:nowrap}
+.lp-offer-old::after{content:"";position:absolute;left:-6%;right:-6%;top:54%;height:1.5px;border-radius:2px;background:rgba(255,255,255,.7);transform:scaleX(0);transform-origin:left;animation:lp-strike .35s .85s ease-out both}
+.lp-deal-note{margin-top:clamp(6px,1.2vh,10px);font-size:clamp(13px,1.9vh,15px);font-weight:500;color:rgba(255,255,255,.7)}
+.lp-offer-vat{color:rgba(255,255,255,.45)}
+.lp-deal-sep{align-self:stretch;width:1px;background:linear-gradient(transparent,rgba(255,255,255,.22),transparent)}
+.lp-emblem{position:relative;flex:none;width:clamp(86px,15vh,140px);aspect-ratio:1;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 50% 28%,rgba(143,180,255,.2),rgba(5,3,13,.25) 70%);border:1px solid rgba(255,255,255,.16);
+  box-shadow:inset 0 0 30px rgba(91,124,255,.25),0 0 50px -6px rgba(138,44,240,.45)}
+.lp-emblem b{font-family:var(--num);font-weight:600;font-size:clamp(26px,4.6vh,44px);line-height:1;letter-spacing:-.03em;
+  background:linear-gradient(180deg,#fbefc4 10%,#c9a961 90%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.lp-emblem small{margin-top:4px;font-size:clamp(10px,1.5vh,12px);font-weight:700;letter-spacing:.3em;color:rgba(255,255,255,.75);padding-inline-start:.3em}
+.lp-orbit{position:absolute;inset:-7px;border-radius:50%;border:1px solid rgba(255,255,255,.07);animation:lp-orbit 7s linear infinite}
+.lp-orbit i{position:absolute;top:-3px;left:calc(50% - 3px);width:6px;height:6px;border-radius:50%;background:#f5e8b0;box-shadow:0 0 8px 2px rgba(245,232,176,.9),0 0 18px 4px rgba(201,169,97,.6)}
 
 /* the planet: its glowing rim is the horizon the form sits on (drawn behind the panel, clipped by .lp) */
 .lp-horizon{position:relative;width:100%;display:flex;justify-content:center;margin-top:clamp(22px,4.4vh,48px)}
@@ -138,11 +148,12 @@
 @keyframes lp-rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
 @keyframes lp-pop{from{opacity:0;scale:.4}to{opacity:1;scale:1}}
 @keyframes lp-count{from{--lp-n:600}to{--lp-n:300}}
-@keyframes lp-strike{to{transform:rotate(-10deg) scaleX(1)}}
+@keyframes lp-strike{to{transform:scaleX(1)}}
+@keyframes lp-orbit{to{transform:rotate(360deg)}}
 @keyframes lp-sweep{0%,70%{transform:translateX(130%)}100%{transform:translateX(-130%)}}
 @media (prefers-reduced-motion:reduce){
-  .lp-aurora,.lp-beams,.lp-stars,.lp-badge,.lp-badge::before,.lp-badge i,.lp-w>span,.lp-grad,.lp-trust,.lp-offer,.lp-offer-num,.lp-sticker,.lp-panel,.lp-panel::before,.lp-btn::after{animation:none}
-  .lp-offer-old::after{animation:none;transform:rotate(-10deg)}
+  .lp-aurora,.lp-beams,.lp-stars,.lp-badge,.lp-badge::before,.lp-badge i,.lp-w>span,.lp-grad,.lp-trust,.lp-offer,.lp-offer-num,.lp-orbit,.lp-panel,.lp-panel::before,.lp-btn::after{animation:none}
+  .lp-offer-old::after{animation:none;transform:none}
 }
 
 /* ---------- phones and narrow tablets ---------- */
@@ -150,13 +161,17 @@
   .lp-top{flex-direction:row-reverse}
   .lp-wa-fab{top:14px}
   .lp-horizon::before{--ps:max(900px,260vw)}
-  .lp-offer-price{flex-wrap:wrap;row-gap:6px}
-  .lp-offer-old{order:3;flex-basis:100%}
-  .lp-sticker{order:2;margin-inline-start:0}
-  .lp-fifty{height:clamp(40px,6.6vh,64px)}
-  .lp-offer-old::after{left:36%;right:36%}
+  .lp-offer{width:100%;display:flex;justify-content:center;margin-top:clamp(14px,2.6vh,26px)}
+  .lp-horizon{margin-top:clamp(18px,3.4vh,36px)}
+  .lp-deal{width:min(100%,460px);gap:14px;padding:14px 18px}
+  .lp-deal-main{flex:1;min-width:0}
+  .lp-deal-price{flex-direction:column;align-items:flex-start;gap:4px}
+  .lp-offer-vat{display:block}
+  .lp-dot{display:none}
   .lp-h1{font-size:min(6.2vh,10.4vw,56px)!important}
-  .lp-offer-amount{font-size:min(11vh,22vw,110px)}
+  .lp-offer-amount{font-size:min(9.6vh,17vw,96px)}
+  .lp-emblem{width:min(12vh,24vw,112px)}
+  .lp-emblem b{font-size:min(4.2vh,8vw,36px)}
   .lp-panel{padding:14px 16px;gap:8px}
   .lp-form.wide{display:flex}
   .lp-form.wide .lp-row{grid-template-columns:1fr 1fr}
@@ -188,5 +203,6 @@
   .lp-offer{margin-top:18px}
 }
 @media (max-height:640px) and (max-width:900px){
-  .lp-muted{display:none}
+  .lp-muted,.lp-deal-eyebrow{display:none}
+  .lp-hero{padding-top:58px}
 }
