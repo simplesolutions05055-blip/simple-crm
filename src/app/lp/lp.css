@@ -4,188 +4,189 @@
 @font-face{font-family:'Heebo LP';font-style:normal;font-weight:100 900;font-display:swap;src:url(/lp/fonts/heebo-latin-wght-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 @font-face{font-family:'Space Grotesk LP';font-style:normal;font-weight:300 700;font-display:swap;src:url(/lp/fonts/space-grotesk-latin-wght-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+2000-206F}
 
-/* Landing pages of the CRM, in the simple-solution.co.il brand: deep purple, gold accent, Heebo.
-   Design spec: one offer block leads the eye, gold is the action colour. Everything is scoped under .lp */
-.lp{--p:#3D1466;--p9:#1F0B33;--p7:#5A1E94;--p4:#9d6ce7;--v:#8a3cff;--g:#C9A961;--g7:#A88845;--g5:#F5E8B0;--ink:#1F0B33;--mute:rgba(31,11,51,.68);--line:rgba(61,20,102,.14);
+/* Landing page, premium dark "celestial" look: a night sky with drifting aurora, light beams and a planet whose
+   rim glows behind the form. Brand colours from the logo (blue to violet) with a gold action button, Heebo.
+   One screen, no scroll. Only transform and opacity loop; everything stops under prefers-reduced-motion. */
+@property --lp-n{syntax:'<integer>';inherits:false;initial-value:300}
+@property --lp-a{syntax:'<angle>';inherits:false;initial-value:0deg}
+.lp{--bg:#05030d;--b:#3b6bff;--v:#8a2cf0;--l:#c9d4ff;--g:#C9A961;--g5:#F5E8B0;--glass:rgba(255,255,255,.06);--edge:rgba(255,255,255,.14);
   --num:'Space Grotesk LP','Heebo LP',sans-serif;
-  font-family:'Heebo LP','Heebo',sans-serif;color:var(--ink);background:#fff;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:clip;
-  display:flex;flex-direction:column;min-height:100svh}
+  position:relative;isolation:isolate;font-family:'Heebo LP','Heebo',sans-serif;color:#fff;background:var(--bg);line-height:1.6;-webkit-font-smoothing:antialiased;
+  overflow:clip;display:flex;flex-direction:column;min-height:100svh}
 .lp *{box-sizing:border-box}
-.lp h1,.lp h2{margin:0;font-weight:800;line-height:1.1;letter-spacing:-.01em}
+.lp h1,.lp h2{margin:0;font-weight:800;line-height:1.08;letter-spacing:-.015em}
 .lp p{margin:0}
 .lp a{color:inherit}
-.lp-wrap{max-width:1120px;margin:0 auto;padding:0 20px;width:100%}
 .lp-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
-/* gold text that slowly shimmers (the site's .gold-text) */
-.lp-gold{background:linear-gradient(135deg,#d9b86c 0%,#f5e8b0 40%,#c9a961 70%,#a88845 100%);background-size:200% 200%;
-  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:lp-shimmer 6s ease-in-out infinite}
+/* ---------- the sky ---------- */
+.lp-sky{position:absolute;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+.lp-sky>span{position:absolute;display:block}
+.lp-aurora{width:70vmax;height:70vmax;border-radius:50%;opacity:.55;will-change:transform}
+.lp-aurora.a1{top:-38vmax;right:-18vmax;background:radial-gradient(circle,rgba(59,107,255,.75) 0%,rgba(59,107,255,0) 62%);animation:lp-drift1 22s ease-in-out infinite alternate}
+.lp-aurora.a2{top:-30vmax;left:-24vmax;background:radial-gradient(circle,rgba(138,44,240,.7) 0%,rgba(138,44,240,0) 62%);animation:lp-drift2 26s ease-in-out infinite alternate}
+.lp-aurora.a3{top:8vh;left:20%;width:50vmax;height:50vmax;opacity:.28;background:radial-gradient(circle,rgba(201,169,97,.55) 0%,rgba(201,169,97,0) 60%);animation:lp-drift3 30s ease-in-out infinite alternate}
+.lp-beams{inset:0;opacity:.5;background:
+  linear-gradient(105deg,transparent 30%,rgba(160,180,255,.10) 38%,transparent 44%),
+  linear-gradient(80deg,transparent 52%,rgba(200,170,255,.09) 58%,transparent 63%),
+  linear-gradient(95deg,transparent 64%,rgba(160,190,255,.07) 70%,transparent 76%);
+  -webkit-mask:linear-gradient(#000,transparent 70%);mask:linear-gradient(#000,transparent 70%);animation:lp-beam 8s ease-in-out infinite}
+.lp-stars{inset:0;opacity:.55;background-image:radial-gradient(1px 1px at 12% 22%,#fff,transparent),radial-gradient(1px 1px at 28% 64%,#fff,transparent),radial-gradient(1.5px 1.5px at 44% 14%,#dfe6ff,transparent),
+  radial-gradient(1px 1px at 63% 38%,#fff,transparent),radial-gradient(1.5px 1.5px at 78% 18%,#e9dcff,transparent),radial-gradient(1px 1px at 88% 56%,#fff,transparent),
+  radial-gradient(1px 1px at 6% 48%,#fff,transparent),radial-gradient(1px 1px at 54% 82%,#fff,transparent),radial-gradient(1.5px 1.5px at 94% 8%,#fff,transparent);
+  animation:lp-twinkle 5s ease-in-out infinite}
+.lp-grain{inset:-50%;opacity:.13;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
 
-/* header: logo chip + round WhatsApp button */
+/* ---------- header ---------- */
 .lp-top{position:absolute;inset:0 0 auto;z-index:3;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;max-width:1120px;margin:0 auto}
-.lp-logo-chip{display:inline-flex;background:#fff;border-radius:12px;padding:6px 12px}
-.lp-logo{height:40px;width:auto;display:block}
+.lp-logo-chip{display:inline-flex;background:#fff;border-radius:14px;padding:6px 12px;box-shadow:0 10px 30px -10px rgba(0,0,0,.6)}
+.lp-logo{height:38px;width:auto;display:block}
 .lp-wa-fab{position:absolute;right:20px;top:calc(100% + 4px);width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  color:#fff!important;background:#25D366;box-shadow:0 0 0 4px rgba(37,211,102,.22),0 12px 28px -8px rgba(37,211,102,.75);transition:transform .15s}
+  color:#fff!important;background:#25D366;box-shadow:0 0 0 4px rgba(37,211,102,.2),0 12px 28px -8px rgba(37,211,102,.75);transition:transform .15s}
 .lp-wa-fab:hover{background:#1fbf5b;transform:scale(1.06)}
 .lp-wa-fab svg{width:28px;height:28px}
 
-/* hero: the site's dark CTA background, with a glow that breathes (opacity only) */
-.lp-hero{position:relative;flex:1 0 auto;display:flex;color:#fff;padding:clamp(70px,11vh,104px) 0 clamp(48px,7vh,64px);
-  background:radial-gradient(ellipse at 50% 50%,var(--p7) 0%,var(--p9) 80%);overflow:hidden}
-.lp-hero::before{content:"";position:absolute;inset:0;pointer-events:none;
-  background:radial-gradient(circle at 70% 45%,rgba(157,108,231,.30),transparent 55%),radial-gradient(circle at 50% 100%,rgba(201,169,97,.20),transparent 50%);animation:lp-breathe 6s ease-in-out infinite}
-.lp-bg-mark{position:absolute;inset:0;pointer-events:none;z-index:0}
-.lp-bg-mark img{position:absolute;left:50%;top:50%;height:115%;width:auto;transform:translate(-50%,-50%) rotate(-8deg);opacity:.15;mix-blend-mode:screen}
-
-.lp-hero-grid{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);column-gap:28px;align-content:center;
-  grid-template-areas:". photo" "brand photo" "h1 photo" "trust photo" "offer photo" ". photo";grid-template-rows:1fr auto auto auto auto 1fr}
-.lp-brand-pill{grid-area:brand;justify-self:center;display:inline-flex;align-items:center;gap:12px;padding:8px 20px;border-radius:99px;margin-bottom:clamp(10px,2vh,22px);
-  background:rgba(31,11,51,.55);border:1px solid rgba(201,169,97,.3);backdrop-filter:blur(16px);
-  font-family:var(--num);font-size:12px;font-weight:600;letter-spacing:.32em;color:#fff;white-space:nowrap;animation:lp-fade .6s .05s both}
-.lp-brand-pill::before{content:"";width:22px;height:1px;background:var(--g)}
-.lp-h1{grid-area:h1;display:flex;flex-direction:column;align-items:center;text-align:center;font-size:clamp(32px,6.6vh,66px)!important;color:#fff}
+/* ---------- hero ---------- */
+.lp-hero{flex:1 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  width:100%;max-width:1040px;margin:0 auto;padding:clamp(76px,11vh,104px) 20px clamp(12px,2.4vh,28px)}
+.lp-badge{position:relative;display:inline-flex;align-items:center;gap:10px;padding:7px 18px;border-radius:99px;font-size:clamp(12px,1.7vh,14px);font-weight:700;letter-spacing:.04em;color:var(--g5);
+  background:rgba(15,10,35,.6);backdrop-filter:blur(12px);animation:lp-fade .6s .05s both}
+.lp-badge::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;
+  background:conic-gradient(from var(--lp-a),rgba(255,255,255,.12) 0 60%,var(--g) 75%,#fff 80%,var(--b) 86%,rgba(255,255,255,.12) 95%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:lp-spin 4s linear infinite}
+.lp-badge i{width:7px;height:7px;border-radius:50%;background:var(--g);box-shadow:0 0 10px var(--g);animation:lp-ping 2s ease-in-out infinite}
+.lp-h1{margin-top:clamp(12px,2.2vh,22px)!important;font-size:clamp(36px,7.6vh,84px)!important;font-weight:900!important;color:#fff;text-shadow:0 10px 40px rgba(59,107,255,.25)}
 .lp-line{display:block;white-space:nowrap}
-.lp-w{display:inline-block;overflow:hidden;vertical-align:bottom;padding-bottom:.08em;margin-bottom:-.08em;margin-inline:.13em}
-.lp-w>span{display:inline-block;animation:lp-word .6s cubic-bezier(.2,.7,.2,1) both}
-.lp-trust{grid-area:trust;justify-self:center;display:inline-flex;align-items:center;gap:10px;margin-top:clamp(8px,1.6vh,16px);padding:7px 16px;border-radius:99px;
-  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(10px);font-size:13px;font-weight:600;color:rgba(255,255,255,.92);animation:lp-fade .6s .55s both}
-.lp-trust::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--g);box-shadow:0 0 10px var(--g)}
-.lp-a-offer{grid-area:offer;display:flex;justify-content:center;margin-top:clamp(16px,3vh,32px)}
-.lp-photo{grid-area:photo;position:relative;min-height:0}
-.lp-photo img{position:absolute;bottom:calc(-1 * clamp(48px,7vh,64px));left:50%;transform:translateX(-50%);height:calc(100% + clamp(48px,7vh,64px));width:auto;max-width:100%;object-fit:contain;object-position:bottom;
-  filter:drop-shadow(0 20px 40px rgba(0,0,0,.35))}
+.lp-w{display:inline-block;margin-inline:.12em}
+.lp-w>span{display:inline-block;animation:lp-blur .8s cubic-bezier(.2,.7,.2,1) both}
+.lp-grad{background:linear-gradient(100deg,#fff 0%,var(--l) 30%,#8fb4ff 55%,#c79bff 80%,#fff 100%);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  animation:lp-blur .8s cubic-bezier(.2,.7,.2,1) both,lp-sheen 7s 1.4s linear infinite}
+.lp-trust{display:inline-flex;align-items:center;gap:8px;margin-top:clamp(8px,1.6vh,16px);font-size:13px;font-weight:600;color:rgba(255,255,255,.72);animation:lp-fade .6s .7s both}
+.lp-trust::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--g);box-shadow:0 0 8px var(--g)}
 
-/* the offer block: a glass card, the price counts down from 600 to 300 once, the old price gets struck */
-@property --lp-n{syntax:'<integer>';inherits:false;initial-value:300}
-.lp-offer{position:relative;width:min(100%,440px);padding:clamp(14px,2.4vh,26px) clamp(18px,2.6vw,32px) clamp(12px,2vh,22px);border-radius:24px;text-align:center;
-  background:linear-gradient(160deg,rgba(255,255,255,.13),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(14px);
-  box-shadow:0 30px 70px -24px rgba(10,4,30,.75),inset 0 1px 0 rgba(255,255,255,.18);animation:lp-rise .5s .45s cubic-bezier(.2,.7,.2,1) both}
-.lp-offer::before{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1px;pointer-events:none;
-  background:linear-gradient(135deg,rgba(201,169,97,.85),rgba(157,108,231,.35) 45%,rgba(59,107,255,.6));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
-.lp-offer-tag{display:inline-block;padding:4px 14px;border-radius:99px;font-size:clamp(12px,1.7vh,14px);font-weight:800;letter-spacing:.04em;color:var(--g5);border:1px solid rgba(201,169,97,.55);background:rgba(201,169,97,.10)}
-.lp-offer-price{display:flex;align-items:baseline;justify-content:center;gap:clamp(8px,1.2vw,14px);margin-top:clamp(4px,1vh,10px);line-height:.9}
-.lp-offer-only{font-size:clamp(16px,2.6vh,24px);font-weight:800;color:rgba(255,255,255,.85)}
-.lp-offer-amount{display:inline-flex;align-items:baseline;gap:4px;font-family:var(--num);font-weight:700;font-size:clamp(54px,11.5vh,116px);letter-spacing:-.03em;
-  background:linear-gradient(180deg,#fff 30%,#d9c8ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 6px 18px rgba(138,60,255,.55))}
+/* the price */
+.lp-offer{margin-top:clamp(22px,4.2vh,44px);animation:lp-rise .6s .55s cubic-bezier(.2,.7,.2,1) both}
+.lp-offer-price{position:relative;display:flex;align-items:baseline;justify-content:center;gap:clamp(10px,1.4vw,18px);line-height:.85}
+.lp-offer-only{font-size:clamp(18px,3vh,28px);font-weight:800;color:rgba(255,255,255,.8)}
+.lp-offer-amount{position:relative;display:inline-flex;align-items:baseline;gap:6px;font-family:var(--num);font-weight:700;font-size:clamp(64px,15vh,164px);letter-spacing:-.045em;
+  background:linear-gradient(180deg,#fff 25%,#b9c6ff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 10px 40px rgba(91,124,255,.55))}
 .lp-offer-num::after{counter-reset:lp-n var(--lp-n,300);content:counter(lp-n)}
-.lp-offer-num{animation:lp-count .9s 1s cubic-bezier(.2,.7,.2,1) both}
-.lp-offer-cur{font-size:.42em;font-family:'Heebo LP',sans-serif;font-weight:800}
-.lp-offer-old{position:relative;text-decoration:none;font-family:var(--num);font-size:clamp(16px,2.6vh,24px);font-weight:600;color:rgba(255,255,255,.55);white-space:nowrap}
-.lp-offer-old::after{content:"";position:absolute;left:-4%;right:-4%;top:52%;height:2px;border-radius:2px;background:#ff5d7a;transform:rotate(-8deg) scaleX(0);transform-origin:left;animation:lp-strike .35s .8s ease-out both}
-.lp-offer-sub{margin-top:clamp(6px,1.2vh,12px)!important;font-size:clamp(14px,2.1vh,18px);font-weight:700;color:#fff;text-wrap:balance}
-.lp-offer-vat{margin-top:2px!important;font-size:12px;color:rgba(255,255,255,.62)}
-
-/* the 50% sticker on the card's corner */
-.lp-sticker{position:absolute;top:calc(-1 * clamp(22px,3.4vh,34px));left:calc(-1 * clamp(14px,2vw,30px));display:flex;flex-direction:column;align-items:center;rotate:-12deg;z-index:2;
-  animation:lp-pop .5s 1.2s cubic-bezier(.2,1.5,.4,1) both}
-.lp-fifty{height:clamp(46px,8.6vh,88px);width:auto;display:block;filter:drop-shadow(0 10px 18px rgba(20,10,80,.55))}
+.lp-offer-num{animation:lp-count .9s 1.05s cubic-bezier(.2,.7,.2,1) both}
+.lp-offer-cur{font-size:.4em;font-family:'Heebo LP',sans-serif;font-weight:800}
+.lp-offer-old{position:relative;text-decoration:none;font-family:var(--num);font-size:clamp(18px,3vh,30px);font-weight:600;color:rgba(255,255,255,.5);white-space:nowrap}
+.lp-offer-old::after{content:"";position:absolute;left:-6%;right:-6%;top:52%;height:2px;border-radius:2px;background:#ff5d7a;box-shadow:0 0 10px #ff5d7a;transform:rotate(-10deg) scaleX(0);transform-origin:left;animation:lp-strike .35s .85s ease-out both}
+.lp-offer-sub{margin-top:clamp(8px,1.4vh,14px)!important;font-size:clamp(14px,2.1vh,18px);font-weight:600;color:rgba(255,255,255,.88);text-wrap:balance}
+.lp-offer-vat{margin-top:2px!important;font-size:12px;color:rgba(255,255,255,.5)}
+/* the 50% balloon sticker, pinned to the price */
+.lp-sticker{position:relative;align-self:flex-start;margin-top:calc(-1 * clamp(6px,1.4vh,16px));margin-inline-start:clamp(0px,1vw,10px);display:flex;flex-direction:column;align-items:center;rotate:-12deg;z-index:2;
+  animation:lp-pop .5s 1.25s cubic-bezier(.2,1.5,.4,1) both}
+.lp-fifty{height:clamp(42px,8vh,84px);width:auto;display:block;filter:drop-shadow(0 10px 18px rgba(20,10,80,.6))}
 .lp-sticker-pill{margin-top:-6px;padding:1px 12px;border-radius:99px;font-size:clamp(11px,1.6vh,14px);font-weight:900;color:#fff;letter-spacing:.04em;
   background:linear-gradient(180deg,#86b4ff 0%,#4a63ff 48%,#7a2ee6 100%);border:1.5px solid rgba(255,255,255,.75);box-shadow:0 6px 14px -4px rgba(77,107,255,.85)}
 
-/* form strip, overlapping the bottom of the hero */
-.lp-formbar{position:relative;z-index:4;margin-top:-36px;padding-bottom:6px;scroll-margin-top:16px}
-.lp-card{background:#fff;color:var(--ink);border-radius:20px;box-shadow:0 24px 60px -20px rgba(31,11,51,.45)}
-.lp-card.wide{display:flex;flex-direction:column;gap:10px;padding:16px 24px}
+/* the planet: its glowing rim is the horizon the form sits on (drawn behind the panel, clipped by .lp) */
+.lp-horizon{position:relative;width:100%;display:flex;justify-content:center;margin-top:clamp(22px,4.4vh,48px)}
+.lp-horizon::before{--ps:max(1500px,175vw);content:"";position:absolute;z-index:-1;pointer-events:none;left:50%;top:calc(-1 * clamp(26px,4.6vh,52px));width:var(--ps);aspect-ratio:1;border-radius:50%;transform:translateX(-50%);
+  background:radial-gradient(circle at 50% 0%,#191040 0%,#0a0720 22%,#05030d 48%);
+  box-shadow:inset 0 2px 0 rgba(214,224,255,.9),inset 0 26px 60px -24px rgba(130,150,255,.75),0 -6px 40px rgba(91,124,255,.55),0 -30px 140px 10px rgba(138,44,240,.35)}
+
+/* ---------- the form, a glass panel on the horizon with a light running round its edge ---------- */
+.lp-panel{position:relative;width:100%;max-width:980px;padding:clamp(12px,2vh,18px) 22px;border-radius:22px;text-align:right;
+  display:flex;flex-direction:column;gap:10px;background:linear-gradient(160deg,rgba(255,255,255,.09),rgba(255,255,255,.03));backdrop-filter:blur(18px);
+  box-shadow:0 40px 90px -30px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.14);animation:lp-rise .6s .8s cubic-bezier(.2,.7,.2,1) both;scroll-margin-top:16px}
+.lp-panel::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;
+  background:conic-gradient(from var(--lp-a),var(--edge) 0 55%,rgba(143,180,255,.9) 70%,var(--g) 78%,var(--edge) 92%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:lp-spin 6s linear infinite}
 .lp-card-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
-.lp-card-head h2{font-size:22px}
-.lp-muted{color:var(--mute);font-size:15px}
+.lp-card-head h2{font-size:20px;color:#fff}
+.lp-muted{color:rgba(255,255,255,.62);font-size:14px}
 .lp-form{display:flex;flex-direction:column;gap:8px}
-.lp-form.wide{display:grid;grid-template-columns:auto auto 1fr;column-gap:22px;row-gap:8px}
-.lp-form.wide .lp-row{grid-column:1/-1}
-.lp-form.wide .lp-err{grid-column:1/-1}
+.lp-form.wide{display:grid;grid-template-columns:auto auto 1fr;column-gap:22px;row-gap:6px}
+.lp-form.wide .lp-row,.lp-form.wide .lp-err{grid-column:1/-1}
 .lp-form.wide .lp-row{display:grid;grid-template-columns:1fr 1fr auto;gap:12px}
 .lp-form:not(.wide) .lp-row{display:flex;flex-direction:column;gap:10px}
-.lp-inp{height:48px;border:1px solid var(--line);border-radius:12px;padding:0 14px;font:inherit;font-size:16px;color:var(--ink);background:#faf9fd;width:100%}
+.lp-inp{height:48px;border:1px solid var(--edge);border-radius:12px;padding:0 14px;font:inherit;font-size:16px;color:#fff;background:rgba(5,3,13,.45);width:100%;transition:border-color .2s,background .2s}
+.lp-inp::placeholder{color:rgba(255,255,255,.5)}
 .lp-inp[dir=ltr]{text-align:right}
-.lp-inp:focus{outline:2px solid var(--v);border-color:transparent;background:#fff}
+.lp-inp:focus{outline:none;border-color:#8fb4ff;background:rgba(5,3,13,.7);box-shadow:0 0 0 3px rgba(143,180,255,.25)}
 .lp-hp{position:absolute!important;left:-9999px;width:1px;height:1px;opacity:0}
-.lp-check{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--mute);cursor:pointer;text-align:right}
-.lp-check input{margin-top:3px;accent-color:var(--p);width:16px;height:16px;flex:none}
-.lp-check a{color:var(--p7)}
-.lp-err{color:#c0392b;font-size:14px;font-weight:600}
-.lp-done{display:flex;flex-direction:column;gap:4px;padding:18px;border-radius:14px;background:#f4fbf4;border:1px solid #bfe3c0;font-size:16px}
-.lp-btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 26px;border:0;border-radius:14px;cursor:pointer;min-width:220px;
-  font:inherit;font-size:17px;font-weight:800;color:var(--p9);background:linear-gradient(135deg,#e3c478 0%,#c9a961 55%,#a88845 100%);box-shadow:0 14px 40px -12px rgba(201,169,97,.6)}
-.lp-btn:hover{filter:brightness(1.07)}
+.lp-check{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:rgba(255,255,255,.66);cursor:pointer;text-align:right}
+.lp-check input{margin-top:3px;accent-color:var(--g);width:16px;height:16px;flex:none}
+.lp-check a{color:var(--l)}
+.lp-err{color:#ff9aa9;font-size:14px;font-weight:600}
+.lp-done{display:flex;flex-direction:column;gap:4px;padding:16px;border-radius:14px;background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.35);font-size:16px;color:#fff}
+.lp-btn{position:relative;overflow:hidden;isolation:isolate;display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 28px;border:0;border-radius:14px;cursor:pointer;min-width:220px;
+  font:inherit;font-size:17px;font-weight:800;color:#1F0B33;background:linear-gradient(135deg,#f0d68f 0%,#c9a961 55%,#a88845 100%);box-shadow:0 14px 40px -12px rgba(201,169,97,.7),inset 0 1px 0 rgba(255,255,255,.5)}
+.lp-btn::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.65) 50%,transparent 65%);transform:translateX(130%);animation:lp-sweep 4.5s 2s ease-in-out infinite}
+.lp-btn:hover{filter:brightness(1.06);box-shadow:0 18px 50px -10px rgba(201,169,97,.8)}
 .lp-btn:disabled{opacity:.6;cursor:default}
 .lp-btn.full{width:100%}
 
-/* the gold action button: a light sweep crosses it every few seconds (on hover too), the site's .btn-gold */
-.lp-btn{position:relative;overflow:hidden;isolation:isolate}
-.lp-btn::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.6) 50%,transparent 65%);transform:translateX(130%);animation:lp-sweep 4.5s 2s ease-in-out infinite}
-.lp-btn:hover{box-shadow:0 18px 50px -10px rgba(201,169,97,.75)}
+.lp-credit{text-align:center;padding:2px 20px 8px;font-size:12px;line-height:1.4;color:rgba(255,255,255,.45)}
+.lp-credit a{color:var(--l);font-weight:700;text-decoration:none;border-bottom:1px solid rgba(201,212,255,.3)}
 
-/* credit */
-.lp-credit{text-align:center;padding:2px 20px 6px;font-size:12px;line-height:1.4;color:var(--mute)}
-.lp-credit a{color:var(--p7);font-weight:700;text-decoration:none;border-bottom:1px solid rgba(90,30,148,.3)}
-
-@keyframes lp-shimmer{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
-@keyframes lp-breathe{0%,100%{opacity:.7}50%{opacity:1}}
-@keyframes lp-word{from{transform:translateY(110%);opacity:0}to{transform:none;opacity:1}}
-@keyframes lp-fade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-@keyframes lp-rise{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes lp-drift1{to{transform:translate(-12vmax,8vmax) scale(1.12)}}
+@keyframes lp-drift2{to{transform:translate(14vmax,10vmax) scale(1.08)}}
+@keyframes lp-drift3{to{transform:translate(-10vmax,-6vmax) scale(1.2)}}
+@keyframes lp-beam{0%,100%{opacity:.35}50%{opacity:.6}}
+@keyframes lp-twinkle{0%,100%{opacity:.35}50%{opacity:.7}}
+@keyframes lp-spin{to{--lp-a:360deg}}
+@keyframes lp-ping{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes lp-blur{from{opacity:0;filter:blur(14px);transform:translateY(18%)}to{opacity:1;filter:blur(0);transform:none}}
+@keyframes lp-sheen{to{background-position:-220% 0}}
+@keyframes lp-fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes lp-rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
 @keyframes lp-pop{from{opacity:0;scale:.4}to{opacity:1;scale:1}}
 @keyframes lp-count{from{--lp-n:600}to{--lp-n:300}}
-@keyframes lp-strike{to{transform:rotate(-8deg) scaleX(1)}}
+@keyframes lp-strike{to{transform:rotate(-10deg) scaleX(1)}}
 @keyframes lp-sweep{0%,70%{transform:translateX(130%)}100%{transform:translateX(-130%)}}
 @media (prefers-reduced-motion:reduce){
-  .lp-gold,.lp-hero::before,.lp-w>span,.lp-brand-pill,.lp-trust,.lp-offer,.lp-offer-num,.lp-sticker,.lp-btn::after{animation:none}
-  .lp-offer-old::after{animation:none;transform:rotate(-8deg)}
+  .lp-aurora,.lp-beams,.lp-stars,.lp-badge,.lp-badge::before,.lp-badge i,.lp-w>span,.lp-grad,.lp-trust,.lp-offer,.lp-offer-num,.lp-sticker,.lp-panel,.lp-panel::before,.lp-btn::after{animation:none}
+  .lp-offer-old::after{animation:none;transform:rotate(-10deg)}
 }
 
-/* phones and narrow tablets: one column, the photo sits beside the offer */
+/* ---------- phones and narrow tablets ---------- */
 @media (max-width:900px){
   .lp-top{flex-direction:row-reverse}
   .lp-wa-fab{top:14px}
-  .lp-hero{padding-top:clamp(66px,10vh,84px)}
-  .lp-hero-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:"h1" "trust" "offer";grid-template-rows:auto auto auto}
-  .lp-brand-pill{display:none}
-  .lp-h1{font-size:min(5.4vh,8.6vw,46px)!important}
-  .lp-a-offer{margin-top:clamp(26px,4.4vh,40px);justify-content:flex-start;position:relative;z-index:2}
-  .lp-photo{position:absolute;inset:auto auto 0 0;width:min(44%,290px);height:min(30vh,290px);z-index:0}
-  .lp-photo img{bottom:calc(-1 * clamp(48px,7vh,64px));left:0;transform:none;height:100%;max-width:none;object-position:left bottom}
-  .lp-offer{width:min(63%,330px);padding:clamp(14px,2.2vh,22px) 12px clamp(10px,1.6vh,16px)}
-  .lp-offer-price{flex-wrap:wrap;column-gap:6px;row-gap:2px}
-  .lp-offer-amount{font-size:clamp(50px,9.4vh,88px)}
-  .lp-offer-old{order:3;flex-basis:100%;font-size:clamp(14px,2.1vh,18px)}
-  .lp-offer-old::after{left:30%;right:30%}
-  .lp-offer-sub{font-size:clamp(13px,1.9vh,16px)}
-  .lp-sticker{top:calc(-1 * clamp(30px,4.4vh,40px));left:-34px}
-  .lp-fifty{height:clamp(40px,6.4vh,64px)}
+  .lp-horizon::before{--ps:max(900px,260vw)}
+  .lp-offer-price{flex-wrap:wrap;row-gap:6px}
+  .lp-offer-old{order:3;flex-basis:100%}
+  .lp-sticker{order:2;margin-inline-start:0}
+  .lp-fifty{height:clamp(40px,6.6vh,64px)}
+  .lp-offer-old::after{left:36%;right:36%}
+  .lp-h1{font-size:min(6.2vh,10.4vw,56px)!important}
+  .lp-offer-amount{font-size:min(11vh,22vw,110px)}
+  .lp-panel{padding:14px 16px;gap:8px}
   .lp-form.wide{display:flex}
   .lp-form.wide .lp-row{grid-template-columns:1fr 1fr}
   .lp-form.wide .lp-row .lp-btn{grid-column:1/-1}
   .lp-btn{min-width:0;width:100%}
   .lp-card-head{flex-direction:column;gap:0}
-  .lp-card.wide{padding:14px 16px;gap:8px}
-  .lp-check{font-size:12px}
 }
 @media (max-width:480px){
   .lp-logo{height:30px}
   .lp-wa-fab{width:46px;height:46px;right:16px}
   .lp-wa-fab svg{width:24px;height:24px}
-  .lp-card-head h2{font-size:19px}
+  .lp-card-head h2{font-size:18px}
   .lp-muted{font-size:13px}
 }
-/* short screens: everything a bit tighter so the form stays on screen */
+/* short screens */
 @media (max-height:700px) and (min-width:901px){
-  .lp-hero{padding-top:60px}
-  .lp-card.wide{padding:12px 22px;gap:8px}
-  .lp-card-head h2{font-size:20px}
+  .lp-hero{padding-top:66px}
   .lp-inp,.lp-btn{min-height:44px;height:44px}
 }
-@media (max-height:640px) and (max-width:900px){
-  .lp-trust{display:none}
-  .lp-a-offer{margin-top:30px}
-  .lp-offer-vat{display:none}
-}
 @media (max-height:760px) and (max-width:900px){
-  .lp-hero{padding-top:60px}
-  .lp-trust{font-size:12px;padding:5px 12px}
-  .lp-card.wide{padding:10px 14px;gap:6px}
+  .lp-hero{padding-top:66px}
   .lp-card-head h2{font-size:17px}
   .lp-muted{font-size:12px}
   .lp-inp,.lp-btn{min-height:42px;height:42px}
   .lp-check{font-size:11px}
+}
+@media (max-height:700px) and (max-width:900px){
+  .lp-trust,.lp-offer-vat{display:none}
+  .lp-offer{margin-top:18px}
+}
+@media (max-height:640px) and (max-width:900px){
+  .lp-muted{display:none}
 }
