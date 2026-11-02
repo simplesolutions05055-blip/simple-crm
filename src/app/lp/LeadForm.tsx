@@ -12,6 +12,8 @@ async function track(phone: string) {
     const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("+" + digits));
     ttq.identify({ phone_number: Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("") });
   } catch { /* hashing is optional */ }
+  /* the campaign optimizes for "Submit form" (FORM), so send SubmitForm; Lead stays for reporting */
+  ttq.track("SubmitForm");
   ttq.track("Lead");
 }
 
