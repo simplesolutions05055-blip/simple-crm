@@ -21,18 +21,23 @@ export async function POST(req: NextRequest) {
   if (name.length < 2) return NextResponse.json({ ok: false, error: "חסר שם" }, { status: 400 });
   if (!/^0(5\d|[2-4]|[89]|7\d)\d{7}$/.test(phone)) return NextResponse.json({ ok: false, error: "מספר טלפון לא תקין" }, { status: 400 });
   if (b.terms !== true) return NextResponse.json({ ok: false, error: "צריך לאשר את התנאים ומדיניות הפרטיות" }, { status: 400 });
-  const utm = str(b.utm_source, 60);
+  /* a lead from the TikTok instant form, relayed by Make: labelled as such, and taken in once per TikTok lead id */
+  const form = str(b.form, 20) === "tiktok";
+  const formLead = form ? str(b.lead_id, 80).replace(/[^\w-]/g, "") : "";
+  const utm = form ? "tiktok" : str(b.utm_source, 60);
   const source = (SOURCE.find(([re]) => re.test(utm)) || [null, "אתר ישיר"])[1];
   const lead = {
     name, phone, source,
     campaign: str(b.utm_campaign, 160) || page.campaign,
-    landing_page: str(b.url, 300),
-    message: ["השאיר פרטים בדף הנחיתה: " + page.campaign, utm ? "מקור: " + utm + (str(b.utm_content) ? " / " + str(b.utm_content, 120) : "") : ""].filter(Boolean).join("\n"),
+    landing_page: form ? "" : str(b.url, 300),
+    message: form
+      ? ["השאיר פרטים בטופס הלידים של טיקטוק" + (str(b.form_name) ? " (" + str(b.form_name, 120) + ")" : ""), str(b.ad_name) ? "מודעה: " + str(b.ad_name, 160) : ""].filter(Boolean).join("\n")
+      : ["השאיר פרטים בדף הנחיתה: " + page.campaign, utm ? "מקור: " + utm + (str(b.utm_content) ? " / " + str(b.utm_content, 120) : "") : ""].filter(Boolean).join("\n"),
     consent: b.marketing === true,
     consent_text: b.marketing === true ? "מאשר/ת לקבל עדכונים ומבצעים במייל ובוואטסאפ" : null,
   };
   try {
-    const r = await job<Record<string, unknown>>("ingest_lead", page.org, { ext: "lp-" + crypto.randomUUID(), lead });
+    const r = await job<Record<string, unknown>>("ingest_lead", page.org, { ext: formLead ? "tt-" + formLead : "lp-" + crypto.randomUUID(), lead });
     return NextResponse.json({ ok: true, duplicate: !!r?.duplicate });
   } catch (e) {
     console.error("lp lead", (e as Error).message);
