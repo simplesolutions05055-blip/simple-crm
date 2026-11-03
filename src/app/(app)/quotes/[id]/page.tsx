@@ -10,7 +10,7 @@ import AiQuoteDoc from "@/components/AiQuoteDoc";
 import { useApp } from "@/components/AppCtx";
 import { computeQuote, normalizeInput, toggleableCards, withPricing, withTemplate, nis, type QuoteInput, type Pricing, type ExtraLine } from "@/lib/quote-engine";
 import { aiView, emptyAi, normalizeAi, withAi, computeAi, type AiInput, type AiPricing } from "@/lib/ai-campaign";
-import { packView, emptyPack, normalizePack, withPack, computePack, newLine, basePrice, priceOf, offeredAddons, addonPriceOf, type PackInput, type PackLine, type PackPricing, type ProdId } from "@/lib/products";
+import { packView, emptyPack, normalizePack, withPack, computePack, newLine, basePrice, priceOf, offeredAddons, addonPriceOf, commitText, type PackInput, type PackLine, type PackPricing, type ProdId } from "@/lib/products";
 import { QUOTE_STATUS_CLS, fillTemplate, waLink, waTemplates, appUrl, fmtDateTime, type Row } from "@/lib/crm";
 
 export default function QuoteEditor() {
@@ -141,6 +141,8 @@ export default function QuoteEditor() {
     let next = on ? cur.lines.filter((l) => l.id !== id) : [...cur.lines, newLine(id)];
     if (!on && id === "soc") next = next.filter((l) => l.id !== "socfull");
     if (!on && id === "socfull") next = next.filter((l) => l.id !== "soc");
+    if (!on && id === "dev1") next = next.filter((l) => l.id !== "dev2");
+    if (!on && id === "dev2") next = next.filter((l) => l.id !== "dev1");
     if ((pk || ai) && !next.length && !cur.extras) return toast("בהצעה צריך להישאר לפחות מוצר אחד", true);
     upd({ product: "pack", prods: { ...cur, lines: next } });
   }
@@ -488,6 +490,18 @@ function PackControls({ I, pi, P, vat, upd, top }: { I: QuoteInput; pi: PackInpu
         </div>
       </div>
 
+      {pi.lines.some((l) => P.products.find((x) => x.id === l.id)?.commit) ? (
+        <div className="cgroup">
+          <b>התחייבות</b>
+          <div className="pills">
+            {([["3", "שלושה חודשים"], ["2", "חודשיים"], ["0", "ללא התחייבות"]] as const).map(([v, t]) => (
+              <button key={v} type="button" className={"pillck" + (pi.commit === v ? " on" : "")} onClick={() => set({ commit: v })}>{pi.commit === v ? "✓ " : ""}{t}</button>
+            ))}
+          </div>
+          <span className="tiny">מופיע בתנאי ההצעה: {commitText(pi.commit)}</span>
+        </div>
+      ) : null}
+
       {pi.lines.map((l) => {
         const d = P.products.find((x) => x.id === l.id)!;
         const def = basePrice(P, pi, l.id);
@@ -503,7 +517,7 @@ function PackControls({ I, pi, P, vat, upd, top }: { I: QuoteInput; pi: PackInpu
                 <input type="checkbox" checked={l.promo} onChange={(e) => setLine(l.id, { promo: e.target.checked })} />מבצע הצטרפות: {P.aiPct}% הנחה על החודש הראשון
               </label>
               {l.promo ? <span className="tiny">חודש ראשון {nis(Math.round(p.eff * (100 - P.aiPct) / 100))} לפני מע&quot;מ, משולם בהצטרפות. מהחודש השני {nis(p.eff)}.</span> : null}
-            </> : d.kind === "monthly" ? <>
+            </> : d.kind === "monthly" && !d.gifts ? <>
               <label className={"pillck" + (l.setupOn ? " on" : "")} style={{ alignSelf: "flex-start" }}>
                 <input type="checkbox" checked={l.setupOn} onChange={(e) => setLine(l.id, { setupOn: e.target.checked })} />להוסיף עלות הקמה
               </label>

@@ -115,7 +115,7 @@ export default function AiQuoteDoc({ m, T, to, biz, date, until, signed, childre
           <p className="note">{m.timelinesNote}</p>
           </Fold>
 
-          <Fold badge="+" title="תוספות אפשריות, בתוספת תשלום">
+          {m.addons.length ? <Fold badge="+" title="תוספות אפשריות, בתוספת תשלום">
           <table className="aq-add">
             <thead><tr><th>התוספת</th><th>לפני מע&quot;מ</th><th>כולל מע&quot;מ</th></tr></thead>
             <tbody>
@@ -129,7 +129,7 @@ export default function AiQuoteDoc({ m, T, to, biz, date, until, signed, childre
             </tbody>
           </table>
           <p className="note">{m.addonsNote}</p>
-          </Fold>
+          </Fold> : null}
 
           <Fold badge="i" title="תנאים והגבלות">
             {m.termGroups ? m.termGroups.map((g, n) => (
