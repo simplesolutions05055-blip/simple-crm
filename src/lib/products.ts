@@ -6,7 +6,8 @@ import type { Pair, Template } from "./quote-engine";
 import type { AiModel, AiRow } from "./ai-campaign";
 import { PAY_URL_DEFAULT, withAi } from "./ai-campaign";
 
-export type ProdId = "ai" | "bot" | "mail" | "site" | "lp" | "soc" | "socfull";
+export type ProdId = "ai" | "bot" | "mail" | "site" | "lp" | "soc" | "socfull" | "dev1" | "dev2";
+export type Gift = { t: string; s: string; was: number };
 export type ProdDef = {
   id: ProdId;
   label: string;      // full name, shown in the document
@@ -20,6 +21,9 @@ export type ProdDef = {
   timelines: Pair[];
   terms: string[];
   addons?: string[];  // which add-ons this product offers; a quote shows those of all its products
+  gifts?: Gift[];     // monthly services given free while the product is active (shown at their price, struck)
+  general?: string[]; // replaces the catalog's general terms in a quote that includes this product
+  commit?: boolean;   // the quote picks a commitment period (3 months, 2 months, none)
 };
 export type PackAddon = { id: string; label: string; d: string; price: number; was?: number };
 export type MsgPack = { id: string; n: number; price: number };
@@ -35,6 +39,37 @@ export type PackPricing = {
 };
 
 const SESSIONS = "סשן נוסף בתשלום, 280 ₪ לשעה";
+/* development tracks: monthly development hours, with gifts while the track is active. Their quote has its
+   own general terms (billing from the signing date, a commitment period picked per quote). */
+const DEV_INC = (h: number): Pair[] => [
+  { t: h + " שעות פיתוח בחודש", s: "מערכות ואוטומציות לעסק, אתרים, דפי נחיתה, עיצוב ועריכת סרטונים. מה בונים ובאיזה סדר נקבע בפגישת האפיון." },
+  { t: "פגישת אפיון ופיתוח", s: "בתחילת כל חודש: מה בונים, למה, ומה צריך לעבוד בסוף החודש." },
+  { t: "אחסון, כלי פיתוח ומערכות תומכות", s: "אחסון שרתים, כלי פיתוח, מערכות תומכות ועלויות אחזקה של שירותי צד שלישי מגולמים כחלק מהמנוי, עד 50 דולר לחודש. חריגה מהתקציב: תשלום אוטומטי לפי שימוש, עם עדכון מראש במייל." },
+  { t: "מערכת שירות ומעקב", s: "מערכת לצפייה בפרויקטים, בסטטוס של כל פרויקט ובניצול שעות העבודה." },
+];
+const DEV_TIMELINES: Pair[] = [
+  { t: "פגישת אפיון ראשונה וקליטת חומרים", s: "עד 3 ימים" },
+  { t: "הקמפיין עולה לאוויר", s: "עד 4 ימים מסיום פגישת האפיון" },
+  { t: "כל משימת פיתוח", s: "מועד נקבע בפגישת האפיון" },
+];
+const GIFT_CAMPAIGN: Gift = { t: "ניהול קמפיין ממומן", s: "בפלטפורמה שהקהל שלך נמצא בה: בניית הקמפיין, המודעות, מעקב ואופטימיזציה. תקציב הפרסום משולם ישירות לפלטפורמה.", was: 600 };
+const GIFT_SEO: Gift = { t: "קידום אורגני לאתר, 4 שעות בחודש", s: "שיפור האתר כדי שיופיע גבוה יותר בחיפוש בגוגל. לאתר קיים או לאתר שנבנה בשעות הפיתוח.", was: 1800 };
+const DEV_TERMS = [
+  "שעות פיתוח שלא נוצלו בחודש לא עוברות לחודש הבא.",
+  "המתנות ניתנות כל עוד המסלול פעיל.",
+  "תקציב הפרסום של הקמפיין משולם ישירות לפלטפורמה, ואינו כלול במחיר.",
+];
+const DEV_END = [
+  "בסיום ההתקשרות: אני מעביר אליך את רשימת הכלים שהמערכות שלך מחוברות אליהם ואת כל הקבצים. מאותו רגע העלויות החודשיות של הכלים עוברות אליך.",
+  'עזרה במעבר, אם תרצה: 350 ₪ לשעה לפני מע"מ. היקף השעות בהתאם לגודל הפרויקטים ולתקופת העבודה המשותפת.',
+];
+const DEV_GENERAL = [
+  "ההצעה בתוקף עד התאריך שבראש ההצעה",
+  "תשלום בכרטיס אשראי בהוראה קבועה. החיוב הראשון במועד החתימה על ההסכם, ומאז באותו תאריך בכל חודש.",
+];
+export type Commit = "3" | "2" | "0";
+export const commitText = (c: Commit) => c === "0" ? "ללא התחייבות. אפשר לעצור בכל עת." : "התחייבות ל" + (c === "3" ? "שלושה חודשים" : "חודשיים") + " מתחילת השירות. אחרי תום ההתחייבות אפשר לעצור בכל עת.";
+
 export const DEFAULT_PACK: PackPricing = {
   products: [
     {
@@ -197,6 +232,18 @@ export const DEFAULT_PACK: PackPricing = {
         "אין התחייבות לתוצאות. תלוי בנתוני העסק והשוק",
       ],
     },
+    {
+      id: "dev1", label: "מסלול 1 · 10 שעות פיתוח בחודש", short: "מסלול 1", kind: "monthly", price: 3600, setup: 0, fee: 0, addons: [],
+      sub: "מערכות, אתרים ותוכן שנבנים בדיוק לפי מה שהעסק שלך צריך",
+      inc: DEV_INC(10), timelines: DEV_TIMELINES, gifts: [GIFT_CAMPAIGN], general: DEV_GENERAL, commit: true,
+      terms: [...DEV_TERMS, ...DEV_END],
+    },
+    {
+      id: "dev2", label: "מסלול 2 · 20 שעות פיתוח בחודש", short: "מסלול 2", kind: "monthly", price: 6400, setup: 0, fee: 0, addons: [],
+      sub: "מערכות, אתרים ותוכן שנבנים בדיוק לפי מה שהעסק שלך צריך",
+      inc: DEV_INC(20), timelines: DEV_TIMELINES, gifts: [GIFT_CAMPAIGN, GIFT_SEO], general: DEV_GENERAL, commit: true,
+      terms: [...DEV_TERMS, "הקידום האורגני ניתן לאתר קיים או לאתר שנבנה במסגרת שעות הפיתוח.", ...DEV_END],
+    },
   ],
   addons: [
     { id: "vid3", label: "חבילת 3 סרטונים", d: "סרטונים שיווקיים מוכנים לפרסום", price: 1100 },
@@ -283,12 +330,13 @@ export type PackInput = {
   promo: boolean;
   promoText: string;
   payUrl: string;
+  commit: Commit;      // development tracks: the commitment period
 };
 export const PROMO_TEXT_DEFAULT = "מבצע לזמן מוגבל";
 
 export const newLine = (id: ProdId): PackLine => ({ id, price: null, sale: null, setupOn: false, setup: null, setupSale: null, fee: null, feeSale: null, promo: id === "ai" });
 export function emptyPack(payUrl?: string, ids: ProdId[] = []): PackInput {
-  return { lines: ids.map(newLine), extras: false, addons: [], addonPrices: {}, pages: 0, msgPack: "", promo: false, promoText: PROMO_TEXT_DEFAULT, payUrl: payUrl || PAY_URL_DEFAULT };
+  return { lines: ids.map(newLine), extras: false, addons: [], addonPrices: {}, pages: 0, msgPack: "", promo: false, promoText: PROMO_TEXT_DEFAULT, payUrl: payUrl || PAY_URL_DEFAULT, commit: "3" };
 }
 const nn = (v: unknown) => (typeof v === "number" && isFinite(v) && v >= 0 ? Math.round(v) : null);
 export function normalizePack(a: unknown, payUrl?: string): PackInput {
@@ -310,6 +358,7 @@ export function normalizePack(a: unknown, payUrl?: string): PackInput {
     promo: !!o.promo,
     promoText: typeof o.promoText === "string" && o.promoText.trim() ? o.promoText : base.promoText,
     payUrl: typeof o.payUrl === "string" && /^https:\/\//.test(o.payUrl) ? o.payUrl : base.payUrl,
+    commit: o.commit === "2" || o.commit === "0" ? o.commit : "3",
   };
 }
 
@@ -366,7 +415,10 @@ export function computePack(P: PackPricing, I: PackInput, vat: number, T: Templa
     if (first != null) oneoff.push({ a: d.short + ", החודש הראשון (" + P.aiPct + "% הנחה)", o: p.eff, eff: first, was: p.eff });
     if (d.kind === "monthly" && l.setupOn) oneoff.push({ a: "הקמה, " + d.short, ...priceOf(l.setup, l.setupSale, d.setup) });
     if (d.kind === "oneoff" && d.fee) hosting.push({ a: "אחסון ותחזוקה, " + d.short, ...priceOf(l.fee, l.feeSale, d.fee) });
+    // gifts: listed at their monthly price, struck, and charged nothing
+    (d.gifts || []).forEach((x) => monthly.push({ a: x.t + ", מתנה", o: x.was, eff: 0, was: x.was }));
   }
+  const gifts = defs.flatMap(({ d }) => d.gifts || []);
   const pages = hasSite ? I.pages : 0;
   if (pages) oneoff.push({ a: "דפים נוספים באתר × " + pages, o: pages * P.extraPage, eff: pages * P.extraPage, was: null });
   const offered = offeredAddons(P, defs.map((x) => x.d.id), I.extras);
@@ -384,7 +436,8 @@ export function computePack(P: PackPricing, I: PackInput, vat: number, T: Templa
   // the AI campaign on its own keeps the campaign header (with the promo when it is on)
   const aiOnly = defs.length === 1 && defs[0].d.id === "ai" && !I.extras;
   const aiPromo = aiOnly && defs[0].l.promo;
-  const title = aiOnly ? "קמפיין ממומן" + (aiPromo ? ` · ${P.aiPct}% הנחה על החודש הראשון` : "") : shorts.length ? joinHe(shorts) : "הצעת מחיר";
+  const own1 = defs.length === 1 && !I.extras && defs[0].d.general;  // a development track on its own: its full name as the title
+  const title = own1 ? defs[0].d.label : aiOnly ? "קמפיין ממומן" + (aiPromo ? ` · ${P.aiPct}% הנחה על החודש הראשון` : "") : shorts.length ? joinHe(shorts) : "הצעת מחיר";
   const sub = aiOnly ? `ניהול קמפיין ממומן בפלטפורמה אחת, דרך מערכת AI ש-${T.name || "Simple Solution"} מפתחת`
     : !defs.length && I.extras ? "שירותים ותוצרים לבחירה, בתשלום חד פעמי"
     : defs.length === 1 && !I.extras ? defs[0].d.sub : shorts.length ? "הצעה משולבת של " + shorts.length + " מוצרים, במסמך אחד" : "בחרו מוצר אחד או יותר";
@@ -403,7 +456,8 @@ export function computePack(P: PackPricing, I: PackInput, vat: number, T: Templa
   }
   oneoff.filter((x) => !x.a.includes("החודש הראשון") && !defs.some((d) => d.d.label === x.a)).forEach((x) => cardO.push({ ...x, k: "חד פעמי" }));
   const cardH: Card[] = hosting.map((x) => ({ ...x, k: "חודשי" }));  // listed last, counted in the monthly total
-  const priceLines = [...cardM, ...cardO, ...cardH].map((x) => ({ a: x.a, k: x.k, was: wasOf(x), b: shown(x) }));
+  const cardG: Card[] = gifts.map((x) => ({ a: x.t, k: "מתנה", o: x.was, eff: 0, was: x.was }));  // shown, not counted in the totals
+  const priceLines = [...cardM, ...cardO, ...cardH, ...cardG].map((x) => ({ a: x.a, k: x.k, was: wasOf(x), b: shown(x) }));
   const fig = (xs: Card[], label: string) => {
     const e = sum(xs as Ln[], "eff"), o = sum(xs as Ln[], "o");
     return { label, num: nis(e), was: o !== e ? nis(o) : undefined };
@@ -415,6 +469,7 @@ export function computePack(P: PackPricing, I: PackInput, vat: number, T: Templa
     items: d.inc.map((p) => ({ t: p.t, s: p.s, no: /^לא כלול/.test(p.t) })),
   }));
   // "תוספות" as a product: every add-on picked, with what it includes
+  if (gifts.length) incGroups.push({ title: gifts.length > 1 ? "המתנות שלך" : "המתנה שלך", items: gifts.map((x) => ({ t: x.t, s: x.s + " שווי " + nis(x.was) + " לחודש, ללא עלות.", no: false })) });
   if (I.extras && picked.length) incGroups.push({ title: "תוספות", items: picked.map((x) => ({ t: x.label, s: x.d, no: false })) });
   const inc = incGroups.flatMap((g) => g.items);
 
@@ -422,7 +477,7 @@ export function computePack(P: PackPricing, I: PackInput, vat: number, T: Templa
   const S: AiRow[] = [];
   if (monthly.length) {
     S.push({ cls: "head", a: "חיוב חודשי", b: "" });
-    monthly.forEach((x) => S.push({ cls: "", a: x.a + ', לפני מע"מ', b: shown(x), was: wasOf(x) }));
+    monthly.forEach((x) => S.push({ cls: "", a: x.eff === 0 && x.was ? x.a : x.a + ', לפני מע"מ', b: shown(x), was: wasOf(x) }));
     S.push({ cls: "", a: vatLbl, b: nis(g(mNet) - mNet) });
     S.push({ cls: "grand", a: 'סה"כ לחודש', b: nis(g(mNet)) + ' כולל מע"מ' });
   }
@@ -441,6 +496,7 @@ export function computePack(P: PackPricing, I: PackInput, vat: number, T: Templa
   const payNow = oNet > 0 ? nis(g(oNet)) + ' כולל מע"מ' : mNet > 0 ? nis(g(mNet)) + ' כולל מע"מ, החודש הראשון' : "";
   const summaryNote = [
     monthly.length && oneoff.length ? "החיוב החודשי מתחיל ב-1 לחודש שאחרי ההצטרפות, ומחושב יחסית לחודש הראשון." : "",
+    gifts.length ? "המתנות ניתנות כל עוד המסלול פעיל." : "",
     hasMail ? `בדיוור: ${P.freeMsgs.toLocaleString("he-IL")} הודעות בחודש ללא עלות, באופן קבוע.` : "",
   ].filter(Boolean).join(" ");
 
@@ -451,7 +507,11 @@ export function computePack(P: PackPricing, I: PackInput, vat: number, T: Templa
   const many = defs.length > 1;
   const timelines = defs.flatMap(({ d }) => d.timelines.map((r) => ({ t: (many ? d.short + ": " : "") + r.t, s: r.s })));
 
-  const general = [`כל המחירים בהצעה לפני מע"מ. ${vatLbl}`, ...P.general, ...((T.extraTerms || []) as string[]).map((x) => x.trim()).filter(Boolean)];
+  // a product with its own general terms (the development tracks) replaces the catalog's, with the commitment picked
+  const own = defs.filter(({ d }) => d.general);
+  const baseGeneral = own.length ? [...new Set(own.flatMap(({ d }) => d.general!))] : P.general;
+  const commit = defs.some(({ d }) => d.commit) ? [commitText(I.commit)] : [];
+  const general = [`כל המחירים בהצעה לפני מע"מ. ${vatLbl}`, ...baseGeneral, ...commit, ...((T.extraTerms || []) as string[]).map((x) => x.trim()).filter(Boolean)];
   const termGroups = [{ title: "כללי", items: general }, ...defs.map(({ d }) => ({ title: d.label, items: d.terms }))];
 
   return {
