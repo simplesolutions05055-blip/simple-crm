@@ -24,6 +24,8 @@ export type ProdDef = {
   gifts?: Gift[];     // monthly services given free while the product is active (shown at their price, struck)
   general?: string[]; // replaces the catalog's general terms in a quote that includes this product
   commit?: boolean;   // the quote picks a commitment period (3 months, 2 months, none)
+  join?: number;      // join discount: the price while the discount is on (the regular price stays struck beside it)
+  joinText?: string;  // the banner over the price while the join discount is on
 };
 export type PackAddon = { id: string; label: string; d: string; price: number; was?: number };
 export type MsgPack = { id: string; n: number; price: number };
@@ -233,7 +235,8 @@ export const DEFAULT_PACK: PackPricing = {
       ],
     },
     {
-      id: "dev1", label: "מסלול 1 · 10 שעות פיתוח בחודש", short: "מסלול 1", kind: "monthly", price: 3600, setup: 0, fee: 0, addons: [],
+      id: "dev1", label: "מסלול 1 · 10 שעות פיתוח בחודש", short: "מסלול 1", kind: "monthly", price: 4100, setup: 0, fee: 0, addons: [],
+      join: 3600, joinText: "הנחת הצטרפות",
       sub: "מערכות, אתרים ותוכן שנבנים בדיוק לפי מה שהעסק שלך צריך",
       inc: DEV_INC(10), timelines: DEV_TIMELINES, gifts: [GIFT_CAMPAIGN], general: DEV_GENERAL, commit: true,
       terms: [...DEV_TERMS, ...DEV_END],
@@ -289,6 +292,7 @@ export function withPack(p: unknown, ai?: unknown): PackPricing {
         price: d.id === "ai" ? A.price : num(s.price, d.price), setup: num(s.setup, d.setup), fee: num(s.fee, d.fee),
         inc: arr(s.inc, d.inc), timelines: arr(s.timelines, d.timelines), terms: arr(s.terms, d.terms),
         addons: arr(s.addons, d.addons || []),
+        ...(d.join != null ? { join: num(s.join, d.join), joinText: typeof s.joinText === "string" && s.joinText.trim() ? s.joinText : d.joinText } : {}),
       };
     }),
     addons: (() => { const a = arr<PackAddon>(o.addons, DEFAULT_PACK.addons); return [...a, ...DEFAULT_PACK.addons.filter((d) => !a.some((x) => x.id === d.id))]; })(),
@@ -316,7 +320,7 @@ export type PackLine = {
   price: number | null; sale: number | null;
   setupOn: boolean; setup: number | null; setupSale: number | null;
   fee: number | null; feeSale: number | null;
-  promo: boolean;      // AI campaign: first month at the promo discount
+  promo: boolean;      // AI campaign: first month at the promo discount. A track with a join discount: the discount is on
 };
 /* an add-on's price in one quote; null = the catalog */
 export type AddonPrice = { price: number | null; sale: number | null };
@@ -334,7 +338,9 @@ export type PackInput = {
 };
 export const PROMO_TEXT_DEFAULT = "מבצע לזמן מוגבל";
 
-export const newLine = (id: ProdId): PackLine => ({ id, price: null, sale: null, setupOn: false, setup: null, setupSale: null, fee: null, feeSale: null, promo: id === "ai" });
+/* products whose line carries an on/off promo: the AI campaign (first month) and the tracks with a join discount */
+export const PROMO_IDS: ProdId[] = ["ai", ...DEFAULT_PACK.products.filter((p) => p.join != null).map((p) => p.id)];
+export const newLine = (id: ProdId): PackLine => ({ id, price: null, sale: null, setupOn: false, setup: null, setupSale: null, fee: null, feeSale: null, promo: PROMO_IDS.includes(id) });
 export function emptyPack(payUrl?: string, ids: ProdId[] = []): PackInput {
   return { lines: ids.map(newLine), extras: false, addons: [], addonPrices: {}, pages: 0, msgPack: "", promo: false, promoText: PROMO_TEXT_DEFAULT, payUrl: payUrl || PAY_URL_DEFAULT, commit: "3" };
 }
@@ -344,7 +350,7 @@ export function normalizePack(a: unknown, payUrl?: string): PackInput {
   const o = (a && typeof a === "object" ? a : {}) as Partial<PackInput>;
   const seen = new Set<string>();
   const lines = arr<Partial<PackLine>>(o.lines, []).filter((l) => l && PROD_IDS.includes(l.id as ProdId) && !seen.has(l.id!) && !!seen.add(l.id!))
-    .map((l) => ({ id: l.id as ProdId, price: nn(l.price), sale: nn(l.sale), setupOn: !!l.setupOn, setup: nn(l.setup), setupSale: nn(l.setupSale), fee: nn(l.fee), feeSale: nn(l.feeSale), promo: l.id === "ai" && l.promo !== false }));
+    .map((l) => ({ id: l.id as ProdId, price: nn(l.price), sale: nn(l.sale), setupOn: !!l.setupOn, setup: nn(l.setup), setupSale: nn(l.setupSale), fee: nn(l.fee), feeSale: nn(l.feeSale), promo: PROMO_IDS.includes(l.id as ProdId) && l.promo !== false }));
   const ap: Record<string, AddonPrice> = {};
   Object.entries((o.addonPrices && typeof o.addonPrices === "object" ? o.addonPrices : {}) as Record<string, Partial<AddonPrice>>)
     .forEach(([k, v]) => { if (v && typeof v === "object") ap[k] = { price: nn(v.price), sale: nn(v.sale) }; });
@@ -373,6 +379,10 @@ export function addonPriceOf(x: PackAddon, ov?: AddonPrice | null) {
   const def = x.was ?? x.price;
   if (!ov) return priceOf(null, x.was != null ? x.price : null, def);
   return priceOf(ov.price, ov.sale, def);
+}
+/* a line's price after discount: the one typed in the quote, or the join discount while it is on */
+export function lineSale(l: PackLine, d: ProdDef) {
+  return l.sale ?? (l.promo && d.join != null ? d.join : null);
 }
 /* original (catalog or edited) and what is charged; "was" only when a price after discount is set */
 export function priceOf(orig: number | null, sale: number | null, def: number) {
@@ -407,7 +417,7 @@ export function computePack(P: PackPricing, I: PackInput, vat: number, T: Templa
   const hosting: Ln[] = [];   // monthly, from the month the site goes live
   const oneoff: Ln[] = [];    // paid at signing
   for (const { l, d } of defs) {
-    const p = priceOf(l.price, l.sale, basePrice(P, I, d.id));
+    const p = priceOf(l.price, lineSale(l, d), basePrice(P, I, d.id));
     const first = d.id === "ai" && l.promo ? Math.round(p.eff * (100 - P.aiPct) / 100) : null;
     const name = d.id === "mail" && bundled && l.price == null ? d.label + ", מחיר חבילה עם הצ'אטבוט" : first != null ? d.label + ", מהחודש השני" : d.label;
     (d.kind === "monthly" ? monthly : oneoff).push({ a: name, ...p });
@@ -449,7 +459,7 @@ export function computePack(P: PackPricing, I: PackInput, vat: number, T: Templa
   type Card = { a: string; k: string; o: number; eff: number; was: number | null };
   const cardM: Card[] = [], cardO: Card[] = [];
   for (const { l, d } of defs) {
-    const p = priceOf(l.price, l.sale, basePrice(P, I, d.id));
+    const p = priceOf(l.price, lineSale(l, d), basePrice(P, I, d.id));
     const first = d.id === "ai" && l.promo ? Math.round(p.eff * (100 - P.aiPct) / 100) : null;
     const row = first != null ? { o: p.o, eff: first, was: p.o } : p;
     (d.kind === "monthly" ? cardM : cardO).push({ a: d.short, k: d.kind === "monthly" ? "חודשי" : "חד פעמי", ...row });
@@ -464,6 +474,8 @@ export function computePack(P: PackPricing, I: PackInput, vat: number, T: Templa
   };
   const figs = [...(cardM.length || cardH.length ? [fig([...cardM, ...cardH], "חודשי")] : []), ...(cardO.length ? [fig(cardO, "חד פעמי")] : [])];
 
+  // a track with its join discount on shows the discount banner (unless the quote has its own banner)
+  const joinOn = defs.find(({ l, d }) => d.join != null && l.promo && l.sale == null);
   const incGroups = defs.map(({ d }) => ({
     title: d.label,
     items: d.inc.map((p) => ({ t: p.t, s: p.s, no: /^לא כלול/.test(p.t) })),
@@ -521,7 +533,8 @@ export function computePack(P: PackPricing, I: PackInput, vat: number, T: Templa
     timelines,
     timelinesNote: "לוחות הזמנים נספרים מרגע שכל החומרים אצלי: טקסטים, תמונות, לוגו וגישות למערכות. עיכוב בקבלת חומר דוחה את הלוח באותו מספר ימים.",
     terms: termGroups.flatMap((t) => t.items),
-    notice: I.promo ? { text: I.promoText || PROMO_TEXT_DEFAULT, chip: "לזמן מוגבל" } : null,
+    notice: I.promo ? { text: I.promoText || PROMO_TEXT_DEFAULT, chip: "לזמן מוגבל" }
+      : joinOn ? { text: joinOn.d.joinText || "הנחת הצטרפות", chip: "לזמן מוגבל" } : null,
     priceLines, figs, incGroups, termGroups, payNow,
     totals: {
       product: "pack", title: shorts.length ? shorts.join(" + ") : "הצעת מחיר",
