@@ -10,7 +10,7 @@ import AiQuoteDoc from "@/components/AiQuoteDoc";
 import { useApp } from "@/components/AppCtx";
 import { computeQuote, normalizeInput, toggleableCards, withPricing, withTemplate, nis, type QuoteInput, type Pricing, type ExtraLine } from "@/lib/quote-engine";
 import { aiView, emptyAi, normalizeAi, withAi, computeAi, type AiInput, type AiPricing } from "@/lib/ai-campaign";
-import { packView, emptyPack, normalizePack, withPack, computePack, newLine, basePrice, priceOf, offeredAddons, addonPriceOf, commitText, type PackInput, type PackLine, type PackPricing, type ProdId } from "@/lib/products";
+import { packView, emptyPack, normalizePack, withPack, computePack, newLine, basePrice, priceOf, lineSale, offeredAddons, addonPriceOf, commitText, type PackInput, type PackLine, type PackPricing, type ProdId } from "@/lib/products";
 import { QUOTE_STATUS_CLS, fillTemplate, waLink, waTemplates, appUrl, fmtDateTime, type Row } from "@/lib/crm";
 
 export default function QuoteEditor() {
@@ -505,13 +505,19 @@ function PackControls({ I, pi, P, vat, upd, top }: { I: QuoteInput; pi: PackInpu
       {pi.lines.map((l) => {
         const d = P.products.find((x) => x.id === l.id)!;
         const def = basePrice(P, pi, l.id);
-        const p = priceOf(l.price, l.sale, def);
+        const p = priceOf(l.price, lineSale(l, d), def);
         return (
           <div className="cgroup pline" key={l.id}>
             <b>{d.label}</b>
             {l.id === "mail" && bundled && l.price == null ? <span className="tiny">מחיר חבילה עם הצ&apos;אטבוט: {nis(P.bundleMail)} במקום {nis(d.price)}.</span> : null}
             <PriceIn label={d.kind === "monthly" ? "לחודש" : "חד פעמי"} def={def} orig={l.price} sale={l.sale} set={(o, s) => setLine(l.id, { price: o, sale: s })} />
             <span className="tiny">{p.was != null ? "בהצעה: " + nis(p.was) + " מחוק, ולידו " + nis(p.eff) + "." : "בהצעה: " + nis(p.eff) + (d.kind === "monthly" ? " לחודש" : "") + ", " + nis(g(p.eff)) + " כולל מע\"מ."}</span>
+            {d.join != null ? <>
+              <label className={"pillck" + (l.promo ? " on" : "")} style={{ alignSelf: "flex-start" }}>
+                <input type="checkbox" checked={l.promo} onChange={(e) => setLine(l.id, { promo: e.target.checked })} />{d.joinText || "הנחת הצטרפות"}: {nis(d.join)} במקום {nis(l.price ?? def)}
+              </label>
+              {l.sale != null ? <span className="tiny">יש מחיר מבצע ידני בשורה, והוא קובע במקום ההנחה.</span> : null}
+            </> : null}
             {l.id === "ai" ? <>
               <label className={"pillck" + (l.promo ? " on" : "")} style={{ alignSelf: "flex-start" }}>
                 <input type="checkbox" checked={l.promo} onChange={(e) => setLine(l.id, { promo: e.target.checked })} />מבצע הצטרפות: {P.aiPct}% הנחה על החודש הראשון

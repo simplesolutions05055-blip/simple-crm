@@ -501,9 +501,13 @@ function PackPricingTab({ id }: { id?: ProdId }) {
             <label className="field"><span>שם המוצר בהצעה</span><S v={d.label} on={(x) => setD({ label: x })} /></label>
             <div className="f2">
               <label className="field"><span>שם קצר (בכותרת ובבחירה)</span><S v={d.short} on={(x) => setD({ short: x })} /></label>
-              <label className="field"><span>{d.kind === "monthly" ? "מחיר חודשי" : "מחיר חד פעמי"}, לפני מע&quot;מ</span><N v={d.price} on={(x) => setD({ price: x })} w={160} /></label>
+              <label className="field"><span>{d.kind === "monthly" ? "מחיר חודשי" : "מחיר חד פעמי"}{d.join != null ? " רגיל" : ""}, לפני מע&quot;מ</span><N v={d.price} on={(x) => setD({ price: x })} w={160} /></label>
               {d.kind === "monthly" ? <label className="field"><span>עלות הקמה כשמוסיפים אותה</span><N v={d.setup} on={(x) => setD({ setup: x })} w={160} /></label>
                 : <label className="field"><span>אחסון ותחזוקה, לחודש</span><N v={d.fee} on={(x) => setD({ fee: x })} w={160} /></label>}
+              {d.join != null ? <>
+                <label className="field"><span>מחיר בהנחת הצטרפות</span><N v={d.join} on={(x) => setD({ join: x })} w={160} /></label>
+                <label className="field"><span>תווית ההנחה בהצעה</span><S v={d.joinText || ""} on={(x) => setD({ joinText: x })} /></label>
+              </> : null}
               {d.id === "site" ? <label className="field"><span>דף נוסף מעבר ל-5</span><N v={K.extraPage} on={(x) => setK({ ...K, extraPage: x })} w={160} /></label> : null}
               {d.id === "mail" ? <>
                 <label className="field"><span>מחיר כשנלקח עם הצ&apos;אטבוט</span><N v={K.bundleMail} on={(x) => setK({ ...K, bundleMail: x })} w={160} /></label>
