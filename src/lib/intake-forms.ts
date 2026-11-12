@@ -7,6 +7,7 @@
 export type FormField = {
   id: string; t: "t" | "n" | "a" | "r" | "c" | "d" | "f" | "l" | "p"; q: string; o?: string[]; h?: string;
   n?: number; cols?: string[]; show?: { id: string; v: string };
+  linkOnly?: boolean; /* p only: a link per platform, no user name or password */
   plain?: boolean; /* p only: the password is written in the form as text, not sent to the vault */
 };
 export type FormSection = { title: string; internal: boolean; fields: FormField[] };

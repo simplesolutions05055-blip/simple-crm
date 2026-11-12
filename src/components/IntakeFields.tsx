@@ -121,7 +121,7 @@ function ListField({ f, v, set, ro, cls }: { f: FormField; v: AnswerValue | unde
           <div key={i} className="ipair">
             <span className="inum">{i + 1}</span>
             <div className="ipair-in">
-              {cols.map((c, k) => k === 0
+              {cols.map((c, k) => k === 0 || c.includes("קישור")
                 ? <input key={k} className="inp" placeholder={c} dir="auto" readOnly={ro} value={r[k] || ""} onChange={(e) => put(i, k, e.target.value)} />
                 : <textarea key={k} className="inp" rows={2} placeholder={c} dir="auto" readOnly={ro} value={r[k] || ""} onChange={(e) => put(i, k, e.target.value)} />)}
             </div>
@@ -158,7 +158,7 @@ function AccountsField({ f, v, set, secret, ro, cls }: { f: FormField; v: Answer
   const plats = f.o || [];
   const has = (p: string) => !!(acc[p] && (acc[p].url || acc[p].user || acc[p].pw || acc[p].pwv));
   const [opened, setOpened] = useState<string[]>([]);
-  const list = plats.filter((p) => has(p) || (!ro && opened.includes(p)));
+  const list = plats.filter((p) => has(p) || (!ro && (f.linkOnly || opened.includes(p))));
   const rest = ro ? [] : plats.filter((p) => !list.includes(p));
   return (
     <div className={cls}><Label f={f} />
@@ -173,7 +173,7 @@ function AccountsField({ f, v, set, secret, ro, cls }: { f: FormField; v: Answer
             <div key={p} className="iacc">
               <b>{p}</b>
               <input className="inp" type="url" inputMode="url" dir="ltr" placeholder={p === "אתר" ? "כתובת האתר" : "קישור ישיר לעמוד"} readOnly={ro} value={x.url || ""} onChange={(e) => put(p, { url: e.target.value })} />
-              <div className="iacc-row">
+              {f.linkOnly ? null : <div className="iacc-row">
                 <input className="inp" dir="ltr" autoComplete="off" placeholder="שם משתמש" readOnly={ro} value={x.user || ""} onChange={(e) => put(p, { user: e.target.value })} />
                 {f.plain ? (
                   <input className="inp" type="text" dir="ltr" autoComplete="off" placeholder="סיסמה" readOnly={ro} value={x.pwv || ""} onChange={(e) => put(p, { pwv: e.target.value })} />
@@ -192,8 +192,8 @@ function AccountsField({ f, v, set, secret, ro, cls }: { f: FormField; v: Answer
                     placeholder={x.pw ? "סיסמה נשמרה. להחלפה כותבים חדשה" : "סיסמה"} value={pw[p] || ""}
                     onChange={(e) => setPw((s) => ({ ...s, [p]: e.target.value }))} onBlur={() => savePw(p)} />
                 )}
-              </div>
-              {!ro && !f.plain ? <span className={"ipw-st" + (st[p] === "error" ? " bad" : "")}>
+              </div>}
+              {!ro && !f.plain && !f.linkOnly ? <span className={"ipw-st" + (st[p] === "error" ? " bad" : "")}>
                 {st[p] === "saving" ? "שומר את הסיסמה…" : st[p] === "error" ? "הסיסמה לא נשמרה. נסו שוב." : x.pw ? "✓ הסיסמה נשמרה מוצפנת" : ""}
               </span> : null}
             </div>
