@@ -7,19 +7,20 @@
 export type FormField = {
   id: string; t: "t" | "n" | "a" | "r" | "c" | "d" | "f" | "l" | "p"; q: string; o?: string[]; h?: string;
   n?: number; cols?: string[]; show?: { id: string; v: string };
+  plain?: boolean; /* p only: the password is written in the form as text, not sent to the vault */
 };
 export type FormSection = { title: string; internal: boolean; fields: FormField[] };
 export type IntakeForm = { kind: string; title: string; intro: string; sections: FormSection[] };
 export type UploadedFile = { name: string; path: string; size?: number };
-export type Account = { url?: string; user?: string; pw?: boolean };
+export type Account = { url?: string; user?: string; pw?: boolean; pwv?: string };
 export type Accounts = Record<string, Account>;
 export type AnswerValue = string | string[] | UploadedFile[] | string[][] | Accounts;
 export type Answers = Record<string, AnswerValue>;
 const isAccounts = (v: unknown): v is Accounts => !!v && typeof v === "object" && !Array.isArray(v);
 export const answerText = (v: AnswerValue | undefined): string => {
   if (!v) return "";
-  if (isAccounts(v)) return Object.entries(v).filter(([, x]) => x && (x.url || x.user || x.pw))
-    .map(([k, x]) => k + ": " + [x.url, x.user ? "משתמש " + x.user : "", x.pw ? "סיסמה בכספת" : ""].filter(Boolean).join(", ")).join(" · ");
+  if (isAccounts(v)) return Object.entries(v).filter(([, x]) => x && (x.url || x.user || x.pw || x.pwv))
+    .map(([k, x]) => k + ": " + [x.url, x.user ? "משתמש " + x.user : "", x.pwv ? "סיסמה " + x.pwv : x.pw ? "סיסמה בכספת" : ""].filter(Boolean).join(", ")).join(" · ");
   if (Array.isArray(v)) return (v as unknown[]).map((x) => (typeof x === "string" ? x.trim() : Array.isArray(x) ? x.map((c) => String(c || "").trim()).filter(Boolean).join(" - ") : (x as UploadedFile).name))
     .filter(Boolean).join(" · ");
   return String(v).trim();

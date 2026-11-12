@@ -86,7 +86,7 @@ function Field({ f, v, set, name, upload, onOpenFile, secret, ro }: Common & { f
     <label className={cls}><Label f={f} />
       {f.t === "a"
         ? <textarea className="inp" rows={3} readOnly={ro} value={(v as string) || ""} onChange={(e) => set(e.target.value)} />
-        : <input className="inp" type={f.t === "n" ? "number" : "text"} inputMode={f.t === "n" ? "decimal" : undefined} dir="auto" readOnly={ro} value={(v as string) || ""} onChange={(e) => set(e.target.value)} />}
+        : <input className="inp" type="text" inputMode={f.t === "n" ? "decimal" : undefined} dir="auto" readOnly={ro} value={(v as string) || ""} onChange={(e) => set(e.target.value)} />}
     </label>
   );
 }
@@ -140,7 +140,7 @@ function ListField({ f, v, set, ro, cls }: { f: FormField; v: AnswerValue | unde
   );
 }
 
-/* per platform: link, user name, password. The password is sent to the vault on leaving the field. */
+/* per platform: link, user name, password. The password is sent to the vault on leaving the field, or kept as text when f.plain. */
 function AccountsField({ f, v, set, secret, ro, cls }: { f: FormField; v: AnswerValue | undefined; set: (v: AnswerValue) => void; secret?: SecretApi; ro?: boolean; cls: string }) {
   const acc = (v && typeof v === "object" && !Array.isArray(v) ? v : {}) as Accounts;
   const [pw, setPw] = useState<Record<string, string>>({});
@@ -156,7 +156,7 @@ function AccountsField({ f, v, set, secret, ro, cls }: { f: FormField; v: Answer
     if (ok) { setPw((x) => ({ ...x, [p]: "" })); put(p, { pw: true }); }
   }
   const plats = f.o || [];
-  const has = (p: string) => !!(acc[p] && (acc[p].url || acc[p].user || acc[p].pw));
+  const has = (p: string) => !!(acc[p] && (acc[p].url || acc[p].user || acc[p].pw || acc[p].pwv));
   const [opened, setOpened] = useState<string[]>([]);
   const list = plats.filter((p) => has(p) || (!ro && opened.includes(p)));
   const rest = ro ? [] : plats.filter((p) => !list.includes(p));
@@ -172,10 +172,12 @@ function AccountsField({ f, v, set, secret, ro, cls }: { f: FormField; v: Answer
           return (
             <div key={p} className="iacc">
               <b>{p}</b>
-              <input className="inp" type="url" inputMode="url" dir="ltr" placeholder={p === "אתר" ? "כתובת האתר" : "קישור לעמוד"} readOnly={ro} value={x.url || ""} onChange={(e) => put(p, { url: e.target.value })} />
+              <input className="inp" type="url" inputMode="url" dir="ltr" placeholder={p === "אתר" ? "כתובת האתר" : "קישור ישיר לעמוד"} readOnly={ro} value={x.url || ""} onChange={(e) => put(p, { url: e.target.value })} />
               <div className="iacc-row">
                 <input className="inp" dir="ltr" autoComplete="off" placeholder="שם משתמש" readOnly={ro} value={x.user || ""} onChange={(e) => put(p, { user: e.target.value })} />
-                {ro ? (
+                {f.plain ? (
+                  <input className="inp" type="text" dir="ltr" autoComplete="off" placeholder="סיסמה" readOnly={ro} value={x.pwv || ""} onChange={(e) => put(p, { pwv: e.target.value })} />
+                ) : ro ? (
                   <div className="ipw-ro">
                     {x.pw ? <>
                       <span dir="ltr">{shownPw[p] ?? "••••••"}</span>
@@ -191,7 +193,7 @@ function AccountsField({ f, v, set, secret, ro, cls }: { f: FormField; v: Answer
                     onChange={(e) => setPw((s) => ({ ...s, [p]: e.target.value }))} onBlur={() => savePw(p)} />
                 )}
               </div>
-              {!ro ? <span className={"ipw-st" + (st[p] === "error" ? " bad" : "")}>
+              {!ro && !f.plain ? <span className={"ipw-st" + (st[p] === "error" ? " bad" : "")}>
                 {st[p] === "saving" ? "שומר את הסיסמה…" : st[p] === "error" ? "הסיסמה לא נשמרה. נסו שוב." : x.pw ? "✓ הסיסמה נשמרה מוצפנת" : ""}
               </span> : null}
             </div>

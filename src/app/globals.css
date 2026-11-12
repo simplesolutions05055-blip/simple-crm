@@ -492,7 +492,7 @@ b.bad{color:var(--bad)}
 .ifields{display:flex;flex-direction:column;gap:16px}
 .ifield{display:flex;flex-direction:column;gap:7px;min-width:0}
 .iq{font-weight:600;font-size:14px;color:var(--fg);line-height:1.45}
-.iq small{display:block;font-weight:400;font-size:12.5px;color:var(--muted);margin-top:2px}
+.iq small{display:block;font-weight:400;font-size:12.5px;color:var(--muted);margin-top:2px;white-space:pre-line}
 .ifield.idone{flex-direction:row;align-items:flex-start;gap:10px;border:1px solid var(--line2);border-radius:12px;padding:12px 14px;cursor:pointer;background:var(--surface)}
 .ifield.idone input{width:20px;height:20px;margin:1px 0 0;flex-shrink:0;accent-color:var(--ok)}
 .ifield.idone .iq{flex:1}
